@@ -2,14 +2,14 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useRef, useState } from 'react'
 import type { DayKey, ResolvedStatus, Todo } from '@shared/todo'
 import { useSettledTodos } from '../hooks/useSettledTodos'
-import { formatDay, relativeLabel } from '../lib/dates'
+import { formatDay, formatWeekday, fromDayKey, relativeLabel } from '../lib/dates'
 import { QUICK_ADD_MS } from '../lib/motion'
 import { AddTodoForm } from './AddTodoForm'
 import styles from './DayCard.module.css'
 import { TodoItem } from './TodoItem'
 
-/** Position in the stack: 0 is the card in front, ±1 peek out behind it, ±2 are off-stage. */
-export type StackOffset = -2 | -1 | 0 | 1 | 2
+/** Position in the deck: 0 is in front, ±1 to ±3 sit behind it as far as the window has room, ±4 are off-stage. */
+export type StackOffset = -4 | -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4
 
 interface DayCardProps {
   readonly day: DayKey
@@ -23,6 +23,10 @@ interface DayCardProps {
   readonly onSelect: () => void
   readonly onBackToToday: () => void
 }
+
+/** A todo's bar in the glance is short, medium or long, like its text. */
+const glanceLength = (text: string): 'short' | 'medium' | 'long' =>
+  text.length < 16 ? 'short' : text.length < 36 ? 'medium' : 'long'
 
 export function DayCard({
   day,
@@ -61,6 +65,26 @@ export function DayCard({
       aria-hidden={!inFront}
       onClick={inFront ? undefined : onSelect}
     >
+      {/* What a card shows while it is behind, laid out in the strip the card in front leaves visible.
+          The real header and list are hidden then: they are covered on one side or the other. */}
+      <div className={styles.behind} aria-hidden>
+        <div className={styles.tab}>
+          <span className={styles.tabWeekday}>{formatWeekday(day)}</span>
+          <span className={styles.tabDate}>{fromDayKey(day).getDate()}</span>
+        </div>
+        {Math.abs(offset) <= 1 && (
+          <ul className={styles.glance}>
+            {ordered.map((todo) => (
+              <li
+                key={todo.id}
+                className={styles.glanceBar}
+                data-status={todo.status}
+                data-length={glanceLength(todo.text)}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
       <div className={styles.content} inert={!inFront}>
         <header className={styles.header}>
           <div>

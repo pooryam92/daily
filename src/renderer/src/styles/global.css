@@ -68,6 +68,7 @@
   --radius-lg: 14px;
   --radius-full: 999px;
   --card-max: 720px;
+  --card-max-height: 860px;
 
   /* motion */
   --duration-fast: 120ms;

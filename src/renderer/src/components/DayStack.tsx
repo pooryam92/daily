@@ -7,7 +7,7 @@ import { DayCard } from './DayCard'
 import type { StackOffset } from './DayCard'
 import styles from './DayStack.module.css'
 
-const OFFSETS: readonly StackOffset[] = [-2, -1, 0, 1, 2]
+const OFFSETS: readonly StackOffset[] = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
 
 interface DayStackProps {
   readonly today: DayKey

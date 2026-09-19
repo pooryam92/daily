@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, formatDay, fromDayKey, relativeLabel, toDayKey } from './dates'
+import { addDays, formatDay, formatWeekday, fromDayKey, relativeLabel, toDayKey } from './dates'
 
 describe('toDayKey / fromDayKey', () => {
   it('uses the local date, zero-padded', () => {
@@ -32,6 +32,12 @@ describe('addDays', () => {
 describe('formatDay', () => {
   it('formats as weekday, day and month', () => {
     expect(formatDay('2026-09-19', 'en-US')).toBe('Saturday, September 19')
+  })
+})
+
+describe('formatWeekday', () => {
+  it('formats as the short weekday', () => {
+    expect(formatWeekday('2026-09-19', 'en-US')).toBe('Sat')
   })
 })
 

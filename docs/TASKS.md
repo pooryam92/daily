@@ -325,10 +325,17 @@ Notes from building Phase 2:
   - Data: Motion's carousel write-up **[verified]**; threshold values from individual write-ups
     **[unverified]** as best practice.
 
-- [ ] **3.5 Tune deck depth.** Peeking cards at scale 0.92–0.95, 40–60 px visible, opacity 0.6–0.7, lighter
-      shadow.
-  - Data: Sonner's `1 - 0.05 × index` **[verified]**; the suggested ranges **[unverified]**. Current
-    values (0.92, 56 px, 0.6) are already inside them **[measured]**, so this is tuning, not a rewrite.
+- [x] **3.5 Deck layout on large windows** (was "Tune deck depth"; done first, 2026-09-19, because the
+      springs of 3.2 animate these positions). Card height capped at 860px; extra width shows more of ±1
+      (56 → 240px), then 64px slivers of ±2 and ±3; depth is a tint towards `--bg` instead of opacity;
+      cards behind show a stand-in in their visible strip: a date tab and, on ±1, one wordless bar
+      per todo, the same on both sides.
+  - Why: a 1920×1080 window was a 720×1040 sheet with ~520px of empty background per side
+    **[measured]**.
+  - Data: Poorya picked it from five layouts built side by side; the values are by eye
+    **[unverified]**. Reasoning in `DESIGN.md`, "The deck on large windows".
+  - The stand-in exists because the real content is covered unevenly (the day after showed only its
+    checkboxes). Bars and not text: a readable list pulled attention off today; Poorya rejected it.
 
 - [ ] **3.6 Performance guard.** Animate only `transform` and `opacity`; animate the full `transform`
       string in Motion if frames drop; blur under 20 px.

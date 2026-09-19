@@ -21,6 +21,10 @@ export function formatDay(key: DayKey, locale?: string): string {
   return fromDayKey(key).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+export function formatWeekday(key: DayKey, locale?: string): string {
+  return fromDayKey(key).toLocaleDateString(locale, { weekday: 'short' })
+}
+
 export function relativeLabel(key: DayKey, today: DayKey): string | null {
   if (key === today) return 'Today'
   if (key === addDays(today, -1)) return 'Yesterday'

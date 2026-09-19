@@ -214,9 +214,38 @@ the app.
 
 Only one elevation exists (`--shadow` on cards). It is drawn as six stacked layers tinted with the
 background's hue, which reads as depth where a single blur reads as a grey halo; peeking cards keep
-the first two layers (`--shadow-peek`). The stack's depth is still carried by scale and opacity, so
-a second elevation level would add nothing. In the dark theme the elevation comes from the lighter
+the first two layers (`--shadow-peek`). The stack's depth is still carried by scale and by a tint
+towards `--bg` (see "The deck on large windows"), so a second elevation level would add nothing. In the dark theme the elevation comes from the lighter
 surface and the shadow only separates the cards.
+
+### The deck on large windows
+
+Chosen by Poorya on 2026-09-19 from five layouts built side by side (zooming everything, a growing
+peek, a fan of slivers, and the combination, against the old layout). The old layout capped the
+card's width but not its height and showed a fixed 56px of each neighbour, so a 1920×1080 window was
+a 720×1040 sheet with ~520px of empty background on each side and the add-todo input ~1000px below
+a short list **[measured]**.
+
+- **The card is an object, not a sheet:** `--card-max-height` is `860px`. This keeps the input near
+  the list (proximity). Type and the 720px measure do not grow with the window: the reading
+  distance does not change when a window does, and people enlarge a window to see more, not to see
+  it bigger **[unverified]**.
+- **Extra width goes to the days behind, in order of usefulness:** first more of ±1 (`--peek`, 56px
+  → 240px, so yesterday becomes readable), then a 64px sliver of ±2, then of ±3. 80px per side stays
+  free for the arrow. The values are in `DayStack.module.css`; all of them **[unverified]**, picked
+  by eye.
+- **Depth is a tint, not transparency.** Cards behind are opaque and mixed towards `--bg` (62%, 38%,
+  20% surface). See-through cards turn muddy once more than one is stacked.
+- **A card behind shows a stand-in, not its real content.** The card in front covers the real
+  content unevenly: the day before would show the starts of its todos, the day after only
+  checkboxes, because text starts on the left. So the header and list are hidden, and the strip
+  that is visible gets its own layout, the same on both sides (consistency): a date tab ("Sun 20")
+  on the outer edge at full contrast, because that is the label of the click target, with today's
+  tab accent-coloured so today stays the landmark after navigating away; and on ±1 one quiet bar
+  per todo, short, medium or long like its text, fainter once the todo is resolved. The bars say
+  that something is there, how much, and how much is still open. They carry no words on purpose:
+  a readable list of yesterday and tomorrow was tried and rejected by Poorya (2026-09-19), because
+  text beside the front card gets read, and that pulls attention off today.
 
 ## 5. Motion
 
