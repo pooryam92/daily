@@ -1,2 +1,32 @@
+# Dependencies
 node_modules/
+
+# Build output
 out/
+dist/
+release/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+
+# Claude Code local settings
+.claude/settings.local.json
