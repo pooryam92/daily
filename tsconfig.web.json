@@ -1,0 +1,16 @@
+{
+  // Renderer: type-checked only, Vite does the bundling.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "tsBuildInfoFile": "out/.tsbuildinfo.web",
+    "paths": { "@shared/*": ["./src/shared/*"] }
+  },
+  "include": ["src/renderer", "src/shared"]
+}

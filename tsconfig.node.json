@@ -1,0 +1,14 @@
+{
+  // Main process and preload script: compiled by tsc to CommonJS in out/.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "module": "nodenext",
+    "rootDir": "src",
+    "outDir": "out",
+    "tsBuildInfoFile": "out/.tsbuildinfo.node"
+  },
+  "include": ["src/main", "src/preload", "src/shared"],
+  "exclude": ["**/*.test.ts"]
+}

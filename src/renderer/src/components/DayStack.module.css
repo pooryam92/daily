@@ -1,0 +1,37 @@
+.stack {
+  position: relative;
+  height: 100%;
+}
+
+/* The arrows sit in the gutters just outside the neighbouring cards. */
+.nav {
+  position: absolute;
+  top: 50%;
+  z-index: 5;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 32px;
+  line-height: 1;
+  padding-bottom: 5px;
+  color: var(--muted);
+}
+
+.nav:hover {
+  color: var(--text);
+  background: var(--hover-strong);
+}
+
+/*
+ * On wide windows: 590px from the centre = half the widest card (480) + the neighbour's peek (56)
+ * + a gap (6) + this button (48). On narrow ones: 8px from the window edge, which is 12px outside
+ * the stack because of the app's 20px padding.
+ */
+.nav[data-direction='previous'] {
+  left: max(-12px, 50% - 590px);
+}
+
+.nav[data-direction='next'] {
+  right: max(-12px, 50% - 590px);
+}

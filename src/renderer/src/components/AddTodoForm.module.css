@@ -1,0 +1,18 @@
+.form {
+  padding: 12px 16px 16px;
+}
+
+.input {
+  width: 100%;
+  padding: 9px 12px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
