@@ -1,6 +1,6 @@
 .app {
   height: 100%;
-  padding: 20px;
+  padding: var(--space-5);
 }
 
 .message {
@@ -8,19 +8,20 @@
   height: 100%;
   display: grid;
   place-items: center;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .banner {
   position: absolute;
-  top: 8px;
+  top: var(--space-2);
   left: 50%;
   z-index: 10;
   transform: translateX(-50%);
   margin: 0;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  color: #fff;
-  background: var(--dropped);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  color: var(--on-danger);
+  background: var(--danger-solid);
 }

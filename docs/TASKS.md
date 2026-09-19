@@ -1,7 +1,8 @@
 # Daily — UI and design tasks
 
 Every UI/design task that follows from `DESIGN.md` and `UI-RESEARCH.md`, in build order, each with the
-reason it exists and the data behind it. Written on 2026-09-19. Nothing below is implemented yet.
+reason it exists and the data behind it. Written on 2026-09-19. Phases 0 and 1 are done except the
+optional 1.24; nothing from Phase 2 on is implemented yet.
 
 Each **Data** line carries a tag that says how far to trust it:
 
@@ -14,9 +15,9 @@ Each **Data** line carries a tag that says how far to trust it:
   numbers in it are a starting point to tune by eye, not a fact.
 - **[convention]** — no science; chosen for consistency.
 
-## Current state, measured
+## State before Phase 1, measured
 
-Contrast of the palette that is in `global.css` today, against the targets of 4.5:1 for text and 3:1 for
+Contrast of the palette that was in `global.css` before Phase 1, against the targets of 4.5:1 for text and 3:1 for
 icons and control boundaries (WCAG 1.4.3, 1.4.11):
 
 | What                                            | Light | Dark | Target | Result      |
@@ -30,11 +31,12 @@ icons and control boundaries (WCAG 1.4.3, 1.4.11):
 | Pressed ✓ (`--done` on card)                    | 3.41  | 7.02 | 3.0    | passes      |
 | Todo text (`--text` on card)                    | ~16   | ~13  | 4.5    | passes      |
 
-Six of the eight pairs fail. Phase 1 exists to fix this table.
+Six of the eight pairs failed. Phase 1 existed to fix this table; the pairs that replace them are in
+the contrast table in `DESIGN.md` §2.
 
 ## Phase 0 — Safety net
 
-- [ ] **0.1 `git init` and commit the current state.**
+- [x] **0.1 `git init` and commit the current state.**
   - Why: Phase 1 renames tokens in all six stylesheets at once. Without a baseline there is no diff to
     review and no way back.
   - Data: the folder has a `.gitignore` but no `.git` directory **[measured]**.
@@ -46,16 +48,16 @@ breaks the old token names until the rest lands.
 
 ### Colour
 
-- [ ] **1.1 Replace both `:root` blocks in `styles/global.css` with the token block from `DESIGN.md` §7.**
+- [x] **1.1 Replace both `:root` blocks in `styles/global.css` with the token block from `DESIGN.md` §7.**
   - Why: every later task references these tokens, and it fixes every failing row in the table above.
   - Data: new pairs measure 5.9 / 5.8 (muted text), 3.5 / 3.5 (faint), 3.2 / 3.4 (input boundary),
     5.7 / 5.7 (banner) against the same targets (`DESIGN.md` §2) **[standard]**.
 
-- [ ] **1.2 Rename `--card` → `--surface` and `--muted` → `--text-muted` in every CSS module.**
+- [x] **1.2 Rename `--card` → `--surface` and `--muted` → `--text-muted` in every CSS module.**
   - Why: the old names stop existing after 1.1. Seven usages of `--muted`, one of `--card`.
   - Data: grep of `src/renderer/src` **[measured]**.
 
-- [ ] **1.3 Dropped stops being red: `--dropped` becomes a neutral (`#57534a` / `#b5b2a9`).**
+- [x] **1.3 Dropped stops being red: `--dropped` becomes a neutral (`#57534a` / `#b5b2a9`).**
   - Why: today one red (`#cf4a3c`) means both "I dropped this" and "your change was not saved". Dropping
     is a healthy decision, not a failure.
   - Data: goal disengagement predicts better well-being (Wrosch et al. 2003) **[strong]**; an explicit
@@ -63,11 +65,11 @@ breaks the old token names until the rest lands.
     a failure cue impairs performance (Elliot et al. 2007) **[moderate, mixed replications]**; ~8% of men
     cannot tell red from green, and green-vs-neutral survives every common deficiency **[strong]**.
 
-- [ ] **1.4 Error banner in `App.module.css`: `background: var(--danger-solid)`, `color: var(--on-danger)`.**
+- [x] **1.4 Error banner in `App.module.css`: `background: var(--danger-solid)`, `color: var(--on-danger)`.**
   - Why: it currently borrows `--dropped` and a hard-coded `#fff`; after 1.3 it would turn grey.
   - Data: 4.47 light / 3.06 dark today, 5.7 / 5.7 after **[measured]** / **[standard]** 1.4.3.
 
-- [ ] **1.5 `TodoItem.module.css`: real colours instead of `opacity`.** Done text `--text-muted`; dropped
+- [x] **1.5 `TodoItem.module.css`: real colours instead of `opacity`.** Done text `--text-muted`; dropped
       text `--text-faint` with no `opacity: 0.6`; idle marks and the bullet `--text-faint` with no
       `opacity: 0.45`; `.remove:hover` → `--danger`.
   - Why: opacity on top of a muted colour gives a different, unmeasured result per theme. That is how
@@ -76,111 +78,112 @@ breaks the old token names until the rest lands.
     visible small wins are the strongest day-to-day motivator (Amabile & Kramer 2011, ~12,000 diary
     entries) **[moderate]**.
 
-- [ ] **1.6 Only the "Today" label is accent-coloured.** Add `data-today` to the card; `.relative` uses
+- [x] **1.6 Only the "Today" label is accent-coloured.** Add `data-today` to the card; `.relative` uses
       `--accent` when the day is today, else `--text-muted`.
   - Why: right now Yesterday, Today and Tomorrow are all blue, so none of them is the landmark.
   - Data: the one item that differs is the one noticed (von Restorff 1933) **[strong]**; the new day as a
     temporal landmark is the premise of the app (Dai, Milkman & Riis 2014) **[strong]**.
 
-- [ ] **1.7 Nav arrows use `--text-muted`; input border uses `--border-strong`.**
+- [x] **1.7 Nav arrows use `--text-muted`; input border uses `--border-strong`.**
   - Why: both are controls and both are nearly invisible in light mode.
   - Data: arrows 2.83:1, input boundary 1.45:1 / 1.29:1 today, target 3:1 **[measured]** /
     **[standard]** 1.4.11.
 
 ### Typography
 
-- [ ] **1.8 Install `@fontsource-variable/inter` and import it in `global.css`; set `--font-sans`.**
+- [x] **1.8 Install `@fontsource-variable/inter` and import it in `global.css`; set `--font-sans`.**
   - Why: `system-ui` on Linux is whatever the distro ships, so the app looks different per machine. The
     title also asks for `font-weight: 650`, which does not exist in a static font and rounds to 700.
   - Data: x-height, not point size, drives legibility (Legge & Bigelow 2011) **[strong]**; harder-to-read
     instructions are judged harder to do (Song & Schwarz 2008) **[moderate]**. Package 5.3.0, OFL-1.1,
     local files so it works offline **[verified]**.
 
-- [ ] **1.9 Body text 15px/1.4 → 16px/1.5; title 22px → 24px / 1.2 / `-0.01em`; four sizes only.**
+- [x] **1.9 Body text 15px/1.4 → 16px/1.5; title 22px → 24px / 1.2 / `-0.01em`; four sizes only.**
   - Why: todo text is the content of the app and 15px sits exactly on the fluency threshold.
   - Data: Inter's x-height at 60 cm subtends 0.207° at 15px and 0.221° at 16px; the threshold is ~0.2°
     (Legge & Bigelow 2011) **[measured]** / **[strong]**. Line-height 1.5 matches WCAG 1.4.12
     **[standard]**.
 
-- [ ] **1.10 Inter details: `font-feature-settings: 'liga' 1, 'calt' 1`, `font-optical-sizing: auto`,
+- [x] **1.10 Inter details: `font-feature-settings: 'liga' 1, 'calt' 1`, `font-optical-sizing: auto`,
       antialiased smoothing, `tnum` on counts and dates, `text-wrap: balance` on the title and `pretty`
       on todo text.**
   - Why: free polish that ships in Chromium 152; tabular numerals stop "3 of 5" from jittering later.
   - Data: rsms.me/inter, Rauno Freiberg's guidelines, Chrome docs **[verified]**.
 
-- [ ] **1.11 Never change font weight to show todo state** (keep it as a rule; marks already use weight,
+- [x] **1.11 Never change font weight to show todo state** (keep it as a rule; marks already use weight,
       text must not).
   - Why: a weight change reflows the line, so the list shimmers when a todo is toggled.
   - Data: **[convention]**.
 
 ### Space, shape, measure
 
-- [ ] **1.12 Add the spacing and radius tokens and snap stray values to the 4px grid.**
+- [x] **1.12 Add the spacing and radius tokens and snap stray values to the 4px grid.**
   - Why: consistency; component CSS should only reference tokens.
   - Data: strays found today: `5px` and `6px` (TodoItem), `9px` (input), `6px 14px` (banner, back to
     today), `padding-bottom: 5px` (nav) **[measured]**. The grid itself is **[convention]**.
 
-- [ ] **1.13 Decide `--card-max`: 960px → 720px.** If yes, the nav-arrow offset `590px` in
-      `DayStack.module.css` becomes `470px`.
+- [x] **1.13 Decide `--card-max`: 960px → 720px.** If yes, the nav-arrow offset `590px` in
+      `DayStack.module.css` becomes `470px`. Decided: 720px, as `DESIGN.md` recommends. The offset is now
+      derived from `--card-max` (half the card + 112px), so the two can no longer drift apart.
   - Why: shorter lines, and the ✓/✗ marks sit closer to the text they act on.
   - Data: reading comfort drops past ~100 characters per line; 960px at 16px allows ~105 (Dyson 2004)
     **[moderate]**; shorter pointer travel is faster (Fitts 1954) **[strong]**.
 
-- [ ] **1.14 Keep ✓/✗ at 28×28px or larger and nav arrows at 48×48px.** A guard, not a change.
+- [x] **1.14 Keep ✓/✗ at 28×28px or larger and nav arrows at 48×48px.** A guard, not a change.
   - Data: WCAG 2.5.8 minimum is 24×24px **[standard]**.
 
 ### Accessibility
 
-- [ ] **1.15 Handle `prefers-reduced-motion`.** Keep opacity and colour changes (~200 ms), drop
+- [x] **1.15 Handle `prefers-reduced-motion`.** Keep opacity and colour changes (~200 ms), drop
       transforms.
   - Why: the sliding, scaling card stack is exactly the motion that triggers vestibular discomfort, and
     nothing handles it today. Cheap now, awkward to retrofit once springs exist.
   - Data: WCAG 2.3.3 **[standard]**; MDN / web.dev guidance **[verified]**.
 
-- [ ] **1.16 Real focus rings.** Add `--focus-ring` and apply it as `box-shadow` on `:focus-visible` for
+- [x] **1.16 Real focus rings.** Add `--focus-ring` and apply it as `box-shadow` on `:focus-visible` for
       every interactive element; the auto-focused input gets the quieter accent border plus a 1px ring.
   - Why: the input sets `outline: none` and signals focus with a 1px border-colour change only.
   - Data: WCAG 2.4.7 **[standard]**; Vercel and Rauno guidelines **[verified]**.
 
-- [ ] **1.17 Gate the hover-revealed `delete` behind `@media (hover: hover) and (pointer: fine)`.**
+- [x] **1.17 Gate the hover-revealed `delete` behind `@media (hover: hover) and (pointer: fine)`.**
   - Why: on a touch screen the action is otherwise undiscoverable.
   - Data: Vercel design guidelines **[verified]**.
 
 ### Surfaces and scrolling
 
-- [ ] **1.18 Layered, background-tinted shadow on the front card; fewer layers on peeking cards.**
+- [x] **1.18 Layered, background-tinted shadow on the front card; fewer layers on peeking cards.**
   - Why: a single `0 10px 30px` blur reads as a flat grey halo; stacked shadows read as real depth. Still
     one elevation level, so it does not contradict `DESIGN.md`.
   - Data: Tobias Ahlin's six-layer recipe, Josh Comeau on tinting and one light source, Vercel's "two
     layers plus a translucent border" **[verified]**. Inner highlight and paper-grain values
     **[unverified]**.
 
-- [ ] **1.19 Dark theme: warm neutrals, elevation by lighter surface.**
+- [x] **1.19 Dark theme: warm neutrals, elevation by lighter surface.**
   - Why: the current dark palette switches to cool blue-greys (`#17171a`, `#232328`), so the app has two
     identities. Pure black/white pairs are avoided in both themes.
   - Data: max-contrast pairs cause halation, especially light-on-black with astigmatism **[moderate]**;
     lighter-surface elevation is Material's dark-theme concept **[verified]**; one identity across
     themes is **[convention]**.
 
-- [ ] **1.20 Scroll fades and scrollbar on `.todos`.** Scroll-driven mask that appears only when the list
+- [x] **1.20 Scroll fades and scrollbar on `.todos`.** Scroll-driven mask that appears only when the list
       overflows; `scrollbar-width: thin`, `scrollbar-gutter: stable`, `overscroll-behavior: contain`.
   - Why: a long day currently cuts off hard at the input, and the default scrollbar is the least
     designed thing on the card. No smooth-scroll library: it fights trackpad inertia.
   - Data: css-tricks scroll-driven shadows and Chrome scrollbar docs (Chrome 121+ standard properties
     override `::-webkit-scrollbar`) **[verified]**; `overscroll-behavior` benefit **[unverified]**.
 
-- [ ] **1.21 Desktop chrome details.** `cursor: default` on non-text chrome; todo text stays selectable
+- [x] **1.21 Desktop chrome details.** `cursor: default` on non-text chrome; todo text stays selectable
       (already true); solid borders and no grain under `prefers-contrast: more`.
   - Data: Lotus "making Electron feel native" **[verified]**; the `prefers-contrast` part **[unverified]**.
 
 ### Window (`src/main/window.ts`)
 
-- [ ] **1.22 No white flash on launch.** `show: false`, `win.show()` on `ready-to-show`, `backgroundColor`
+- [x] **1.22 No white flash on launch.** `show: false`, `win.show()` on `ready-to-show`, `backgroundColor`
       from `nativeTheme.shouldUseDarkColors`.
   - Why: it is the first thing seen on every launch, and the flash is brightest in dark mode.
   - Data: Electron docs / Lotus write-up **[verified]**; none of the three is set today **[measured]**.
 
-- [ ] **1.23 Remember window size and position** with `windowStatePersistence: true` and a unique `name`.
+- [x] **1.23 Remember window size and position** with `windowStatePersistence: true` and a unique `name`.
   - Why: the window opens at 1000×700 every time. Zero dependencies.
   - Data: present in the installed Electron 44 `electron.d.ts`, marked experimental **[verified]**;
     `electron-window-state` was last published in 2018 **[verified]**.
@@ -189,6 +192,8 @@ breaks the old token names until the rest lands.
       the card header). Stay opaque on Linux.
   - Why: removes the last piece of stock chrome. Optional, and the riskiest window change.
   - Data: transparent windows are not resizable and misbehave on Wayland **[verified]**.
+  - Status: still open. Left out of the Phase 1 change because it is a taste call and the only window
+    change that can break dragging and resizing.
 
 ## Decisions needed before Phase 2
 

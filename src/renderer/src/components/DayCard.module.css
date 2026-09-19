@@ -5,18 +5,27 @@
   inset: 0;
   margin: auto;
   /* Fill the window, leaving room at the sides for the neighbours to peek out. */
-  width: min(100% - 200px, 960px);
-  background: var(--card);
+  width: min(100% - 200px, var(--card-max));
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-peek);
   transition:
-    transform 0.3s ease,
-    opacity 0.3s ease;
+    transform var(--duration-slow) var(--ease-out),
+    opacity var(--duration-slow) var(--ease-out),
+    box-shadow var(--duration-slow) var(--ease-out);
+}
+
+/* The sliding, scaling stack is vestibular-trigger motion: keep the fade, move the cards instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
 }
 
 .card[data-offset='0'] {
   z-index: 3;
+  box-shadow: var(--shadow);
 }
 
 .card[data-offset='-1'],
@@ -60,30 +69,43 @@
 .header {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
-  padding: 20px 24px 12px;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6) var(--space-3);
 }
 
+/* Only "Today" is accent-coloured: if every label is blue, none of them is the landmark. */
 .relative {
   display: block;
-  min-height: 1.4em;
-  font-size: 12px;
-  font-weight: 600;
+  min-height: calc(1em * var(--leading-ui));
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-ui);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.card[data-today='true'] .relative {
   color: var(--accent);
 }
 
 .title {
   margin: 0;
-  font-size: 22px;
-  font-weight: 650;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-title);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  text-wrap: balance;
 }
 
 .backToToday {
   margin-left: auto;
-  padding: 6px 14px;
-  border-radius: 999px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-ui);
   white-space: nowrap;
   color: var(--accent);
 }
@@ -95,7 +117,37 @@
 .todos {
   flex: 1;
   margin: 0;
-  padding: 4px 12px;
+  /* Less on the right: the stable scrollbar gutter takes up the rest. */
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
   list-style: none;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-gutter: stable;
+  /*
+   * Fade the list out at whichever edge has more to scroll to. The scroll timeline is inactive
+   * while the list fits, so both fades stay at their registered 0px and nothing is masked.
+   */
+  mask: linear-gradient(#0000, #fff var(--top-fade) calc(100% - var(--bottom-fade)), #0000);
+  animation: scroll-fade linear both;
+  animation-timeline: scroll(self);
+}
+
+@keyframes scroll-fade {
+  0% {
+    --top-fade: 0px;
+    --bottom-fade: 24px;
+  }
+
+  10%,
+  90% {
+    --top-fade: 24px;
+    --bottom-fade: 24px;
+  }
+
+  100% {
+    --top-fade: 24px;
+    --bottom-fade: 0px;
+  }
 }

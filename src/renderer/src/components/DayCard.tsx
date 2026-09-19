@@ -39,6 +39,7 @@ export function DayCard({
     <section
       className={styles.card}
       data-offset={offset}
+      data-today={day === today}
       aria-hidden={!inFront}
       onClick={inFront ? undefined : onSelect}
     >

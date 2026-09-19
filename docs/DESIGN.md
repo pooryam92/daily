@@ -44,24 +44,24 @@ keeps one identity in both modes **[convention]**.
 
 ### Tokens
 
-| Token             | Light                           | Dark                           | Role                                                                             |
-| ----------------- | ------------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
-| `--bg`            | `#eceae4`                       | `#191816`                      | Window background behind the card stack                                          |
-| `--surface`       | `#fdfcf9`                       | `#242320`                      | Day card                                                                         |
-| `--border`        | `#d9d6cd`                       | `#383630`                      | Decorative hairlines (card edge)                                                 |
-| `--border-strong` | `#918d82`                       | `#78756d`                      | Boundaries that identify a control (the input) — ≥ 3:1                           |
-| `--text`          | `#22211e`                       | `#ecebe7`                      | Open todos, day title                                                            |
-| `--text-muted`    | `#66625a`                       | `#a09d94`                      | Done todos, placeholder, nav arrows, secondary labels — ≥ 4.5:1                  |
-| `--text-faint`    | `#8a867b`                       | `#7a776f`                      | Dropped todos, idle ✓/✗ marks, the list bullet — ≥ 3:1, never on `--bg` for text |
-| `--accent`        | `#2f5fd0`                       | `#86a3f7`                      | "Today", focus ring, links/buttons                                               |
-| `--done`          | `#23824a`                       | `#4cc381`                      | Pressed ✓ mark                                                                   |
-| `--dropped`       | `#57534a`                       | `#b5b2a9`                      | Pressed ✗ mark — deliberately a **neutral**, see below                           |
-| `--danger`        | `#b93a2c`                       | `#f07a6d`                      | Destructive hover (delete), error text                                           |
-| `--danger-solid`  | `#b93a2c`                       | `#b93a2c`                      | Error banner background                                                          |
-| `--on-danger`     | `#ffffff`                       | `#ffffff`                      | Text on `--danger-solid`                                                         |
-| `--hover`         | `rgb(128 128 128 / 0.10)`       | same                           | Row hover                                                                        |
-| `--hover-strong`  | `rgb(128 128 128 / 0.18)`       | same                           | Button hover                                                                     |
-| `--shadow`        | `0 10px 30px rgb(0 0 0 / 0.12)` | `0 10px 30px rgb(0 0 0 / 0.5)` | Card elevation                                                                   |
+| Token             | Light                          | Dark                        | Role                                                                             |
+| ----------------- | ------------------------------ | --------------------------- | -------------------------------------------------------------------------------- |
+| `--bg`            | `#eceae4`                      | `#191816`                   | Window background behind the card stack                                          |
+| `--surface`       | `#fdfcf9`                      | `#242320`                   | Day card                                                                         |
+| `--border`        | `#d9d6cd`                      | `#383630`                   | Decorative hairlines (card edge)                                                 |
+| `--border-strong` | `#918d82`                      | `#78756d`                   | Boundaries that identify a control (the input) — ≥ 3:1                           |
+| `--text`          | `#22211e`                      | `#ecebe7`                   | Open todos, day title                                                            |
+| `--text-muted`    | `#66625a`                      | `#a09d94`                   | Done todos, placeholder, nav arrows, secondary labels — ≥ 4.5:1                  |
+| `--text-faint`    | `#8a867b`                      | `#7a776f`                   | Dropped todos, idle ✓/✗ marks, the list bullet — ≥ 3:1, never on `--bg` for text |
+| `--accent`        | `#2f5fd0`                      | `#86a3f7`                   | "Today", focus ring, links/buttons                                               |
+| `--done`          | `#23824a`                      | `#4cc381`                   | Pressed ✓ mark                                                                   |
+| `--dropped`       | `#57534a`                      | `#b5b2a9`                   | Pressed ✗ mark — deliberately a **neutral**, see below                           |
+| `--danger`        | `#b93a2c`                      | `#f07a6d`                   | Destructive hover (delete), error text                                           |
+| `--danger-solid`  | `#b93a2c`                      | `#b93a2c`                   | Error banner background                                                          |
+| `--on-danger`     | `#ffffff`                      | `#ffffff`                   | Text on `--danger-solid`                                                         |
+| `--hover`         | `rgb(128 128 128 / 0.10)`      | same                        | Row hover                                                                        |
+| `--hover-strong`  | `rgb(128 128 128 / 0.18)`      | same                        | Button hover                                                                     |
+| `--shadow`        | six layers, warm tint, 5% each | six layers, black, 16% each | Card elevation (front card); `--shadow-peek` keeps the first two layers          |
 
 Neither theme uses pure black or pure white: maximum-contrast pairs cause glare/halation,
 especially light text on black for people with astigmatism **[moderate]**. Text contrast tops out
@@ -174,12 +174,12 @@ Four sizes. Fewer sizes means each size carries meaning.
 
 ### Measure
 
-The card is up to 960px wide, which at 16px leaves room for lines of ~105 characters. On screen, reading stays
-efficient up to roughly 100 characters per line and comfort drops beyond it (Dyson 2004)
-**[moderate]**. Most todos are short, so this only bites on long ones — but a narrower card also
-brings the ✓/✗ marks closer to the text they act on (shorter pointer travel per Fitts's law
-**[strong]**, and clearer grouping by proximity). Recommended: `--card-max: 720px`. Changing it
-means updating the `590px` nav-arrow offset documented in `DayStack.module.css`.
+The card used to be up to 960px wide, which at 16px leaves room for lines of ~105 characters. On
+screen, reading stays efficient up to roughly 100 characters per line and comfort drops beyond it
+(Dyson 2004) **[moderate]**. Most todos are short, so this only bites on long ones — but a narrower
+card also brings the ✓/✗ marks closer to the text they act on (shorter pointer travel per Fitts's
+law **[strong]**, and clearer grouping by proximity). So `--card-max` is `720px`; the nav-arrow
+offset in `DayStack.module.css` is derived from it.
 
 ## 4. Space, shape, elevation
 
@@ -205,8 +205,11 @@ Target sizes: the ✓/✗ marks are 28×28px and the nav arrows 48×48px — bot
 24×24px minimum **[strong]**. Keep the marks at 28px or larger; they are the most-used controls in
 the app.
 
-Only one elevation exists (`--shadow` on cards). The stack's depth is carried by scale and opacity,
-so a second shadow level would add nothing.
+Only one elevation exists (`--shadow` on cards). It is drawn as six stacked layers tinted with the
+background's hue, which reads as depth where a single blur reads as a grey halo; peeking cards keep
+the first two layers (`--shadow-peek`). The stack's depth is still carried by scale and opacity, so
+a second elevation level would add nothing. In the dark theme the elevation comes from the lighter
+surface and the shadow only separates the cards.
 
 ## 5. Motion
 
@@ -223,15 +226,14 @@ so a second shadow level would add nothing.
 - Marking a todo done is the app's one reward moment. Keep it small and immediate: the ✓ takes its
   colour and the strike-through appears within `--duration-base`. No confetti, sounds or counters —
   the visible list of struck-through items _is_ the reward (progress principle).
-- **`prefers-reduced-motion` is currently not handled.** The sliding, scaling card stack is exactly
-  the kind of motion that triggers vestibular discomfort (WCAG 2.3.3). Under reduced motion, keep
-  the opacity change and drop the transform transition:
+- **`prefers-reduced-motion`.** The sliding, scaling card stack is exactly the kind of motion that
+  triggers vestibular discomfort (WCAG 2.3.3). Under reduced motion the cards keep their opacity
+  change and drop the transform transition. Colour transitions stay: they are not motion.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+  .card {
+    transition: opacity var(--duration-base) var(--ease-out);
   }
 }
 ```
@@ -242,14 +244,15 @@ so a second shadow level would add nothing.
 --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 ```
 
-The input currently sets `outline: none` and signals focus with a 1px border-colour change, which is
-too subtle to count as a visible focus indicator. Use `box-shadow: var(--focus-ring)` on
-`:focus-visible` for every interactive element. The input is auto-focused on the front card, so on
-it the ring can be the quieter `border-color: var(--accent)` plus a 1px ring.
+Every button gets `box-shadow: var(--focus-ring)` on `:focus-visible`, plus a transparent outline
+so the indicator survives forced-colours mode. The nav arrows sit on `--bg` instead of a card, so
+their ring uses `--focus-ring-on-bg`. The input is auto-focused on the front card, so on it the ring
+is the quieter `border-color: var(--accent)` plus a 1px ring.
 
-## 7. Drop-in token block
+## 7. Token block
 
-Replaces the `:root` blocks in `src/renderer/src/styles/global.css`. Renames: `--card` → `--surface`,
+The core of the `:root` blocks in `src/renderer/src/styles/global.css`; the file adds the layered
+`--shadow` / `--shadow-peek`, `--focus-ring-on-bg`, `--weight-bold` and `--card-max`. Renames: `--card` → `--surface`,
 `--muted` → `--text-muted`; `--dropped` changes meaning (neutral, no longer the error colour).
 
 ```css
@@ -272,7 +275,9 @@ Replaces the `:root` blocks in `src/renderer/src/styles/global.css`. Renames: `-
   --on-danger: #ffffff;
   --hover: rgb(128 128 128 / 0.1);
   --hover-strong: rgb(128 128 128 / 0.18);
-  --shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+  /* --shadow, --shadow-peek: six and two layers of rgb(var(--shadow-tint) / var(--shadow-alpha)) */
+  --shadow-tint: 64 56 40;
+  --shadow-alpha: 0.05;
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 
   /* type */
@@ -322,12 +327,13 @@ Replaces the `:root` blocks in `src/renderer/src/styles/global.css`. Renames: `-
     --done: #4cc381;
     --dropped: #b5b2a9;
     --danger: #f07a6d;
-    --shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+    --shadow-tint: 0 0 0;
+    --shadow-alpha: 0.16;
   }
 }
 ```
 
-## 8. What changes in the components
+## 8. What changed in the components
 
 | File                     | Change                                                                                                                                                                                |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

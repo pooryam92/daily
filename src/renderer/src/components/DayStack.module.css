@@ -11,11 +11,11 @@
   transform: translateY(-50%);
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   font-size: 32px;
   line-height: 1;
-  padding-bottom: 5px;
-  color: var(--muted);
+  padding-bottom: var(--space-1);
+  color: var(--text-muted);
 }
 
 .nav:hover {
@@ -23,15 +23,20 @@
   background: var(--hover-strong);
 }
 
+/* The arrows are the only controls that sit on the window background instead of a card. */
+.nav:focus-visible {
+  box-shadow: var(--focus-ring-on-bg);
+}
+
 /*
- * On wide windows: 590px from the centre = half the widest card (480) + the neighbour's peek (56)
- * + a gap (6) + this button (48). On narrow ones: 8px from the window edge, which is 12px outside
+ * On wide windows: half the widest card + 112px from the centre, which is the neighbour's peek (56)
+ * + a gap (8) + this button (48). On narrow ones: 8px from the window edge, which is 12px outside
  * the stack because of the app's 20px padding.
  */
 .nav[data-direction='previous'] {
-  left: max(-12px, 50% - 590px);
+  left: max(-12px, 50% - var(--card-max) / 2 - 112px);
 }
 
 .nav[data-direction='next'] {
-  right: max(-12px, 50% - 590px);
+  right: max(-12px, 50% - var(--card-max) / 2 - 112px);
 }

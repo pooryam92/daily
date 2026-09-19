@@ -1,9 +1,14 @@
+/*
+ * Todo state is shown with real colour tokens, never with opacity on top of a muted colour (the
+ * result cannot be measured per theme), and never with font weight on the text: a weight change
+ * reflows the line, so the list would shimmer when a todo is toggled. Only the marks go bold.
+ */
 .todo {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 4px 5px 12px;
-  border-radius: 8px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
 }
 
 .todo:hover {
@@ -12,58 +17,75 @@
 
 .todo::before {
   content: '•';
-  margin-right: 6px;
-  color: var(--muted);
+  margin-right: var(--space-2);
+  color: var(--text-faint);
 }
 
 .text {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
   user-select: text;
+  cursor: text;
+  transition: color var(--duration-base) var(--ease-out);
 }
 
 .todo[data-status='done'] .text {
-  color: var(--muted);
+  color: var(--text-muted);
   text-decoration: line-through;
 }
 
 .todo[data-status='dropped'] .text {
-  color: var(--muted);
-  opacity: 0.6;
+  color: var(--text-faint);
+}
+
+.remove,
+.mark {
+  height: 28px;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
 }
 
 .remove {
-  font-size: 12px;
-  color: var(--muted);
-  opacity: 0;
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
 
-.todo:hover .remove,
-.remove:focus-visible {
-  opacity: 1;
+/* Hidden until the row is hovered, but only where hovering exists: on touch it stays visible. */
+@media (hover: hover) and (pointer: fine) {
+  .remove {
+    opacity: 0;
+  }
+
+  .todo:hover .remove,
+  .remove:focus-visible {
+    opacity: 1;
+  }
 }
 
 .remove:hover {
-  color: var(--dropped);
+  color: var(--danger);
+  background: var(--hover-strong);
 }
 
+/* The most-used controls in the app: keep them at 28px or larger (WCAG 2.5.8 asks for 24px). */
 .mark {
   width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  color: var(--muted);
-  opacity: 0.45;
+  color: var(--text-faint);
 }
 
 .mark:hover {
-  opacity: 1;
+  color: var(--text);
   background: var(--hover-strong);
 }
 
 .mark[aria-pressed='true'] {
-  opacity: 1;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 .mark[data-mark='done'][aria-pressed='true'] {
