@@ -71,9 +71,11 @@
 
   /* motion */
   --duration-fast: 120ms;
+  --duration-calm: 150ms;
   --duration-base: 200ms;
   --duration-slow: 300ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --press-scale: 0.97;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -149,6 +151,18 @@ button {
   background: none;
   border: 0;
   cursor: default;
+}
+
+/*
+ * Press feedback. `scale` is its own property, so it composes with whatever `transform` a control
+ * already has. Each control lists `scale` in its own `transition`; never `transition: all`. It is
+ * a transform, so it is left out under reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  button:active,
+  label:active {
+    scale: var(--press-scale);
+  }
 }
 
 /* The ring is a box-shadow so it follows the radius; the transparent outline shows in forced colours. */

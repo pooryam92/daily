@@ -31,9 +31,29 @@
   transition: color var(--duration-base) var(--ease-out);
 }
 
+/*
+ * The strike-through is a 1px background that grows from 0 to 100%: `text-decoration` cannot be
+ * transitioned. On an inline box the background runs on from one line to the next, so a wrapped
+ * todo is struck through line by line, in reading order. 58% is the middle of Inter's x-height.
+ */
+.strike {
+  background: linear-gradient(currentColor, currentColor) 0 58% / 0 1px no-repeat;
+  transition: background-size var(--duration-base) var(--ease-out);
+}
+
 .todo[data-status='done'] .text {
   color: var(--text-muted);
-  text-decoration: line-through;
+}
+
+.todo[data-status='done'] .strike {
+  background-size: 100% 1px;
+}
+
+/* Forced colours remove background images. */
+@media (forced-colors: active) {
+  .todo[data-status='done'] .strike {
+    text-decoration: line-through;
+  }
 }
 
 .todo[data-status='dropped'] .text {
@@ -41,15 +61,17 @@
 }
 
 .remove,
-.mark {
+.drop {
   height: 28px;
   border-radius: var(--radius-sm);
   transition:
     color var(--duration-fast) var(--ease-out),
     background-color var(--duration-fast) var(--ease-out),
-    opacity var(--duration-fast) var(--ease-out);
+    opacity var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
 }
 
+/* Not dressed up as dangerous: a deleted todo can be brought back from the toast. */
 .remove {
   padding: 0 var(--space-2);
   font-size: var(--text-sm);
@@ -69,29 +91,45 @@
 }
 
 .remove:hover {
-  color: var(--danger);
-  background: var(--hover-strong);
-}
-
-/* The most-used controls in the app: keep them at 28px or larger (WCAG 2.5.8 asks for 24px). */
-.mark {
-  width: 28px;
-  color: var(--text-faint);
-}
-
-.mark:hover {
   color: var(--text);
   background: var(--hover-strong);
 }
 
-.mark[aria-pressed='true'] {
+/*
+ * Dropping is a release, not an achievement: the ✗ only cross-fades to its pressed form. No drawing,
+ * no scale, no reward. The most-used controls in the app stay at 28px or larger (WCAG 2.5.8: 24px).
+ */
+.drop {
+  /* 0.97 of 28px is under a pixel; a control this small needs more for the press to be seen. */
+  --press-scale: 0.92;
+
+  display: grid;
+  place-items: center;
+  width: 28px;
+  color: var(--text-faint);
+}
+
+.drop:hover {
+  color: var(--text);
+  background: var(--hover-strong);
+}
+
+.idle,
+.pressed {
+  grid-area: 1 / 1;
+  transition: opacity var(--duration-calm) var(--ease-out);
+}
+
+.pressed {
   font-weight: var(--weight-bold);
-}
-
-.mark[data-mark='done'][aria-pressed='true'] {
-  color: var(--done);
-}
-
-.mark[data-mark='dropped'][aria-pressed='true'] {
   color: var(--dropped);
+  opacity: 0;
+}
+
+.drop[aria-pressed='true'] .idle {
+  opacity: 0;
+}
+
+.drop[aria-pressed='true'] .pressed {
+  opacity: 1;
 }

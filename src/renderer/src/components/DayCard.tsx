@@ -1,5 +1,9 @@
+import { AnimatePresence, motion } from 'motion/react'
+import { useRef, useState } from 'react'
 import type { DayKey, ResolvedStatus, Todo } from '@shared/todo'
+import { useSettledTodos } from '../hooks/useSettledTodos'
 import { formatDay, relativeLabel } from '../lib/dates'
+import { QUICK_ADD_MS } from '../lib/motion'
 import { AddTodoForm } from './AddTodoForm'
 import styles from './DayCard.module.css'
 import { TodoItem } from './TodoItem'
@@ -32,6 +36,20 @@ export function DayCard({
   onBackToToday
 }: DayCardProps) {
   const inFront = offset === 0
+  const ordered = useSettledTodos(todos)
+  const order = ordered.map((todo) => todo.id).join()
+
+  // Todos that were there when the card mounted are not new: they neither animate in nor scroll.
+  const [initialIds] = useState(() => new Set(todos.map((todo) => todo.id)))
+  // Animating every row of a quick run of additions would be noise, so only the first one does.
+  const [animateEnter, setAnimateEnter] = useState(true)
+  const lastAddedAt = useRef(Number.NEGATIVE_INFINITY)
+  const add = (text: string): void => {
+    const now = performance.now()
+    setAnimateEnter(now - lastAddedAt.current > QUICK_ADD_MS)
+    lastAddedAt.current = now
+    onAdd(text)
+  }
 
   return (
     // A card in the background is one big click target. That is a shortcut for mouse users only:
@@ -56,13 +74,26 @@ export function DayCard({
           )}
         </header>
 
-        <ul className={styles.todos}>
-          {todos.map((todo) => (
-            <TodoItem key={todo.id} todo={todo} onToggleStatus={onToggleStatus} onRemove={onRemove} />
-          ))}
-        </ul>
+        {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
+        <motion.ul className={styles.todos} layoutScroll>
+          {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
+              while it fades instead of jumping up afterwards. */}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {ordered.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                order={order}
+                isNew={!initialIds.has(todo.id)}
+                animateEnter={animateEnter}
+                onToggleStatus={onToggleStatus}
+                onRemove={onRemove}
+              />
+            ))}
+          </AnimatePresence>
+        </motion.ul>
 
-        {inFront && <AddTodoForm onAdd={onAdd} />}
+        {inFront && <AddTodoForm onAdd={add} />}
       </div>
     </section>
   )

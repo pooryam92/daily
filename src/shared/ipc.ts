@@ -1,3 +1,4 @@
+import type { Settings, ThemeMode } from './settings'
 import type { StoreData } from './todo'
 
 /**
@@ -8,6 +9,8 @@ import type { StoreData } from './todo'
 export interface IpcContract {
   'store:load': { args: []; result: StoreData }
   'store:save': { args: [data: StoreData]; result: undefined }
+  'settings:load': { args: []; result: Settings }
+  'settings:setTheme': { args: [theme: ThemeMode]; result: undefined }
 }
 
 export type IpcChannel = keyof IpcContract
@@ -17,5 +20,10 @@ export interface DailyApi {
   readonly store: {
     load: () => Promise<StoreData>
     save: (data: StoreData) => Promise<void>
+  }
+  readonly settings: {
+    load: () => Promise<Settings>
+    /** Applies the theme to the whole window at once and remembers it. */
+    setTheme: (theme: ThemeMode) => Promise<void>
   }
 }

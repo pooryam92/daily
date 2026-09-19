@@ -15,6 +15,10 @@ const api: DailyApi = {
   store: {
     load: () => invoke('store:load'),
     save: (data) => invoke('store:save', data)
+  },
+  settings: {
+    load: () => invoke('settings:load'),
+    setTheme: (theme) => invoke('settings:setTheme', theme)
   }
 }
 

@@ -1,8 +1,8 @@
 # Daily — UI and design tasks
 
 Every UI/design task that follows from `DESIGN.md` and `UI-RESEARCH.md`, in build order, each with the
-reason it exists and the data behind it. Written on 2026-09-19. Phases 0 and 1 are done except the
-optional 1.24; nothing from Phase 2 on is implemented yet.
+reason it exists and the data behind it. Written on 2026-09-19. Phases 0, 1 and 2 are done except
+the optional 1.24; nothing from Phase 3 on is implemented yet.
 
 Each **Data** line carries a tag that says how far to trust it:
 
@@ -195,30 +195,35 @@ breaks the old token names until the rest lands.
   - Status: still open. Left out of the Phase 1 change because it is a taste call and the only window
     change that can break dragging and resizing.
 
-## Decisions needed before Phase 2
+## Decisions
 
-`UI-RESEARCH.md` §7 lists where the two docs disagree. These are taste calls; Phases 2 to 4 depend on them.
+`UI-RESEARCH.md` §7 lists where the two docs disagree. These are taste calls; Phases 3 and 4 depend on
+them. D1, D2 and D5 were decided with Poorya on 2026-09-19.
 
-- [ ] **D1 Sound: on, off, or off by default.** Data: the more frequent the action, the quieter the sound
-      should be (Google Material) **[verified]**; Superlist had to add an off toggle **[verified]**;
-      no evidence either way on the default **[unverified]**.
-- [ ] **D2 Progress ring and "3 of 5".** For: goal-gradient effect (Hull 1932) **[verified]**. Against:
-      `DESIGN.md` says no counters, and completion bias means volume should not be the headline (Gino &
-      Staats) **[verified]**.
-- [ ] **D3 Easing curve.** `cubic-bezier(0.2, 0, 0, 1)` or `cubic-bezier(0.23, 1, 0.32, 1)`. Try both on the
-      card flip and pick by feel.
-- [ ] **D4 Serif for the date header** (Instrument Serif, Newsreader). Pure taste **[unverified]**; the
-      fluency argument only covers todo text.
-- [ ] **D5 Confetti for rare milestones.** Default: skip. Both docs agree per-item feedback stays small.
+- [x] **D1 Sound: off by default,** with a one-click toggle. 4.5 gets built but ships muted.
+  - Data: the more frequent the action, the quieter the sound should be (Google Material)
+    **[verified]**; Superlist had to add an off toggle **[verified]**; no evidence either way on the
+    default **[unverified]**.
+- [x] **D2 Progress: a ring only, no "3 of 5".** 4.1 loses the count and `@number-flow/react`.
+  - Data: for a ring, the goal-gradient effect (Hull 1932) **[verified]**. Against a count, `DESIGN.md`
+    says no counters, and completion bias means volume should not be the headline (Gino & Staats)
+    **[verified]**. A ring shows how close the day is without saying how much was done.
+- [ ] **D3 Easing curve.** `cubic-bezier(0.2, 0, 0, 1)` or `cubic-bezier(0.23, 1, 0.32, 1)`. Open on
+      purpose: it is picked by feel on the card flip, which is 3.2. Phase 2 uses the existing
+      `--ease-out`; it is one token plus `EASE_OUT` in `lib/motion.ts`, so switching is cheap.
+- [ ] **D4 Serif for the date header** (Instrument Serif, Newsreader). Open: Poorya picks from a
+      side-by-side with Inter in both themes. Pure taste **[unverified]**; the fluency argument only
+      covers todo text.
+- [x] **D5 Confetti for rare milestones: skip.** Both docs agree per-item feedback stays small.
 
 ## Phase 2 — The completion moment
 
-- [ ] **2.1 Install `motion` (13.4.0, MIT).**
+- [x] **2.1 Install `motion` (13.4.0, MIT).**
   - Why: springs, layout animation, enter/exit, SVG path drawing and drag in one dependency. Hand-rolled
     animation is ruled out for this project.
   - Data: up to 47 kB gzip, less with LazyMotion; React 19 in its peer range **[verified]**.
 
-- [ ] **2.2 Rebuild ✓ as an accessible animated checkbox.** Hidden native `<input type="checkbox">` inside
+- [x] **2.2 Rebuild ✓ as an accessible animated checkbox.** Hidden native `<input type="checkbox">` inside
       a `<label>`, `aria-hidden` SVG on top; fill ~120 ms, then draw the check with `pathLength` 0 → 1 over
       ~180 ms; reverse the order on uncheck.
   - Why: this is the app's one per-item reward moment, and today it is an instant colour swap on a text
@@ -227,37 +232,70 @@ breaks the old token names until the rest lands.
     1968; Doherty & Thadani 1982) **[strong]**; technique from tomdohnal.com and Motion docs
     **[verified]**; the exact 120/180 ms split **[unverified]**.
 
-- [ ] **2.3 Animated strike-through.** Pseudo-element with `scaleX(0 → 1)`, `transform-origin: left`, or a
+- [x] **2.3 Animated strike-through.** Pseudo-element with `scaleX(0 → 1)`, `transform-origin: left`, or a
       `background-size` gradient for multi-line todos; ~200 ms.
   - Why: `text-decoration` cannot be transitioned, so today the line just appears.
   - Data: technique **[verified]** (lesser-known source); animate only `transform` and `opacity`
     (Vercel) **[verified]**.
 
-- [ ] **2.4 Calm ✗.** Cross-fade to the muted ✗ over ~150 ms; no path draw, no scale.
+- [x] **2.4 Calm ✗.** Cross-fade to the muted ✗ over ~150 ms; no path draw, no scale.
   - Why: dropping signals release, not achievement, so it gets no reward animation and no error tone.
   - Data: reasoned from 1.3 and the frequency rule **[unverified]**.
 
-- [ ] **2.5 Resolved rows settle to the bottom after 600–800 ms** with a layout animation.
+- [x] **2.5 Resolved rows settle to the bottom after 600–800 ms** with a layout animation.
   - Why: open todos rise to the top so what is left is what pops; the delay lets a mis-click be undone
     before the row moves.
   - Data: Things 3 keeps completed items visible and dimmed **[verified]**; the delay value
     **[unverified]**. Needs a sort rule in `lib/todos.ts`, with tests.
 
-- [ ] **2.6 New todos animate in.** Opacity plus `translateY(-8px → 0)`, 200 ms, skipped when items are
+- [x] **2.6 New todos animate in.** Opacity plus `translateY(-8px → 0)`, 200 ms, skipped when items are
       added in quick succession.
   - Data: entry scale/opacity ranges from Emil Kowalski **[verified]**; this exact recipe **[unverified]**.
 
-- [ ] **2.7 Delete becomes an undo toast (`sonner` 2.0.8).** Remove the "danger" framing from `delete`.
+- [x] **2.7 Delete becomes an undo toast (`sonner` 2.0.8).** Remove the "danger" framing from `delete`.
   - Why: an undo window is safer and faster than a confirm dialog, and delete is currently irreversible.
   - Data: "undo with a safe window instead of confirm" (Vercel, Rauno) **[verified]**; 9.4 kB gzip
     **[verified]**.
 
-- [ ] **2.8 Everything interruptible.** Rapid checks, an uncheck mid-animation or a day flip never wait on
+- [x] **2.8 Everything interruptible.** Rapid checks, an uncheck mid-animation or a day flip never wait on
       an animation. Use springs/transitions, not keyframes.
   - Data: Rauno Freiberg; Apple HIG (weakly) **[verified]**.
 
-- [ ] **2.9 Press feedback on buttons:** scale 0.97, 100–160 ms; never `ease-in`, never `transition: all`.
+- [x] **2.9 Press feedback on buttons:** scale 0.97, 100–160 ms; never `ease-in`, never `transition: all`.
   - Data: Emil Kowalski's standards **[verified]**.
+
+Notes from building Phase 2:
+
+- The checkbox stays where the ✓ was, on the right next to ✗, as an 18px rounded square in a 28px
+  target. `--surface` on `--done` measures 4.7 / 7.1 for the check **[measured]**.
+- 2.3 uses the `background-size` variant, because todos do wrap; forced colours fall back to
+  `text-decoration`.
+- 2.5 settles after 700ms of quiet, in both directions: a reopened row waits the same time before it
+  goes back up. The rule is `displayOrder` in `lib/todos.ts`; the delay is `useSettledTodos`.
+- 2.6 also scrolls a new row into view, since it is no longer always the last one in the list.
+- 2.7: the toast sits bottom centre, lifted above the add-todo input, inverted (`--text` as its
+  background) so it needs no new colour. Undo window 6s **[unverified]**.
+- 2.9 is plain CSS (`:active` plus the `scale` property), which is what Emil Kowalski's standard
+  describes. The 28px marks use 0.92, since 0.97 of 28px is under a pixel **[unverified]**.
+- **CSP.** Sonner and Motion's `popLayout` each add a `<style>` element at runtime, which the built
+  page's `style-src 'self'` blocks. `vite.config.mts` now allows exactly those two blocks by hash
+  instead of `'unsafe-inline'` **[measured]**: without it the toast was unstyled in `npm start`.
+
+## Phase 2.5 — Settings (added 2026-09-19, asked for by Poorya)
+
+- [x] **S.1 Theme: Auto / Light / Dark.** A quiet gear button in the window's bottom-left corner opens a
+      popover with a three-way segmented control. Placement chosen by Poorya over a card-header icon and
+      a right-click menu.
+  - Why a popover and not a button that cycles: Auto and Light look identical while the OS is light, so
+    a cycle cannot show which one is active.
+  - How: the main process sets `nativeTheme.themeSource`, which flips `prefers-color-scheme` for the
+    page, so no stylesheet (and not the Sonner toast either) knows about the setting. It is stored in
+    `settings.json` next to `todos.json` and applied before the window is created, so there is no
+    flash of the wrong theme **[measured]**: relaunch comes up in the saved theme.
+  - Libraries: `@base-ui/react` 1.8.0 (Popover, RadioGroup; its `CSPProvider` turns off
+    Base UI's inline style elements because of the strict CSP) and `lucide-react` 1.47.0 for the icons. This
+    pulls the first use of 5.2 and 5.5 forward. The sliding pill is a Motion `layoutId`.
+  - The sound toggle (4.5, D1) goes into the same popover.
 
 ## Phase 3 — The day deck
 
@@ -296,10 +334,10 @@ breaks the old token names until the rest lands.
       string in Motion if frames drop; blur under 20 px.
   - Data: Vercel guidelines, Emil's repo **[verified]**.
 
-## Phase 4 — Progress and day cleared (depends on D1, D2)
+## Phase 4 — Progress and day cleared
 
-- [ ] **4.1 Header progress ring (16 px) with "3 of 5"** in tabular numerals, animated with
-      `stroke-dashoffset`; count via `@number-flow/react` 0.6.2. Dropped todos advance the ring too.
+- [ ] **4.1 Header progress ring (16 px), no count (D2),** animated with `stroke-dashoffset`. Dropped
+      todos advance the ring too.
   - Why: effort rises as the goal gets closer, and counting drops keeps the progress honest.
   - Data: goal-gradient effect **[verified]**; never fake progress (endowed progress, Nunes & Drèze:
     34% vs 19% redemption) **[verified]**; ring design itself **[unverified]**.

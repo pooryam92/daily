@@ -1,13 +1,19 @@
 import path from 'node:path'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, nativeTheme } from 'electron'
 import { registerIpcHandlers } from './ipc'
+import { SettingsStore } from './settings-store'
 import { TodoStore } from './todo-store'
 import { createMainWindow } from './window'
 
 async function main(): Promise<void> {
   await app.whenReady()
 
-  registerIpcHandlers(new TodoStore(path.join(app.getPath('userData'), 'todos.json')))
+  const userData = app.getPath('userData')
+  const settings = new SettingsStore(path.join(userData, 'settings.json'))
+  // Before the window exists, so it is created in the right colours.
+  nativeTheme.themeSource = settings.settings.theme
+
+  registerIpcHandlers(new TodoStore(path.join(userData, 'todos.json')), settings)
   createMainWindow()
 
   // macOS: re-create the window when the dock icon is clicked and none are open.

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef } from 'react'
 import { STORE_VERSION } from '@shared/todo'
-import type { DayKey, DaysMap, ResolvedStatus } from '@shared/todo'
+import type { DayKey, DaysMap, ResolvedStatus, Todo } from '@shared/todo'
 import { toMessage } from '../lib/errors'
 import { createTodo, daysReducer } from '../lib/todos'
 import type { TodoAction } from '../lib/todos'
@@ -9,6 +9,8 @@ export interface TodoActions {
   readonly add: (day: DayKey, text: string) => void
   readonly toggleStatus: (day: DayKey, id: string, status: ResolvedStatus) => void
   readonly remove: (day: DayKey, id: string) => void
+  /** Puts a removed todo back at `index` of its day. */
+  readonly restore: (day: DayKey, todo: Todo, index: number) => void
 }
 
 type State =
@@ -86,6 +88,9 @@ export function useTodoStore(): TodoStore {
       },
       remove: (day, id) => {
         dispatch({ type: 'removed', day, id })
+      },
+      restore: (day, todo, index) => {
+        dispatch({ type: 'restored', day, todo, index })
       }
     }),
     []

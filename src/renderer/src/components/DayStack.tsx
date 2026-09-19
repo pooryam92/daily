@@ -1,5 +1,6 @@
 import type { DayKey, DaysMap } from '@shared/todo'
 import type { DayNavigation } from '../hooks/useDayNavigation'
+import { useRemoveWithUndo } from '../hooks/useRemoveWithUndo'
 import type { TodoActions } from '../hooks/useTodoStore'
 import { addDays } from '../lib/dates'
 import { DayCard } from './DayCard'
@@ -17,6 +18,7 @@ interface DayStackProps {
 
 export function DayStack({ today, days, actions, navigation }: DayStackProps) {
   const { current, goTo, goBy } = navigation
+  const removeWithUndo = useRemoveWithUndo(days, actions)
 
   return (
     <div className={styles.stack}>
@@ -50,7 +52,7 @@ export function DayStack({ today, days, actions, navigation }: DayStackProps) {
               actions.toggleStatus(day, id, status)
             }}
             onRemove={(id) => {
-              actions.remove(day, id)
+              removeWithUndo(day, id)
             }}
             onSelect={() => {
               goTo(day)

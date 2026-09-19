@@ -4,6 +4,8 @@ import { DEV_SERVER_URL, PRELOAD_PATH, RENDERER_HTML_PATH } from './env'
 /** The renderer's `--bg` token per theme (styles/global.css); keep the two in sync. */
 const BACKGROUND = { light: '#eceae4', dark: '#191816' } as const
 
+const backgroundColor = (): string => (nativeTheme.shouldUseDarkColors ? BACKGROUND.dark : BACKGROUND.light)
+
 export function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
     // The name is the key Electron stores this window's size and position under.
@@ -14,7 +16,7 @@ export function createMainWindow(): BrowserWindow {
     minWidth: 640,
     minHeight: 420,
     // Painted before the page is: without it every launch starts with a white flash.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? BACKGROUND.dark : BACKGROUND.light,
+    backgroundColor: backgroundColor(),
     show: false,
     webPreferences: {
       preload: PRELOAD_PATH,
@@ -27,6 +29,16 @@ export function createMainWindow(): BrowserWindow {
 
   win.once('ready-to-show', () => {
     win.show()
+  })
+
+  // The theme can change while the app runs (the OS, or the setting); the colour behind the page
+  // shows while the window is resized, so it has to follow.
+  const followTheme = (): void => {
+    win.setBackgroundColor(backgroundColor())
+  }
+  nativeTheme.on('updated', followTheme)
+  win.once('closed', () => {
+    nativeTheme.off('updated', followTheme)
   })
 
   // Hide the File/Edit/… bar but keep the default menu so its shortcuts still work.

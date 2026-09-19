@@ -1,0 +1,118 @@
+/* In the window's bottom-left corner, on the background: the gutter beside the cards is always free. */
+.trigger {
+  position: fixed;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
+}
+
+.trigger:hover,
+.trigger[data-popup-open] {
+  color: var(--text);
+  background: var(--hover-strong);
+}
+
+.trigger:focus-visible {
+  box-shadow: var(--focus-ring-on-bg);
+}
+
+/* Portalled to the body, so it needs to be told that it goes above the card stack. */
+.positioner {
+  z-index: 20;
+}
+
+.popup {
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  outline: 0;
+  /* Grows out of the button it belongs to. */
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popup[data-starting-style],
+  .popup[data-ending-style] {
+    transform: none;
+  }
+}
+
+.label {
+  margin: 0 0 var(--space-2) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* A segmented control: three radios in a track, the checked one marked by a pill that slides. */
+.segments {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+}
+
+.segment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-ui);
+  color: var(--text-muted);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.segment:hover,
+.segment[data-checked] {
+  color: var(--text);
+}
+
+/* A Base UI radio is a span, so the focus ring that buttons get globally has to be repeated here. */
+.segment:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+}
+
+/* The icon and the label are elements, not bare text, so that they can be lifted above the pill. */
+.segment > :not(.pill) {
+  position: relative;
+}
+
+.pill {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border);
+  border-radius: inherit;
+  background: var(--surface);
+  box-shadow: var(--shadow-peek);
+}

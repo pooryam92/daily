@@ -1,0 +1,73 @@
+/* Same 28px target as the ✗ next to it (WCAG 2.5.8 asks for 24px). */
+.check {
+  /* 0.97 of 28px is under a pixel; a control this small needs more for the press to be seen. */
+  --press-scale: 0.92;
+
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
+}
+
+.check:hover {
+  color: var(--text);
+  background: var(--hover-strong);
+}
+
+/* Still there for the keyboard and for assistive technology, but the SVG is what is seen. */
+.input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.check:has(.input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.box {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  pointer-events: none;
+}
+
+.outline {
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+/* Covers the outline, stroke included, so a checked box is one solid shape. */
+.fill {
+  fill: var(--done);
+  stroke: var(--done);
+  stroke-width: 1.5;
+}
+
+.tick {
+  stroke: var(--surface);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Forced colours drop the fill, so the tick has to carry the state by itself. */
+@media (forced-colors: active) {
+  .fill {
+    fill: Highlight;
+    stroke: Highlight;
+  }
+
+  .tick {
+    stroke: HighlightText;
+  }
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DaysMap, Todo } from '@shared/todo'
-import { createTodo, daysReducer } from './todos'
+import { createTodo, daysReducer, displayOrder, resolvedIds } from './todos'
 
 const DAY = '2026-09-19'
 const milk: Todo = { id: 'milk', text: 'Buy milk', status: 'open' }
@@ -54,9 +54,57 @@ describe('daysReducer', () => {
     expect(next).toEqual({})
   })
 
+  it('restores a removed todo to the place it had', () => {
+    const removed = daysReducer(days, { type: 'removed', day: DAY, id: 'milk' })
+    expect(daysReducer(removed, { type: 'restored', day: DAY, todo: milk, index: 0 })).toEqual(days)
+  })
+
+  it('restores the last todo of a day, whose entry was dropped', () => {
+    expect(daysReducer({}, { type: 'restored', day: DAY, todo: milk, index: 0 })).toEqual({ [DAY]: [milk] })
+  })
+
+  it('restores to the end when the list got shorter in the meantime', () => {
+    const next = daysReducer({ [DAY]: [milk] }, { type: 'restored', day: DAY, todo: taxes, index: 5 })
+    expect(next[DAY]).toEqual([milk, taxes])
+  })
+
+  it('ignores a restore of a todo that is already there', () => {
+    expect(daysReducer(days, { type: 'restored', day: DAY, todo: milk, index: 1 })).toBe(days)
+  })
+
   it('does not mutate its input', () => {
     const snapshot = structuredClone(days)
     daysReducer(days, { type: 'removed', day: DAY, id: 'milk' })
     expect(days).toEqual(snapshot)
+  })
+})
+
+describe('displayOrder', () => {
+  const done: Todo = { id: 'done', text: 'Call mum', status: 'done' }
+  const dropped: Todo = { id: 'dropped', text: 'Iron shirts', status: 'dropped' }
+  const todos = [done, milk, dropped, taxes]
+
+  it('moves settled todos below the open ones and keeps the order within each group', () => {
+    expect(displayOrder(todos, new Set(['done', 'dropped']))).toEqual([milk, taxes, done, dropped])
+  })
+
+  it('leaves a resolved todo in place until it has settled', () => {
+    expect(displayOrder(todos, new Set(['dropped']))).toEqual([done, milk, taxes, dropped])
+  })
+
+  it('leaves a reopened todo at the bottom until it has settled', () => {
+    expect(displayOrder([milk, taxes], new Set(['milk']))).toEqual([taxes, milk])
+  })
+
+  it('ignores settled ids of todos that are gone', () => {
+    expect(displayOrder([milk, taxes], new Set(['removed']))).toEqual([milk, taxes])
+  })
+})
+
+describe('resolvedIds', () => {
+  it('collects the todos that are done or dropped', () => {
+    const done: Todo = { id: 'done', text: 'Call mum', status: 'done' }
+    const dropped: Todo = { id: 'dropped', text: 'Iron shirts', status: 'dropped' }
+    expect(resolvedIds([done, milk, dropped])).toEqual(new Set(['done', 'dropped']))
   })
 })

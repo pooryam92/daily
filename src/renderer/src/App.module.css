@@ -25,3 +25,61 @@
   color: var(--on-danger);
   background: var(--danger-solid);
 }
+
+/*
+ * The undo toast (Sonner), dressed in the app's tokens. It is the inverse of a card, text colour as
+ * the surface, so it stands out in both themes without a new colour. The long selectors are there
+ * to outrank Sonner's own.
+ */
+.toaster[data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--text);
+  --normal-text: var(--surface);
+  --normal-border: transparent;
+  --border-radius: var(--radius-md);
+
+  font-family: var(--font-sans);
+}
+
+.toaster [data-sonner-toast][data-styled='true'] {
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-peek);
+}
+
+.toaster [data-sonner-toast][data-styled='true'] [data-title],
+.toaster [data-sonner-toast][data-styled='true'] [data-description] {
+  line-height: var(--leading-ui);
+}
+
+/* The deleted todo's text: one line, so a long todo cannot make a tall toast. */
+.toaster [data-sonner-toast][data-styled='true'] [data-description] {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--border);
+}
+
+.toaster [data-sonner-toast][data-styled='true'] [data-content] {
+  min-width: 0;
+}
+
+.toaster [data-sonner-toast][data-styled='true'] [data-button] {
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  background: var(--surface);
+  cursor: default;
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
+}
+
+/* --accent is only 2.8:1 (light) and 2.1:1 (dark) against the toast, so this ring is the surface colour. */
+.toaster [data-sonner-toast][data-styled='true'] [data-button]:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--text),
+    0 0 0 4px var(--surface);
+}

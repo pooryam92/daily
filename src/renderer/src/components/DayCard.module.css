@@ -108,6 +108,9 @@
   line-height: var(--leading-ui);
   white-space: nowrap;
   color: var(--accent);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
 }
 
 .backToToday:hover {
@@ -115,6 +118,8 @@
 }
 
 .todos {
+  /* The anchor a deleted row is positioned against while it fades out (AnimatePresence popLayout). */
+  position: relative;
   flex: 1;
   margin: 0;
   /* Less on the right: the stable scrollbar gutter takes up the rest. */
@@ -132,6 +137,13 @@
   mask: linear-gradient(#0000, #fff var(--top-fade) calc(100% - var(--bottom-fade)), #0000);
   animation: scroll-fade linear both;
   animation-timeline: scroll(self);
+}
+
+/* Only scripted scrolling (bringing a new todo into view) is smoothed; the wheel and trackpad are not. */
+@media (prefers-reduced-motion: no-preference) {
+  .todos {
+    scroll-behavior: smooth;
+  }
 }
 
 @keyframes scroll-fade {

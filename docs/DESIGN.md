@@ -56,7 +56,7 @@ keeps one identity in both modes **[convention]**.
 | `--accent`        | `#2f5fd0`                      | `#86a3f7`                   | "Today", focus ring, links/buttons                                               |
 | `--done`          | `#23824a`                      | `#4cc381`                   | Pressed ✓ mark                                                                   |
 | `--dropped`       | `#57534a`                      | `#b5b2a9`                   | Pressed ✗ mark — deliberately a **neutral**, see below                           |
-| `--danger`        | `#b93a2c`                      | `#f07a6d`                   | Destructive hover (delete), error text                                           |
+| `--danger`        | `#b93a2c`                      | `#f07a6d`                   | Error text. Not `delete`: it can be undone (§5)                                  |
 | `--danger-solid`  | `#b93a2c`                      | `#b93a2c`                   | Error banner background                                                          |
 | `--on-danger`     | `#ffffff`                      | `#ffffff`                   | Text on `--danger-solid`                                                         |
 | `--hover`         | `rgb(128 128 128 / 0.10)`      | same                        | Row hover                                                                        |
@@ -84,6 +84,12 @@ Targets: 4.5:1 for text, 3:1 for icons and control boundaries **[strong]**.
 | `--danger` on `--surface`         | 5.5   | 5.8  | 4.5    |
 | `--on-danger` on `--danger-solid` | 5.7   | 5.7  | 4.5    |
 | `--border-strong` on `--surface`  | 3.2   | 3.4  | 3.0    |
+| `--surface` on `--done` (check)   | 4.7   | 7.1  | 3.0    |
+| `--surface` on `--text` (toast)   | 15.7  | 13.2 | 4.5    |
+| `--border` on `--text` (toast)    | 11.1  | 10.1 | 4.5    |
+
+The focus ring on the toast's Undo button is `--surface`, not `--accent`: `--accent` on `--text`
+measures only 2.8 / 2.1.
 
 For comparison, the palette this replaces measured: muted text 3.4 (light) / 4.3 (dark), dropped
 todo text 2.0 / 2.4, idle marks 1.6 / 1.9, dark-mode error banner 3.1.
@@ -100,8 +106,9 @@ So the semantics are split:
 
 - `--dropped` is a strong neutral. Done gets the app's only reward colour; dropped gets none —
   it is neither rewarded nor punished. It is just closed.
-- `--danger` is reserved for things that actually are dangerous: a failed save, a failed load, and
-  the irreversible `delete` action.
+- `--danger` is reserved for things that actually went wrong: a failed save, a failed load.
+  `delete` used to be on this list; it now comes with an undo toast, so it is no longer dangerous
+  and no longer red.
 
 This also fixes colour-blind safety: red/green is the pair ~8% of men cannot tell apart
 **[strong]**. Green-vs-neutral survives every common colour-vision deficiency, and the states are
@@ -112,7 +119,7 @@ additionally coded by shape (✓ / ✗) and by text treatment — colour is neve
 | State   | Text colour    | Decoration   | Mark                   | Intent                                             |
 | ------- | -------------- | ------------ | ---------------------- | -------------------------------------------------- |
 | open    | `--text`       | none         | both `--text-faint`    | The only full-ink items: what is left is what pops |
-| done    | `--text-muted` | line-through | ✓ in `--done`, bold    | Still readable — it is today's progress            |
+| done    | `--text-muted` | line-through | box filled in `--done` | Still readable — it is today's progress            |
 | dropped | `--text-faint` | none         | ✗ in `--dropped`, bold | Recedes furthest — it is meant to leave your mind  |
 
 Set these as real colours. Do not reach a lighter shade with `opacity` on top of a muted colour:
@@ -214,21 +221,47 @@ surface and the shadow only separates the cards.
 ## 5. Motion
 
 ```css
---duration-fast: 120ms; /* hover, press */
---duration-base: 200ms; /* a todo changing state */
+--duration-fast: 120ms; /* hover, press, the checkbox fill */
+--duration-calm: 150ms; /* the ✗ cross-fade */
+--duration-base: 200ms; /* a todo changing state: text colour, strike-through, a new row */
 --duration-slow: 300ms; /* cards travelling through the stack */
 --ease-out: cubic-bezier(0.2, 0, 0, 1);
+--press-scale: 0.97;
 ```
+
+Animations that CSS cannot do (drawing a path, moving a row to a new place in the list, fading a
+removed row out) run in Motion. Their timings live in `lib/motion.ts` and mirror these tokens.
 
 - Feedback within ~100ms reads as instantaneous; anything that blocks the user should finish under
   ~400ms (Miller 1968; Doherty & Thadani 1982) **[strong]**. Card travel at 300ms is inside that
   budget; do not go slower.
-- Marking a todo done is the app's one reward moment. Keep it small and immediate: the ✓ takes its
-  colour and the strike-through appears within `--duration-base`. No confetti, sounds or counters —
-  the visible list of struck-through items _is_ the reward (progress principle).
+- **Done is the app's one reward moment.** Keep it small and immediate: the box fills with `--done`
+  (120ms), the check is drawn (180ms, starting at 100ms), and the strike-through sweeps across the
+  text (200ms) while it turns `--text-muted`. All of it is over in 280ms. Unchecking runs the other
+  way round and faster. No confetti, no counters — the visible list of struck-through items _is_
+  the reward (progress principle). The 120/180 split is **[unverified]**: tune it by eye.
+- **Dropped is calm.** The ✗ cross-fades to its bold `--dropped` form over `--duration-calm`. No
+  drawing, no scale: dropping is a release, not an achievement (§2).
+- **Resolved rows settle to the bottom, 700ms after the last change** **[unverified]**. What is left
+  is what pops, but a row never moves away from under the pointer straight away: a mis-click can be
+  undone in place, and a run of quick checks moves nothing until it is over. A reopened row waits
+  the same 700ms before it goes back. Only the display order changes; the stored order does not.
+- **New rows** fade in and drop 8px over `--duration-base`. A todo added within a second of the
+  previous one appears without it: animating every row of a quick run is noise.
+- **Delete has an undo toast instead of a confirmation** (6s **[unverified]**). An undo window is
+  safer and faster than a dialog (Vercel, Rauno Freiberg) **[verified]**. The row fades out in 120ms
+  while the rows below close the gap.
+- **Everything is interruptible.** State changes are springs or transitions that start from the
+  current value, never keyframes, so a second click mid-animation simply turns it around and
+  nothing ever waits for an animation to finish.
+- **Press feedback:** buttons scale to `--press-scale` while held, over `--duration-fast`. The 28px
+  marks use 0.92, because 0.97 of 28px is less than a pixel. Never `ease-in`, never
+  `transition: all` (Emil Kowalski) **[verified]**.
 - **`prefers-reduced-motion`.** The sliding, scaling card stack is exactly the kind of motion that
   triggers vestibular discomfort (WCAG 2.3.3). Under reduced motion the cards keep their opacity
-  change and drop the transform transition. Colour transitions stay: they are not motion.
+  change and drop the transform transition; Motion (`reducedMotion="user"`) drops row movement and
+  the entry slide; the check appears with the fill instead of being drawn; the press scale is off.
+  Colour and opacity transitions stay: they are not motion.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -309,9 +342,11 @@ The core of the `:root` blocks in `src/renderer/src/styles/global.css`; the file
 
   /* motion */
   --duration-fast: 120ms;
+  --duration-calm: 150ms;
   --duration-base: 200ms;
   --duration-slow: 300ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --press-scale: 0.97;
 }
 
 @media (prefers-color-scheme: dark) {

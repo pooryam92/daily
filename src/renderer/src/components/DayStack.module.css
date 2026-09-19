@@ -16,6 +16,10 @@
   line-height: 1;
   padding-bottom: var(--space-1);
   color: var(--text-muted);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
 }
 
 .nav:hover {
