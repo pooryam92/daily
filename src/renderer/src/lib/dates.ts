@@ -17,6 +17,12 @@ export function addDays(key: DayKey, amount: number): DayKey {
   return toDayKey(date)
 }
 
+/** The day's place on a continuous number line: consecutive days are 1 apart, also across daylight-saving changes. */
+export function dayIndex(key: DayKey): number {
+  const date = fromDayKey(key)
+  return Math.round(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000)
+}
+
 export function formatDay(key: DayKey, locale?: string): string {
   return fromDayKey(key).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
 }

@@ -1,41 +1,32 @@
 .stack {
   position: relative;
   height: 100%;
-  /* The deck is laid out against this box's width: the cqw units and @container rules below. */
+  /* The deck is laid out against this box's width: the cqw units below. */
   container-type: inline-size;
+  /* A sideways touch drags the deck (useDeckDrag); a vertical one still scrolls a list. */
+  touch-action: pan-y;
+}
+
+.stack[data-dragging],
+.stack[data-dragging] * {
+  cursor: grabbing;
+}
+
+/* Registered as a length so that its computed value is in pixels: a drag needs the number (useDeckDrag). */
+@property --peek {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 56px;
 }
 
 /*
- * How much of the days behind shows. A wider window first shows more of ±1 (--peek, up to 240px, so
- * the day before becomes readable), then a sliver of ±2, then one of ±3. 80px of each side stays
- * free for the arrow. Set on the children because a container cannot size itself in its own cqw.
+ * How much of the day before and the day after shows. A wider window shows more of them (--peek, up
+ * to 240px). 80px of each side stays free for the arrow. Set on the children because a container
+ * cannot size itself in its own cqw.
  */
 .stack > * {
   --free: calc((100cqw - var(--card-max)) / 2);
   --peek: clamp(56px, var(--free) - 80px, 240px);
-  --sliver-2: 0px;
-  --sliver-3: 0px;
-  --show-2: 0;
-  --show-3: 0;
-  --reach: calc(var(--peek) + var(--sliver-2) + var(--sliver-3));
-}
-
-/*
- * Container queries cannot read custom properties, so these are --card-max (720) plus, per side, the
- * full peek (240), the arrow (80) and one or two slivers (64).
- */
-@container (min-width: 1488px) {
-  .stack > * {
-    --sliver-2: 64px;
-    --show-2: 1;
-  }
-}
-
-@container (min-width: 1616px) {
-  .stack > * {
-    --sliver-3: 64px;
-    --show-3: 1;
-  }
 }
 
 /* The arrows sit in the gutters just outside the neighbouring cards. */
@@ -68,14 +59,14 @@
 }
 
 /*
- * On wide windows: just outside the last card that shows, which is half the widest card + --reach
- * from the centre, + a gap (8) + this button (48). On narrow ones: 8px from the window edge, which
- * is 12px outside the stack because of the app's 20px padding.
+ * On wide windows: just outside the neighbouring card, which is half the widest card + --peek from
+ * the centre, + a gap (8) + this button (48). On narrow ones: 8px from the window edge, which is
+ * 12px outside the stack because of the app's 20px padding.
  */
 .nav[data-direction='previous'] {
-  left: max(-12px, 50% - var(--card-max) / 2 - var(--reach) - 56px);
+  left: max(-12px, 50% - var(--card-max) / 2 - var(--peek) - 56px);
 }
 
 .nav[data-direction='next'] {
-  right: max(-12px, 50% - var(--card-max) / 2 - var(--reach) - 56px);
+  right: max(-12px, 50% - var(--card-max) / 2 - var(--peek) - 56px);
 }

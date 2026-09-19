@@ -27,18 +27,19 @@
   /*
    * One elevation, drawn as stacked layers so it reads as depth instead of a grey halo. The shadow
    * is tinted with the background's hue, and every layer keeps the same 1:2 offset-to-blur ratio
-   * (one light source). --shadow-peek has the same leading layers so the two can be transitioned.
+   * (one light source). --shadow is --shadow-peek plus --shadow-lift, so the card in front can fade
+   * the lift in on a layer of its own instead of transitioning a box-shadow.
    */
   --shadow-tint: 64 56 40;
   --shadow-alpha: 0.05;
   --shadow-highlight: rgb(255 255 255 / 0.6);
   --shadow-layer: rgb(var(--shadow-tint) / var(--shadow-alpha));
-  --shadow:
-    inset 0 1px 0 var(--shadow-highlight), 0 1px 2px var(--shadow-layer), 0 2px 4px var(--shadow-layer),
-    0 4px 8px var(--shadow-layer), 0 8px 16px var(--shadow-layer), 0 16px 32px var(--shadow-layer),
-    0 32px 64px var(--shadow-layer);
   --shadow-peek:
     inset 0 1px 0 var(--shadow-highlight), 0 1px 2px var(--shadow-layer), 0 2px 4px var(--shadow-layer);
+  --shadow-lift:
+    0 4px 8px var(--shadow-layer), 0 8px 16px var(--shadow-layer), 0 16px 32px var(--shadow-layer),
+    0 32px 64px var(--shadow-layer);
+  --shadow: var(--shadow-peek), var(--shadow-lift);
 
   /* type */
   --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;

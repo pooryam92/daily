@@ -1,30 +1,38 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { DayKey } from '@shared/todo'
 import { addDays } from '../lib/dates'
+import type { FlipSource } from '../lib/motion'
 
 export interface DayNavigation {
   /** The day whose card is in front. */
   readonly current: DayKey
-  readonly goTo: (day: DayKey) => void
-  readonly goBy: (amount: number) => void
+  /** What brought that day to the front: it decides how the deck moves there. */
+  readonly source: FlipSource
+  readonly goTo: (day: DayKey, source?: FlipSource) => void
+  readonly goBy: (amount: number, source?: FlipSource) => void
+}
+
+interface Selection {
+  /** `null` means "following today", so the view moves along when midnight passes. */
+  readonly day: DayKey | null
+  readonly source: FlipSource
 }
 
 export function useDayNavigation(today: DayKey): DayNavigation {
-  // `null` means "following today", so the view moves along when midnight passes.
-  const [selected, setSelected] = useState<DayKey | null>(null)
+  const [selection, setSelection] = useState<Selection>({ day: null, source: 'pointer' })
 
   const goTo = useCallback(
-    (day: DayKey) => {
-      setSelected(day === today ? null : day)
+    (day: DayKey, source: FlipSource = 'pointer') => {
+      setSelection({ day: day === today ? null : day, source })
     },
     [today]
   )
 
   const goBy = useCallback(
-    (amount: number) => {
-      setSelected((previous) => {
-        const day = addDays(previous ?? today, amount)
-        return day === today ? null : day
+    (amount: number, source: FlipSource = 'pointer') => {
+      setSelection((previous) => {
+        const day = addDays(previous.day ?? today, amount)
+        return { day: day === today ? null : day, source }
       })
     },
     [today]
@@ -35,7 +43,7 @@ export function useDayNavigation(today: DayKey): DayNavigation {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
       // Leave the arrow keys alone while there is text to move the cursor through.
       if (event.target instanceof HTMLInputElement && event.target.value !== '') return
-      goBy(event.key === 'ArrowLeft' ? -1 : 1)
+      goBy(event.key === 'ArrowLeft' ? -1 : 1, event.repeat ? 'held-key' : 'key')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => {
@@ -43,5 +51,5 @@ export function useDayNavigation(today: DayKey): DayNavigation {
     }
   }, [goBy])
 
-  return { current: selected ?? today, goTo, goBy }
+  return { current: selection.day ?? today, source: selection.source, goTo, goBy }
 }

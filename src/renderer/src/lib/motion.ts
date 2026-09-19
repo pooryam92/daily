@@ -37,6 +37,36 @@ export const ROW_EXIT: Transition = { duration: FAST, ease: EASE_OUT }
 /** The pill of a segmented control sliding to the chosen segment. */
 export const SEGMENT: Transition = { type: 'spring', duration: 0.3, bounce: 0 }
 
+/**
+ * A spring in Apple's terms: `response` is roughly how long it takes, in seconds; a `dampingRatio` of 1
+ * does not overshoot. It is spelled out as stiffness and damping because Motion starts a spring that
+ * is given as a duration from rest, and a flip has to keep the speed the deck already has.
+ */
+const spring = (response: number, dampingRatio: number): Transition => ({
+  type: 'spring',
+  stiffness: ((2 * Math.PI) / response) ** 2,
+  damping: (4 * Math.PI * dampingRatio) / response,
+  mass: 1,
+  // The deck moves in days, and a day is a few hundred pixels: come to rest within a fraction of one.
+  restDelta: 0.001,
+  restSpeed: 0.01
+})
+
+/** What flipped the deck. How often it happens decides how much motion it gets. */
+export type FlipSource = 'key' | 'held-key' | 'pointer' | 'drag'
+
+/**
+ * A day flip. Arrow keys are used all the time, so they are quick, and instant while held down.
+ * A click gets the full spring, 95% there in 260ms and at rest inside the 400ms budget. Only a
+ * released drag overshoots a little, because it arrives with the hand's speed.
+ */
+export const FLIP: Record<FlipSource, Transition | null> = {
+  key: spring(0.15, 1),
+  'held-key': null,
+  pointer: spring(0.35, 1),
+  drag: spring(0.35, 0.85)
+}
+
 /** How long a marked (or reopened) todo stays in place, so a mis-click can be undone before it moves. */
 export const SETTLE_DELAY_MS = 700
 

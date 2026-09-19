@@ -52,7 +52,8 @@ export function TodoItem({ todo, order, isNew, animateEnter, onToggleStatus, onR
       exit={{ opacity: 0, transition: ROW_EXIT }}
       transition={{ ...ROW_ENTER, layout: ROW_LAYOUT }}
     >
-      <span className={styles.text}>
+      {/* `data-selectable`: a mouse drag that starts here selects text instead of dragging the deck. */}
+      <span className={styles.text} data-selectable>
         <span className={styles.strike}>{todo.text}</span>
       </span>
       <button

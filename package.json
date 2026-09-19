@@ -39,7 +39,8 @@
     "motion": "^13.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "sonner": "^2.0.8"
+    "sonner": "^2.0.8",
+    "wheel-gestures": "^2.3.0"
   },
   "private": true
 }

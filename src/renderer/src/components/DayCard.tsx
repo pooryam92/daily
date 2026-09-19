@@ -1,20 +1,27 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useTransform } from 'motion/react'
+import type { MotionValue } from 'motion/react'
 import { useRef, useState } from 'react'
 import type { DayKey, ResolvedStatus, Todo } from '@shared/todo'
 import { useSettledTodos } from '../hooks/useSettledTodos'
-import { formatDay, formatWeekday, fromDayKey, relativeLabel } from '../lib/dates'
+import { dayIndex, formatDay, formatWeekday, fromDayKey, relativeLabel } from '../lib/dates'
+import { deckTransform, deckZIndex } from '../lib/deck'
 import { QUICK_ADD_MS } from '../lib/motion'
 import { AddTodoForm } from './AddTodoForm'
 import styles from './DayCard.module.css'
 import { TodoItem } from './TodoItem'
 
-/** Position in the deck: 0 is in front, ±1 to ±3 sit behind it as far as the window has room, ±4 are off-stage. */
-export type StackOffset = -4 | -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4
+/**
+ * The card's place in the deck once it is at rest: 0 is in front, ±1 sit behind it, the rest are
+ * off-stage. Where the card is drawn follows `view`, which travels between those places.
+ */
+export type StackOffset = -3 | -2 | -1 | 0 | 1 | 2 | 3
 
 interface DayCardProps {
   readonly day: DayKey
   readonly today: DayKey
   readonly offset: StackOffset
+  /** Where the deck is looking, as a day index; see `useDeckView`. */
+  readonly view: MotionValue<number>
   readonly todos: readonly Todo[]
   readonly onAdd: (text: string) => void
   readonly onToggleStatus: (id: string, status: ResolvedStatus) => void
@@ -32,6 +39,7 @@ export function DayCard({
   day,
   today,
   offset,
+  view,
   todos,
   onAdd,
   onToggleStatus,
@@ -40,6 +48,27 @@ export function DayCard({
   onBackToToday
 }: DayCardProps) {
   const inFront = offset === 0
+
+  // From frame to frame only transform and opacity change, which need neither layout nor paint
+  // (z-index changes once per flip, where two cards swap).
+  const index = dayIndex(day)
+  const position = useTransform(view, (latest) => index - latest)
+  const transform = useTransform(position, deckTransform)
+  const zIndex = useTransform(position, deckZIndex)
+  const opacity = useTransform(position, [-2, -1, 1, 2], [0, 1, 1, 0])
+  // Depth is a tint towards the background (62% and 38% surface), and only the card in front is lifted.
+  const shade = useTransform(position, [-2, -1, 0, 1, 2], [0.62, 0.38, 0, 0.38, 0.62])
+  const lift = useTransform(position, [-1, 0, 1], [0, 1, 0])
+  // The real content and the stand-in take turns, and neither shows at the halfway point where two
+  // cards swap: a card arrives on top blank and fills in, instead of two layouts showing through each other.
+  const content = useTransform(position, [-0.5, 0, 0.5], [0, 1, 0])
+  const standIn = useTransform(position, [-1, -0.5, 0.5, 1], [1, 0, 0, 1])
+
+  // Which side of the deck the card was on last. The card in front keeps it, so that its stand-in
+  // fades out where it was instead of jumping to the other edge.
+  const [side, setSide] = useState<'before' | 'after'>(offset < 0 ? 'before' : 'after')
+  if (offset !== 0 && side !== (offset < 0 ? 'before' : 'after')) setSide(offset < 0 ? 'before' : 'after')
+
   const ordered = useSettledTodos(todos)
   const order = ordered.map((todo) => todo.id).join()
 
@@ -58,34 +87,36 @@ export function DayCard({
   return (
     // A card in the background is one big click target. That is a shortcut for mouse users only:
     // the arrow buttons and arrow keys do the same, so it needs no keyboard handling of its own.
-    <section
+    <motion.section
       className={styles.card}
+      style={{ transform, zIndex, opacity }}
       data-offset={offset}
+      data-side={side}
       data-today={day === today}
       aria-hidden={!inFront}
       onClick={inFront ? undefined : onSelect}
     >
+      <motion.div className={styles.lift} style={{ opacity: lift }} />
+      <motion.div className={styles.shade} style={{ opacity: shade }} />
       {/* What a card shows while it is behind, laid out in the strip the card in front leaves visible.
           The real header and list are hidden then: they are covered on one side or the other. */}
-      <div className={styles.behind} aria-hidden>
+      <motion.div className={styles.behind} style={{ opacity: standIn }} aria-hidden>
         <div className={styles.tab}>
           <span className={styles.tabWeekday}>{formatWeekday(day)}</span>
           <span className={styles.tabDate}>{fromDayKey(day).getDate()}</span>
         </div>
-        {Math.abs(offset) <= 1 && (
-          <ul className={styles.glance}>
-            {ordered.map((todo) => (
-              <li
-                key={todo.id}
-                className={styles.glanceBar}
-                data-status={todo.status}
-                data-length={glanceLength(todo.text)}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className={styles.content} inert={!inFront}>
+        <ul className={styles.glance}>
+          {ordered.map((todo) => (
+            <li
+              key={todo.id}
+              className={styles.glanceBar}
+              data-status={todo.status}
+              data-length={glanceLength(todo.text)}
+            />
+          ))}
+        </ul>
+      </motion.div>
+      <motion.div className={styles.content} style={{ opacity: content }} inert={!inFront}>
         <header className={styles.header}>
           <div>
             <span className={styles.relative}>{relativeLabel(day, today)}</span>
@@ -118,7 +149,7 @@ export function DayCard({
         </motion.ul>
 
         {inFront && <AddTodoForm onAdd={add} />}
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   )
 }

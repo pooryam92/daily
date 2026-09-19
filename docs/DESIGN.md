@@ -230,18 +230,19 @@ a short list **[measured]**.
   the list (proximity). Type and the 720px measure do not grow with the window: the reading
   distance does not change when a window does, and people enlarge a window to see more, not to see
   it bigger **[unverified]**.
-- **Extra width goes to the days behind, in order of usefulness:** first more of ±1 (`--peek`, 56px
-  → 240px, so yesterday becomes readable), then a 64px sliver of ±2, then of ±3. 80px per side stays
-  free for the arrow. The values are in `DayStack.module.css`; all of them **[unverified]**, picked
-  by eye.
-- **Depth is a tint, not transparency.** Cards behind are opaque and mixed towards `--bg` (62%, 38%,
-  20% surface). See-through cards turn muddy once more than one is stacked.
+- **Extra width goes to the day before and the day after:** more of ±1 shows (`--peek`, 56px →
+  240px). 80px per side stays free for the arrow. The values are in `DayStack.module.css`; all of
+  them **[unverified]**, picked by eye. Only ±1 show: the 64px slivers of ±2 and ±3 that wide
+  windows first had were removed by Poorya on 2026-09-20. ±2 exist off-stage, invisible, so a day
+  can animate in and out.
+- **Depth is a tint, not transparency.** Cards behind are opaque and mixed towards `--bg` (62%
+  surface). See-through cards turn muddy when stacked.
 - **A card behind shows a stand-in, not its real content.** The card in front covers the real
   content unevenly: the day before would show the starts of its todos, the day after only
   checkboxes, because text starts on the left. So the header and list are hidden, and the strip
   that is visible gets its own layout, the same on both sides (consistency): a date tab ("Sun 20")
   on the outer edge at full contrast, because that is the label of the click target, with today's
-  tab accent-coloured so today stays the landmark after navigating away; and on ±1 one quiet bar
+  tab accent-coloured so today stays the landmark after navigating away; and one quiet bar
   per todo, short, medium or long like its text, fainter once the todo is resolved. The bars say
   that something is there, how much, and how much is still open. They carry no words on purpose:
   a readable list of yesterday and tomorrow was tried and rejected by Poorya (2026-09-19), because
@@ -253,7 +254,7 @@ a short list **[measured]**.
 --duration-fast: 120ms; /* hover, press, the checkbox fill */
 --duration-calm: 150ms; /* the ✗ cross-fade */
 --duration-base: 200ms; /* a todo changing state: text colour, strike-through, a new row */
---duration-slow: 300ms; /* cards travelling through the stack */
+--duration-slow: 300ms; /* the slowest a transition gets; cards travel on springs (lib/motion.ts) */
 --ease-out: cubic-bezier(0.2, 0, 0, 1);
 --press-scale: 0.97;
 ```
@@ -262,8 +263,20 @@ Animations that CSS cannot do (drawing a path, moving a row to a new place in th
 removed row out) run in Motion. Their timings live in `lib/motion.ts` and mirror these tokens.
 
 - Feedback within ~100ms reads as instantaneous; anything that blocks the user should finish under
-  ~400ms (Miller 1968; Doherty & Thadani 1982) **[strong]**. Card travel at 300ms is inside that
+  ~400ms (Miller 1968; Doherty & Thadani 1982) **[strong]**. A card flip is at rest inside that
   budget; do not go slower.
+- **How much a day flip moves depends on how often its trigger is used** (Emil Kowalski, Benji
+  Taylor) **[verified]**. A tap of an arrow key is a quick spring (~160ms), a held arrow key is
+  instant, a click or a trackpad swipe gets the full spring (95% there in ~260ms), and only a
+  released drag overshoots a little, because it arrives with the hand's speed. They are springs,
+  not curves, so a flip that is interrupted carries on from the speed it has.
+- **The deck follows one number**: the day it is looking at, which travels between whole days.
+  Position, size, depth order, tint, lift and which of a card's two layouts shows all derive from a
+  card's distance to it, so a drag, a flip and an interruption of either can never disagree. A drag
+  keeps the card under the pointer, decides nothing until release (past halfway or a flick flips,
+  one day at most), and resists past its limit.
+- **Only `transform` and `opacity` change from frame to frame.** Tint and elevation are layers that
+  fade, not colours and shadows that transition; layers are promoted only while the deck moves.
 - **Done is the app's one reward moment.** Keep it small and immediate: the box fills with `--done`
   (120ms), the check is drawn (180ms, starting at 100ms), and the strike-through sweeps across the
   text (200ms) while it turns `--text-muted`. All of it is over in 280ms. Unchecking runs the other
@@ -287,18 +300,10 @@ removed row out) run in Motion. Their timings live in `lib/motion.ts` and mirror
   marks use 0.92, because 0.97 of 28px is less than a pixel. Never `ease-in`, never
   `transition: all` (Emil Kowalski) **[verified]**.
 - **`prefers-reduced-motion`.** The sliding, scaling card stack is exactly the kind of motion that
-  triggers vestibular discomfort (WCAG 2.3.3). Under reduced motion the cards keep their opacity
-  change and drop the transform transition; Motion (`reducedMotion="user"`) drops row movement and
+  triggers vestibular discomfort (WCAG 2.3.3). Under reduced motion a day flip is instant (a drag
+  still follows the hand, which is the user's own movement); Motion (`reducedMotion="user"`) drops row movement and
   the entry slide; the check appears with the fill instead of being drawn; the press scale is off.
   Colour and opacity transitions stay: they are not motion.
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  .card {
-    transition: opacity var(--duration-base) var(--ease-out);
-  }
-}
-```
 
 ## 6. Focus
 
@@ -314,7 +319,7 @@ is the quieter `border-color: var(--accent)` plus a 1px ring.
 ## 7. Token block
 
 The core of the `:root` blocks in `src/renderer/src/styles/global.css`; the file adds the layered
-`--shadow` / `--shadow-peek`, `--focus-ring-on-bg`, `--weight-bold` and `--card-max`. Renames: `--card` → `--surface`,
+`--shadow` / `--shadow-peek` / `--shadow-lift`, `--focus-ring-on-bg`, `--weight-bold` and `--card-max`. Renames: `--card` → `--surface`,
 `--muted` → `--text-muted`; `--dropped` changes meaning (neutral, no longer the error colour).
 
 ```css
@@ -337,7 +342,7 @@ The core of the `:root` blocks in `src/renderer/src/styles/global.css`; the file
   --on-danger: #ffffff;
   --hover: rgb(128 128 128 / 0.1);
   --hover-strong: rgb(128 128 128 / 0.18);
-  /* --shadow, --shadow-peek: six and two layers of rgb(var(--shadow-tint) / var(--shadow-alpha)) */
+  /* --shadow (= --shadow-peek + --shadow-lift), --shadow-peek: six and two layers of rgb(var(--shadow-tint) / var(--shadow-alpha)) */
   --shadow-tint: 64 56 40;
   --shadow-alpha: 0.05;
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);

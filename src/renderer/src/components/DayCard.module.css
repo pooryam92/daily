@@ -1,13 +1,13 @@
 /*
- * The deck. The card in front is a fixed object (capped in both directions); the days around it sit
- * behind it, each a step smaller and a step closer to the window background. How far they stick out
- * (--peek, --sliver-2, --sliver-3) depends on the window and is worked out in DayStack.module.css.
+ * The deck. The card in front is a fixed object (capped in both directions); the day before and the
+ * day after sit behind it, a step smaller and a step closer to the window background. Where a card
+ * is, how big, how visible and above which other cards comes from Motion (DayCard.tsx, lib/deck.ts),
+ * because cards travel on a spring and follow a drag. How far a card behind sticks out (--peek)
+ * depends on the window and is worked out in DayStack.module.css.
  */
 .card {
-  --side: 1;
-  --scale: 1;
-  --out: 0px;
-  --mix: 100%;
+  /* What is visible of a card behind, in the card's own unscaled pixels (0.92 is its scale). */
+  --strip: calc(var(--peek) / 0.92);
 
   position: absolute;
   inset: 0;
@@ -15,112 +15,83 @@
   /* Leave room at the sides for the neighbours to peek out. */
   width: min(100% - 200px, var(--card-max));
   height: min(100%, var(--card-max-height));
-  /* Depth is a tint towards the background, not transparency: see-through cards turn muddy when stacked. */
-  background: color-mix(in srgb, var(--surface) var(--mix), var(--bg));
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-peek);
-  /* Scaling takes (1 - scale) / 2 of the width off each side; add that back, plus what should show. */
-  transform: translateX(calc(var(--side) * ((1 - var(--scale)) * 50% + var(--out)))) scale(var(--scale));
-  transition:
-    transform var(--duration-slow) var(--ease-out),
-    opacity var(--duration-slow) var(--ease-out),
-    background-color var(--duration-slow) var(--ease-out),
-    box-shadow var(--duration-slow) var(--ease-out);
 }
 
-/* The sliding, scaling stack is vestibular-trigger motion: keep the fades, move the cards instantly. */
-@media (prefers-reduced-motion: reduce) {
-  .card {
-    transition:
-      opacity var(--duration-base) var(--ease-out),
-      background-color var(--duration-base) var(--ease-out);
-  }
+/*
+ * While the deck moves (DayStack sets these), each mounted card and its two layers below get a
+ * compositor layer, so a frame moves and fades layers and paints next to nothing. Not at rest: a layer of
+ * its own can cost the text its subpixel rendering.
+ */
+:is([data-moving], [data-dragging]) > .card {
+  will-change: transform;
 }
 
-.card[data-offset^='-'] {
-  --side: -1;
+:is([data-moving], [data-dragging]) > .card > :is(.shade, .lift) {
+  will-change: opacity;
 }
 
 .card:not([data-offset='0']) {
   cursor: pointer;
 }
 
-.card[data-offset='0'] {
-  z-index: 4;
-  box-shadow: var(--shadow);
-}
-
-.card[data-offset='-1'],
-.card[data-offset='1'] {
-  --scale: 0.92;
-  --out: var(--peek);
-  --strip: calc(var(--peek) / 0.92);
-  --mix: 62%;
-
-  z-index: 3;
-}
-
-/* Without room for its sliver a card ends exactly behind the one before it, so it is hidden as well. */
-.card[data-offset='-2'],
-.card[data-offset='2'] {
-  --scale: 0.84;
-  --out: calc(var(--peek) + var(--sliver-2));
-  --strip: calc(var(--sliver-2) / 0.84);
-  --mix: 38%;
-
-  z-index: 2;
-  opacity: var(--show-2);
-}
-
-.card[data-offset='-3'],
-.card[data-offset='3'] {
-  --scale: 0.76;
-  --out: calc(var(--peek) + var(--sliver-2) + var(--sliver-3));
-  --strip: calc(var(--sliver-3) / 0.76);
-  --mix: 20%;
-
-  z-index: 1;
-  opacity: var(--show-3);
-}
-
-/* Off-stage cards are invisible; they exist so cards can animate in and out. */
-.card[data-offset='-4'],
-.card[data-offset='4'] {
-  --scale: 0.68;
-  --out: calc(var(--peek) + var(--sliver-2) + var(--sliver-3));
-  --mix: 20%;
-
-  z-index: 0;
-  opacity: 0;
+/* Off-stage cards are invisible; they exist so cards can travel in and out. */
+.card:not([data-offset='0'], [data-offset='-1'], [data-offset='1']) {
   pointer-events: none;
+}
+
+/*
+ * Depth and elevation are two layers that only change opacity. Depth is a tint towards the
+ * background, not transparency of the card: see-through cards turn muddy when stacked. The lift is
+ * what --shadow has more than --shadow-peek, so the card in front ends up with the whole of --shadow.
+ */
+.shade,
+.lift {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Over the card's real content, which recedes with it, and under its stand-in (.behind), which stays at full contrast. */
+.shade {
+  z-index: 1;
+  border-radius: calc(var(--radius-lg) - 1px);
+  background: var(--bg);
+}
+
+.lift {
+  /* The card's border box, which the shadow is cast from. */
+  inset: -1px;
+  z-index: -1;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
 }
 
 /*
  * A card behind does not show its real content, which the card in front covers on one side or the
  * other (the day before would show the starts of its todos, the day after only checkboxes). It
  * shows a stand-in laid out in the strip that is visible (--strip, in the card's own unscaled
- * pixels): a date tab, the label of what a click goes to, and on ±1 a bar per todo.
+ * pixels): a date tab, the label of what a click goes to, and a bar per todo. Which of the two
+ * shows follows the card's position, like everything else (DayCard.tsx).
  */
 .behind {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: var(--strip, 0px);
+  z-index: 2;
+  width: var(--strip);
   padding: var(--space-5) var(--space-4);
   overflow: hidden;
   pointer-events: none;
-  transition: opacity var(--duration-slow) var(--ease-out);
 }
 
-.card[data-offset^='-'] .behind {
+.card[data-side='before'] .behind {
   right: auto;
   left: 0;
-}
-
-.card[data-offset='0'] .behind {
-  opacity: 0;
 }
 
 .tab {
@@ -130,7 +101,7 @@
   line-height: var(--leading-tight);
 }
 
-.card[data-offset^='-'] .tab {
+.card[data-side='before'] .tab {
   margin-left: 0;
 }
 
@@ -170,11 +141,12 @@
 .glanceBar {
   height: 6px;
   border-radius: var(--radius-full);
+  margin-left: auto;
   background: color-mix(in srgb, var(--text-faint) 40%, transparent);
 }
 
-.card[data-offset='1'] .glanceBar {
-  margin-left: auto;
+.card[data-side='before'] .glanceBar {
+  margin-left: 0;
 }
 
 .glanceBar[data-length='short'] {
@@ -191,15 +163,6 @@
 
 .glanceBar:not([data-status='open']) {
   background: color-mix(in srgb, var(--text-faint) 16%, transparent);
-}
-
-.header,
-.todos {
-  transition: opacity var(--duration-slow) var(--ease-out);
-}
-
-.card:not([data-offset='0']) :is(.header, .todos) {
-  opacity: 0;
 }
 
 .content {

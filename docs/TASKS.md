@@ -1,8 +1,8 @@
 # Daily — UI and design tasks
 
 Every UI/design task that follows from `DESIGN.md` and `UI-RESEARCH.md`, in build order, each with the
-reason it exists and the data behind it. Written on 2026-09-19. Phases 0, 1 and 2 are done except
-the optional 1.24; nothing from Phase 3 on is implemented yet.
+reason it exists and the data behind it. Written on 2026-09-19. Phases 0, 1, 2 and 3 are done except
+the optional 1.24; nothing from Phase 4 on is implemented yet.
 
 Each **Data** line carries a tag that says how far to trust it:
 
@@ -299,26 +299,26 @@ Notes from building Phase 2:
 
 ## Phase 3 — The day deck
 
-- [ ] **3.1 Motion budget by frequency.** Arrow-key flips instant or ~150 ms with `bounce: 0`; click and
+- [x] **3.1 Motion budget by frequency.** Arrow-key flips instant or ~150 ms with `bounce: 0`; click and
       drag flips get the full spring.
   - Why: the current CSS gives every flip the same `0.3s ease`, including held-down arrow keys.
   - Data: "never animate keyboard-initiated actions"; 100+ uses a day get no animation (Emil Kowalski);
     "delight increases as feature usage decreases" (Benji Taylor) **[verified]**.
 
-- [ ] **3.2 Spring card flips** replacing `transition: transform 0.3s ease`. Start at
+- [x] **3.2 Spring card flips** replacing `transition: transform 0.3s ease`. Start at
       `{ type: 'spring', duration: 0.5, bounce: 0 }`, ~0.15 bounce only after a drag release.
   - Why: springs carry velocity, so a flip can be retargeted mid-flight instead of restarting.
   - Data: Emil's default and Apple WWDC18 session 803 (damping 1.0, response 0.4) **[verified]**; the
     stiffness 250 / damping 31 conversion **[unverified]**. Card travel must stay under 400 ms
     **[strong]**.
 
-- [ ] **3.3 Drag to change day.** Commit only on release; commit past a distance threshold or at velocity
+- [x] **3.3 Drag to change day.** Commit only on release; commit past a distance threshold or at velocity
       above 0.11 px/ms; rubber-band at the limits; ~10 px hysteresis before locking the axis; pointer
       capture.
   - Data: Sonner's threshold, Emil's apple-design skill formulas **[verified]**; interior.dev's 92 px /
     520 px/s values **[verified]**, lesser-known source.
 
-- [ ] **3.4 Trackpad two-finger swipe (`wheel-gestures` 2.3.0).** One flip per gesture; ignore momentum
+- [x] **3.4 Trackpad two-finger swipe (`wheel-gestures` 2.3.0).** One flip per gesture; ignore momentum
       tails; require `|deltaX| > |deltaY| × 1.3` so vertical list scrolling never flips the deck.
   - Why: Chromium does not expose a momentum phase, so a naive deltaX accumulator flips several days per
     swipe.
@@ -327,9 +327,9 @@ Notes from building Phase 2:
 
 - [x] **3.5 Deck layout on large windows** (was "Tune deck depth"; done first, 2026-09-19, because the
       springs of 3.2 animate these positions). Card height capped at 860px; extra width shows more of ±1
-      (56 → 240px), then 64px slivers of ±2 and ±3; depth is a tint towards `--bg` instead of opacity;
-      cards behind show a stand-in in their visible strip: a date tab and, on ±1, one wordless bar
-      per todo, the same on both sides.
+      (56 → 240px); depth is a tint towards `--bg` instead of opacity; cards behind show a stand-in in
+      their visible strip: a date tab and one wordless bar per todo, the same on both sides. (The 64px
+      slivers of ±2 and ±3 it first had were removed on 2026-09-20: only ±1 show.)
   - Why: a 1920×1080 window was a 720×1040 sheet with ~520px of empty background per side
     **[measured]**.
   - Data: Poorya picked it from five layouts built side by side; the values are by eye
@@ -337,9 +337,48 @@ Notes from building Phase 2:
   - The stand-in exists because the real content is covered unevenly (the day after showed only its
     checkboxes). Bars and not text: a readable list pulled attention off today; Poorya rejected it.
 
-- [ ] **3.6 Performance guard.** Animate only `transform` and `opacity`; animate the full `transform`
+- [x] **3.6 Performance guard.** Animate only `transform` and `opacity`; animate the full `transform`
       string in Motion if frames drop; blur under 20 px.
   - Data: Vercel guidelines, Emil's repo **[verified]**.
+
+Notes from building Phase 3 (2026-09-20):
+
+- **One value moves the deck.** `useDeckView` holds `view`, the day the deck is looking at as a
+  continuous number. Every card derives its transform, opacity, z-index, tint, lift and which of its
+  two layouts shows from its distance to `view` (`lib/deck.ts`, `DayCard.tsx`). A key, a click, a drag
+  and a swipe all just move `view`, so nothing can get out of step and any of them can interrupt any
+  other. CSS no longer positions or transitions the cards.
+- 3.1: a tap of an arrow key is a spring with response 0.15s (at rest in ~160ms); a held key
+  (`event.repeat`) is instant; a click, the arrow buttons and a swipe get response 0.35s.
+- 3.2: the springs are given as stiffness and damping, not as `duration`/`bounce`. Motion starts a
+  duration-based spring from rest on purpose ("time-defined springs should ignore inherited
+  velocity", `motion-dom` `spring.mjs`) **[measured]**, which would defeat the reason for 3.2.
+  Response 0.35s with damping ratio 1 is stiffness 322 / damping 36: 95% there in ~260ms, at rest
+  inside 400ms **[measured]** in the running app. 0.35 instead of the 0.4 of WWDC18 because 0.4 is at
+  rest just past 400ms; tune by eye **[unverified]**. A released drag uses damping ratio 0.85 (the
+  "~0.15 bounce").
+- 3.3: the card in front stays under the pointer: one day of drag is the distance that card travels
+  (the peek plus 4% of its width, 84–269px depending on the window). A release flips past half a day,
+  which is also where the two cards swap depth, so the card on top at release is the one that wins,
+  or at more than 0.11 px/ms; a flick back against the drag cancels. One day per drag; past that the
+  deck rubber-bands (the 0.55 curve, at most half a day more). With a mouse a drag cannot start on
+  todo text, which stays selectable; with touch it can. Focus returns to the input after a drag
+  that goes back. In a narrow window half a day is only ~42px of drag: tune by eye **[unverified]**.
+- 3.4: a swipe flips once it has travelled 90px and is 1.3× more sideways than vertical; nothing more
+  until `wheel-gestures` reports a new gesture, and never from its momentum tail.
+- 3.6: from frame to frame only `transform` (one string) and `opacity` change. The tint towards
+  `--bg` and the front card's deeper shadow became two layers that fade (`.shade`, `.lift`; the
+  shadow token is split into `--shadow-peek` + `--shadow-lift`), replacing transitions of
+  `background-color` and `box-shadow`. `will-change` is set only while the deck moves
+  (`data-moving`, `data-dragging`), so text at rest is rendered as before.
+- Cards at ±2 and ±3 are mounted but invisible, so a day is in place before a flip or an overdrawn
+  drag shows it. The view never trails the day in front by more than one day: "Back to today" from
+  far away arrives as a single flip from the right side, not a flight through every day between.
+- Under `prefers-reduced-motion` every flip is instant (no fade either: the fades now follow the
+  position); a drag still follows the hand, because that movement is the user's own.
+- Checked by driving the built Electron app and, for the drags, the same renderer in headless
+  Chromium (a real pointer on the desktop disturbs synthetic drags) **[measured]**. Not checked: a
+  real trackpad. The swipe was driven with synthetic wheel events, which have no momentum tail.
 
 ## Phase 4 — Progress and day cleared
 

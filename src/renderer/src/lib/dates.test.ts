@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, formatDay, formatWeekday, fromDayKey, relativeLabel, toDayKey } from './dates'
+import { addDays, dayIndex, formatDay, formatWeekday, fromDayKey, relativeLabel, toDayKey } from './dates'
 
 describe('toDayKey / fromDayKey', () => {
   it('uses the local date, zero-padded', () => {
@@ -8,6 +8,18 @@ describe('toDayKey / fromDayKey', () => {
 
   it('round-trips', () => {
     expect(toDayKey(fromDayKey('2026-09-19'))).toBe('2026-09-19')
+  })
+})
+
+describe('dayIndex', () => {
+  it('puts consecutive days 1 apart', () => {
+    expect(dayIndex('2027-01-01') - dayIndex('2026-12-31')).toBe(1)
+    expect(dayIndex('2026-09-20') - dayIndex('2026-09-13')).toBe(7)
+  })
+
+  it('is not thrown off by daylight-saving changes', () => {
+    expect(dayIndex('2026-03-30') - dayIndex('2026-03-28')).toBe(2)
+    expect(dayIndex('2026-10-26') - dayIndex('2026-10-24')).toBe(2)
   })
 })
 
