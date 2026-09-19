@@ -79,14 +79,20 @@ Targets: 4.5:1 for text, 3:1 for icons and control boundaries **[strong]**.
 | `--text-faint` on `--surface`     | 3.5   | 3.5  | 3.0    |
 | `--accent` on `--surface`         | 5.6   | 6.4  | 4.5    |
 | `--accent` on `--bg`              | 4.8   | 7.3  | 4.5    |
-| `--done` on `--surface`           | 4.7   | 7.1  | 3.0    |
+| `--done` on `--surface`           | 4.7   | 7.1  | 4.5    |
 | `--dropped` on `--surface`        | 7.5   | 7.4  | 3.0    |
 | `--danger` on `--surface`         | 5.5   | 5.8  | 4.5    |
 | `--on-danger` on `--danger-solid` | 5.7   | 5.7  | 4.5    |
 | `--border-strong` on `--surface`  | 3.2   | 3.4  | 3.0    |
 | `--surface` on `--done` (check)   | 4.7   | 7.1  | 3.0    |
+| `--done` on `--border` (ring arc) | 3.3   | 5.4  | 3.0    |
+| `--done` on a card behind (tab)   | 4.4   | 7.4  | 3.0    |
 | `--surface` on `--text` (toast)   | 15.7  | 13.2 | 4.5    |
 | `--border` on `--text` (toast)    | 11.1  | 10.1 | 4.5    |
+
+`--done` on `--surface` has the text target since the word "Cleared" is set in it (§10). The ring's
+track is `--border`, 1.4 / 1.3 on the surface: it is decoration, and the arc alone carries the
+information. A card behind is the surface tinted 38% towards `--bg`.
 
 The focus ring on the toast's Undo button is `--surface`, not `--accent`: `--accent` on `--text`
 measures only 2.8 / 2.1.
@@ -280,7 +286,7 @@ removed row out) run in Motion. Their timings live in `lib/motion.ts` and mirror
 - **Done is the app's one reward moment.** Keep it small and immediate: the box fills with `--done`
   (120ms), the check is drawn (180ms, starting at 100ms), and the strike-through sweeps across the
   text (200ms) while it turns `--text-muted`. All of it is over in 280ms. Unchecking runs the other
-  way round and faster. No confetti, no counters — the visible list of struck-through items _is_
+  way round and faster. No confetti, no counters, and sound only if switched on (§10) — the visible list of struck-through items _is_
   the reward (progress principle). The 120/180 split is **[unverified]**: tune it by eye.
 - **Dropped is calm.** The ✗ cross-fades to its bold `--dropped` form over `--duration-calm`. No
   drawing, no scale: dropping is a release, not an achievement (§2).
@@ -423,6 +429,44 @@ Each would undercut the fresh-start premise of the app:
   daily reset exists to avoid.
 - **Priority colours, tags, labels.** Each added choice per item slows every decision (Hick 1952)
   **[strong]**, and every extra hue dilutes the three that carry meaning.
+
+## 10. Progress, the cleared day, words and sound
+
+- **A ring, no count.** Effort rises as a goal gets closer (goal-gradient, Hull 1932) **[verified]**,
+  so the header line shows how close the day is: a 16px ring after the day's label, its arc in
+  `--done` on a `--border` track. It does not say how much was done: no "3 of 5", because volume
+  must not become the headline (completion bias, Gino & Staats) **[verified]** and §9 rules out
+  counters. Screen readers get the same information as the ring's value. The ring design is
+  **[unverified]**: ours.
+- **Progress is honest.** A dropped todo advances the ring like a done one: deciding against a todo
+  closes it too. Nothing is ever pre-filled (endowed progress works, and would be a trick here)
+  **[verified]**. A day without todos has no ring: there is nothing to be part-way through.
+- **Cards behind show it too**: a 12px ring under the date on the tab, modelled on the Things 3
+  progress pie **[verified]**. It is the one place where yesterday's state is visible from today,
+  and it carries no judgement: an unfinished ring has the same colours as any other.
+- **Clearing the day is the app's only peak** (peak-end rule, NN/g) **[verified]**. "A big action
+  needs a big wind-up", reserved for rare moments ((Not Boring)) **[verified]**: while the arc
+  closes the ring dips to 0.86, then it fills with `--done`, pops to 1.14 and settles, sends out one
+  halo, the check is drawn, and "Cleared" fades in next to it. About 0.9s (`CLEARED` in
+  `lib/motion.ts`), values **[unverified]**, tune by eye. It blocks nothing, so the 400ms budget
+  does not apply, and it starts from the current state like everything else: reopening a todo
+  mid-way turns it around. It plays once, while it is watched: a day that is already cleared when
+  its card appears just shows the check. Under reduced motion the arc is simply closed and the
+  check cross-fades; no dip, no pop, no halo.
+- **Words say where the day stands, never how it went.** An empty day reads "Nothing planned for
+  today." (or "tomorrow", "yesterday", "this day"): the same sentence everywhere, only the part
+  that differs changes (Family's copy rule) **[verified]**, and without a tense it fits any day. It
+  sits where the first todo will go; the input below it is the way forward (NN/g on empty states)
+  **[verified]**. A cleared day adds one word, "Cleared". An unfinished day, past or present, gets
+  no words at all: no guilt copy (fresh start effect) **[strong]**.
+- **Sound is off until switched on** (Settings, decision D1). The more often an action happens, the
+  quieter its sound has to be (Material) **[verified]**. Three sounds: a soft tick for a check,
+  climbing a major pentatonic scale from E5 over consecutive checks within 4s and staying at E6
+  (after Clear's rising scale **[verified]**); a lower, softer note that slides down for ✗, which
+  is a release and never an error tone; a C major arpeggio that lingers for the cleared day, played
+  instead of the tick. Reopening and deleting are silent. They are synthesised with Web Audio
+  (`lib/sound.ts`), not samples: pitch, length and level are then plain numbers that can be tuned,
+  and there is no asset or licence to carry. Every value is **[unverified]** until tuned by ear.
 
 ## References
 

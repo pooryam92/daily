@@ -65,3 +65,19 @@ export function displayOrder(todos: readonly Todo[], settled: ReadonlySet<string
 export function resolvedIds(todos: readonly Todo[]): ReadonlySet<string> {
   return new Set(todos.filter((todo) => todo.status !== 'open').map((todo) => todo.id))
 }
+
+export interface DayProgress {
+  readonly resolved: number
+  readonly total: number
+  /** Nothing is left open. A day without todos is empty, not cleared. */
+  readonly cleared: boolean
+}
+
+/**
+ * How far along a day is. A dropped todo counts like a done one: deciding against a todo closes it
+ * too, and progress that left drops out would understate how little is left.
+ */
+export function dayProgress(todos: readonly Todo[]): DayProgress {
+  const resolved = todos.filter((todo) => todo.status !== 'open').length
+  return { resolved, total: todos.length, cleared: todos.length > 0 && resolved === todos.length }
+}

@@ -18,7 +18,8 @@ const api: DailyApi = {
   },
   settings: {
     load: () => invoke('settings:load'),
-    setTheme: (theme) => invoke('settings:setTheme', theme)
+    setTheme: (theme) => invoke('settings:setTheme', theme),
+    setSound: (sound) => invoke('settings:setSound', sound)
   }
 }
 

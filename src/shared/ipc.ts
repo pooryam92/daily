@@ -11,6 +11,7 @@ export interface IpcContract {
   'store:save': { args: [data: StoreData]; result: undefined }
   'settings:load': { args: []; result: Settings }
   'settings:setTheme': { args: [theme: ThemeMode]; result: undefined }
+  'settings:setSound': { args: [sound: boolean]; result: undefined }
 }
 
 export type IpcChannel = keyof IpcContract
@@ -25,5 +26,6 @@ export interface DailyApi {
     load: () => Promise<Settings>
     /** Applies the theme to the whole window at once and remembers it. */
     setTheme: (theme: ThemeMode) => Promise<void>
+    setSound: (sound: boolean) => Promise<void>
   }
 }

@@ -32,7 +32,7 @@ src/
   preload/     Bridge that exposes `window.api` to the renderer
   renderer/    The React UI (browser)
     src/lib/           pure logic: dates, todo reducer — unit tested
-    src/hooks/         state: today, day navigation, the todo store
+    src/hooks/         state: today, day navigation, the todo store, settings, sounds
     src/components/    DayStack > DayCard > TodoItem / AddTodoForm, each with its CSS module
     src/styles/        design tokens and global styles
 ```

@@ -13,7 +13,12 @@ describe('isThemeMode', () => {
 
 describe('parseSettings', () => {
   it('accepts valid settings', () => {
-    expect(parseSettings({ theme: 'dark' })).toEqual({ theme: 'dark' })
+    expect(parseSettings({ theme: 'dark', sound: true })).toEqual({ theme: 'dark', sound: true })
+  })
+
+  it('keeps sound off unless it is switched on', () => {
+    expect(parseSettings({ theme: 'dark' })).toEqual({ theme: 'dark', sound: false })
+    expect(parseSettings({ theme: 'dark', sound: 'yes' })).toEqual({ theme: 'dark', sound: false })
   })
 
   it('falls back to the default for an unknown or missing theme', () => {
@@ -27,6 +32,6 @@ describe('parseSettings', () => {
   })
 
   it('strips unknown fields', () => {
-    expect(parseSettings({ theme: 'light', extra: true })).toEqual({ theme: 'light' })
+    expect(parseSettings({ theme: 'light', extra: true })).toEqual({ theme: 'light', sound: false })
   })
 })

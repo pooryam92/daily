@@ -1,8 +1,9 @@
 # Daily — UI and design tasks
 
 Every UI/design task that follows from `DESIGN.md` and `UI-RESEARCH.md`, in build order, each with the
-reason it exists and the data behind it. Written on 2026-09-19. Phases 0, 1, 2 and 3 are done except
-the optional 1.24; nothing from Phase 4 on is implemented yet.
+reason it exists and the data behind it. Written on 2026-09-19. Phases 0 to 4 are done except the
+optional 1.24; nothing from Phase 5 is implemented yet, apart from the parts of 5.2 and 5.5 that the
+settings popover pulled forward.
 
 Each **Data** line carries a tag that says how far to trust it:
 
@@ -382,28 +383,61 @@ Notes from building Phase 3 (2026-09-20):
 
 ## Phase 4 — Progress and day cleared
 
-- [ ] **4.1 Header progress ring (16 px), no count (D2),** animated with `stroke-dashoffset`. Dropped
+- [x] **4.1 Header progress ring (16 px), no count (D2),** animated with `stroke-dashoffset`. Dropped
       todos advance the ring too.
   - Why: effort rises as the goal gets closer, and counting drops keeps the progress honest.
   - Data: goal-gradient effect **[verified]**; never fake progress (endowed progress, Nunes & Drèze:
     34% vs 19% redemption) **[verified]**; ring design itself **[unverified]**.
 
-- [ ] **4.2 Small ring or dot on the visible edge of peeking cards.**
+- [x] **4.2 Small ring or dot on the visible edge of peeking cards.**
   - Data: modelled on the Things 3 progress pie **[verified]**; our design **[unverified]**.
 
-- [ ] **4.3 Day-cleared moment.** The ring closes and morphs into a check once, the header line changes,
+- [x] **4.3 Day-cleared moment.** The ring closes and morphs into a check once, the header line changes,
       then the card rests. Opacity cross-fade only under reduced motion.
   - Why: people judge an experience by its peak and its end; this is the app's only peak.
   - Data: peak-end rule (NN/g) **[verified]**; "a big action needs a big wind-up", reserved for rare
     moments ((Not Boring)) **[verified]**.
 
-- [ ] **4.4 Empty-state copy.** Tell the user where they stand; no guilt copy on empty or unfinished days;
+- [x] **4.4 Empty-state copy.** Tell the user where they stand; no guilt copy on empty or unfinished days;
       keep wording stable and change only the part that differs.
   - Data: NN/g empty states, Family's copy rule **[verified]**; fresh start effect **[strong]**.
 
-- [ ] **4.5 Sound.** Soft tick per completion with pitch rising on consecutive checks, warmer chime for
+- [x] **4.5 Sound.** Soft tick per completion with pitch rising on consecutive checks, warmer chime for
       day cleared, lower soft sound for ✗, one-click mute. Plain Web Audio, CC0 samples (Kenney).
   - Data: Clear's rising scale **[verified]**; sound pleasantness drives emotional response (Springer 2011) **[verified]**; `use-sound` and `howler` are semi-maintained, so no library **[verified]**.
+
+Notes from building Phase 4 (2026-09-20):
+
+- 4.1: the ring sits on the header line after the day's label ("TODAY ◔"), so nothing moves when it
+  appears with the first todo, and a day without todos has none. `dayProgress` in `lib/todos.ts` is
+  the rule (dropped counts, an empty day is not cleared), with tests. The arc is Motion's
+  `pathLength`, which is `stroke-dashoffset` underneath; butt caps, so an empty arc leaves no dot
+  and a half-done day looks exactly half. New pairs **[measured]**: `--done` on `--surface` 4.7 / 7.1,
+  on the `--border` track 3.3 / 5.4, on a card behind 4.4 / 7.4; in the `DESIGN.md` table.
+- The count is not shown (D2), but the ring is a `progressbar` whose value text is "3 of 5
+  resolved": a screen reader gets what the eye gets from the arc, and no more.
+- 4.2: the same component at 12px under the date on a card's tab; a cleared day shows the filled
+  check there. It is never animated in practice, because a card behind cannot be changed.
+- 4.3: the sequence and its reasons are in `DESIGN.md` §10; timings are `CLEARED` in
+  `lib/motion.ts` **[unverified]**. "Once" means once per clearing while the card is mounted: a
+  cleared day that comes into view shows the check without the flourish. Deleting the last open
+  todo also clears the day, quietly (the ring turns, no sound); undo turns it back.
+- 4.4: "Nothing planned for today." / "tomorrow" / "yesterday" / "this day" (`lib/copy.ts`, with
+  tests), in `--text-muted` where the first todo will go. Cleared adds the word "Cleared" in
+  `--done` after the check, in a live region so it is announced. Unfinished days get no words.
+- 4.5 **differs from the task as written: the sounds are synthesised, not Kenney samples.** They
+  could not be chosen by ear in the session that built them, and picking files blind from a pack
+  seemed worse than three sounds whose pitch, length and level are numbers in `lib/sound.ts`. It
+  also makes the rising scale exact and leaves no asset to license. Swapping in samples later only
+  touches `play()`. The values are **[unverified]**: they have not been heard yet. Tune by ear.
+- The sound switch is in the settings popover under Theme (as S.1 planned); switching it on plays
+  the tick as its answer. `sound` is a second field in `settings.json`, off by default (D1), set
+  over its own validated IPC channel. `useTheme` became `useSettings`, owned by `App`, because the
+  deck needs the setting too.
+- Checked by driving the built renderer in headless Chromium in light, dark and reduced motion
+  (frames of the clearing sequence at 80–1300ms), and the built Electron app for the setting: it is
+  written to `settings.json` and still on after a relaunch **[measured]**. Not checked: how any of
+  it sounds.
 
 ## Phase 5 — Later
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DaysMap, Todo } from '@shared/todo'
-import { createTodo, daysReducer, displayOrder, resolvedIds } from './todos'
+import { createTodo, dayProgress, daysReducer, displayOrder, resolvedIds } from './todos'
 
 const DAY = '2026-09-19'
 const milk: Todo = { id: 'milk', text: 'Buy milk', status: 'open' }
@@ -106,5 +106,23 @@ describe('resolvedIds', () => {
     const done: Todo = { id: 'done', text: 'Call mum', status: 'done' }
     const dropped: Todo = { id: 'dropped', text: 'Iron shirts', status: 'dropped' }
     expect(resolvedIds([done, milk, dropped])).toEqual(new Set(['done', 'dropped']))
+  })
+})
+
+describe('dayProgress', () => {
+  const done: Todo = { ...milk, status: 'done' }
+  const dropped: Todo = { ...taxes, status: 'dropped' }
+
+  it('counts dropped todos as resolved, like done ones', () => {
+    expect(dayProgress([done, taxes])).toEqual({ resolved: 1, total: 2, cleared: false })
+    expect(dayProgress([milk, dropped])).toEqual({ resolved: 1, total: 2, cleared: false })
+  })
+
+  it('is cleared once nothing is left open', () => {
+    expect(dayProgress([done, dropped])).toEqual({ resolved: 2, total: 2, cleared: true })
+  })
+
+  it('does not call a day without todos cleared', () => {
+    expect(dayProgress([])).toEqual({ resolved: 0, total: 0, cleared: false })
   })
 })

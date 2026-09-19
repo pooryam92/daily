@@ -125,6 +125,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Under the date, centred like it: how far along that day is. */
+.tabRing {
+  display: block;
+  width: fit-content;
+  margin: var(--space-2) auto 0;
+}
+
 /*
  * One bar per todo: it says that something is there, how much, and how much of it is still open,
  * without words to read, so it cannot pull attention away from the card in front.
@@ -178,10 +185,19 @@
   padding: var(--space-5) var(--space-6) var(--space-3);
 }
 
+/* One line above the date: the day's label, the progress ring and, once nothing is left, "Cleared". */
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* Holds the line open on days that have neither a label nor todos. */
+  min-height: calc(var(--text-xs) * var(--leading-ui));
+}
+
 /* Only "Today" is accent-coloured: if every label is blue, none of them is the landmark. */
-.relative {
+.relative,
+.cleared {
   display: block;
-  min-height: calc(1em * var(--leading-ui));
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-ui);
@@ -192,6 +208,11 @@
 
 .card[data-today='true'] .relative {
   color: var(--accent);
+}
+
+/* The ring has just turned into a check in this colour, and the word belongs to it. */
+.cleared {
+  color: var(--done);
 }
 
 .title {
@@ -220,6 +241,27 @@
 
 .backToToday:hover {
   background: var(--hover-strong);
+}
+
+/* The list, and over it the line that stands in for it on a day without todos. */
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Where the first todo will go, in the colour of something that is not a todo. It is out of the
+ * flow, so it can fade while the first row arrives, or the last one leaves, in the same place.
+ */
+.empty {
+  position: absolute;
+  inset: var(--space-2) var(--space-6) auto;
+  margin: 0;
+  color: var(--text-muted);
+  pointer-events: none;
 }
 
 .todos {

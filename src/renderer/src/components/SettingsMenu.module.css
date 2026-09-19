@@ -68,6 +68,62 @@
   color: var(--text-muted);
 }
 
+/* A setting that is one switch: its label on the left, the switch on the right. */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+
+.row .label {
+  margin-bottom: 0;
+}
+
+/* 36×20px on a 24px-high target would be tight; the row around it is 28px, like a segment. */
+.switch {
+  position: relative;
+  display: block;
+  width: 36px;
+  height: 20px;
+  margin: var(--space-1) 0;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.switch[data-checked] {
+  background: var(--accent);
+}
+
+/* A Base UI switch is a span, so the focus ring that buttons get globally has to be repeated here. */
+.switch:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-peek);
+}
+
+.switch[data-checked] .thumb {
+  translate: 16px 0;
+}
+
+/* Sliding is movement; under reduced motion the thumb is simply on the other side. */
+@media (prefers-reduced-motion: no-preference) {
+  .thumb {
+    transition: translate var(--duration-fast) var(--ease-out);
+  }
+}
+
 /* A segmented control: three radios in a track, the checked one marked by a pill that slides. */
 .segments {
   display: flex;

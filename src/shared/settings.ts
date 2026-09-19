@@ -6,9 +6,11 @@ export type ThemeMode = (typeof THEME_MODES)[number]
 /** The user's preferences, persisted next to the todos. */
 export interface Settings {
   readonly theme: ThemeMode
+  /** Off unless asked for: whether sound is welcome depends on where the app is used. */
+  readonly sound: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system' }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', sound: false }
 
 export const isThemeMode = (value: unknown): value is ThemeMode =>
   typeof value === 'string' && (THEME_MODES as readonly string[]).includes(value)
@@ -19,6 +21,9 @@ export const isThemeMode = (value: unknown): value is ThemeMode =>
  */
 export function parseSettings(value: unknown): Settings {
   if (typeof value !== 'object' || value === null) return DEFAULT_SETTINGS
-  const { theme } = value as Record<string, unknown>
-  return { theme: isThemeMode(theme) ? theme : DEFAULT_SETTINGS.theme }
+  const { theme, sound } = value as Record<string, unknown>
+  return {
+    theme: isThemeMode(theme) ? theme : DEFAULT_SETTINGS.theme,
+    sound: typeof sound === 'boolean' ? sound : DEFAULT_SETTINGS.sound
+  }
 }

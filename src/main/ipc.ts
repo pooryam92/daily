@@ -33,4 +33,9 @@ export function registerIpcHandlers(store: TodoStore, settings: SettingsStore): 
     await settings.update({ theme })
     return undefined
   })
+  handle('settings:setSound', async (sound) => {
+    if (typeof sound !== 'boolean') throw new TypeError('Sound is on or off')
+    await settings.update({ sound })
+    return undefined
+  })
 }

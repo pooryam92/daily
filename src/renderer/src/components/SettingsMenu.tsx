@@ -2,13 +2,15 @@ import { CSPProvider } from '@base-ui/react/csp-provider'
 import { Popover } from '@base-ui/react/popover'
 import { Radio } from '@base-ui/react/radio'
 import { RadioGroup } from '@base-ui/react/radio-group'
+import { Switch } from '@base-ui/react/switch'
 import { Monitor, Moon, Settings, Sun } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useId } from 'react'
 import { isThemeMode } from '@shared/settings'
 import type { ThemeMode } from '@shared/settings'
-import { useTheme } from '../hooks/useTheme'
+import type { SettingsState } from '../hooks/useSettings'
 import { SEGMENT } from '../lib/motion'
+import { play } from '../lib/sound'
 import styles from './SettingsMenu.module.css'
 
 const THEMES = [
@@ -18,9 +20,9 @@ const THEMES = [
 ] as const satisfies readonly { mode: ThemeMode; label: string; Icon: typeof Sun }[]
 
 /** The app's one home for preferences: a quiet button in the corner of the window. */
-export function SettingsMenu() {
-  const theme = useTheme()
+export function SettingsMenu({ settings, setTheme, setSound }: SettingsState) {
   const themeLabel = useId()
+  const soundLabel = useId()
   const pill = useId()
 
   return (
@@ -39,14 +41,14 @@ export function SettingsMenu() {
               <RadioGroup
                 className={styles.segments}
                 aria-labelledby={themeLabel}
-                value={theme.mode}
+                value={settings?.theme ?? null}
                 onValueChange={(mode) => {
-                  if (isThemeMode(mode)) theme.setMode(mode)
+                  if (isThemeMode(mode)) setTheme(mode)
                 }}
               >
                 {THEMES.map(({ mode, label, Icon }) => (
                   <Radio.Root key={mode} value={mode} className={styles.segment}>
-                    {theme.mode === mode && (
+                    {settings?.theme === mode && (
                       <motion.span className={styles.pill} layoutId={pill} transition={SEGMENT} />
                     )}
                     <Icon size={14} aria-hidden="true" />
@@ -54,6 +56,23 @@ export function SettingsMenu() {
                   </Radio.Root>
                 ))}
               </RadioGroup>
+              <div className={styles.row}>
+                <span id={soundLabel} className={styles.label}>
+                  Sound
+                </span>
+                <Switch.Root
+                  className={styles.switch}
+                  aria-labelledby={soundLabel}
+                  checked={settings?.sound ?? false}
+                  onCheckedChange={(sound) => {
+                    setSound(sound)
+                    // Switching it on answers with the sound it switches on.
+                    if (sound) play('done')
+                  }}
+                >
+                  <Switch.Thumb className={styles.thumb} />
+                </Switch.Root>
+              </div>
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>

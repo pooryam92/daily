@@ -1,13 +1,16 @@
 import { AnimatePresence, motion, useTransform } from 'motion/react'
 import type { MotionValue } from 'motion/react'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { DayKey, ResolvedStatus, Todo } from '@shared/todo'
 import { useSettledTodos } from '../hooks/useSettledTodos'
+import { CLEARED_LABEL, emptyDayLine } from '../lib/copy'
 import { dayIndex, formatDay, formatWeekday, fromDayKey, relativeLabel } from '../lib/dates'
 import { deckTransform, deckZIndex } from '../lib/deck'
-import { QUICK_ADD_MS } from '../lib/motion'
+import { CLEARED, EMPTY_ENTER, QUICK_ADD_MS, ROW_ENTER, ROW_EXIT } from '../lib/motion'
+import { dayProgress } from '../lib/todos'
 import { AddTodoForm } from './AddTodoForm'
 import styles from './DayCard.module.css'
+import { ProgressRing } from './ProgressRing'
 import { TodoItem } from './TodoItem'
 
 /**
@@ -69,6 +72,8 @@ export function DayCard({
   const [side, setSide] = useState<'before' | 'after'>(offset < 0 ? 'before' : 'after')
   if (offset !== 0 && side !== (offset < 0 ? 'before' : 'after')) setSide(offset < 0 ? 'before' : 'after')
 
+  const label = relativeLabel(day, today)
+  const progress = useMemo(() => dayProgress(todos), [todos])
   const ordered = useSettledTodos(todos)
   const order = ordered.map((todo) => todo.id).join()
 
@@ -104,6 +109,11 @@ export function DayCard({
         <div className={styles.tab}>
           <span className={styles.tabWeekday}>{formatWeekday(day)}</span>
           <span className={styles.tabDate}>{fromDayKey(day).getDate()}</span>
+          {progress.total > 0 && (
+            <span className={styles.tabRing}>
+              <ProgressRing progress={progress} size="sm" />
+            </span>
+          )}
         </div>
         <ul className={styles.glance}>
           {ordered.map((todo) => (
@@ -119,7 +129,38 @@ export function DayCard({
       <motion.div className={styles.content} style={{ opacity: content }} inert={!inFront}>
         <header className={styles.header}>
           <div>
-            <span className={styles.relative}>{relativeLabel(day, today)}</span>
+            {/* Where the day stands: which day it is, how far along, and whether anything is left.
+                A day without todos has no ring, because there is nothing to be part-way through. */}
+            <div className={styles.status}>
+              {label !== null && <span className={styles.relative}>{label}</span>}
+              <AnimatePresence initial={false}>
+                {progress.total > 0 && (
+                  <motion.span
+                    key="ring"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, transition: ROW_ENTER }}
+                    exit={{ opacity: 0, transition: ROW_EXIT }}
+                  >
+                    <ProgressRing progress={progress} />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {/* A live region has to be there before its text is, or the text is not announced. */}
+              <span role="status">
+                <AnimatePresence initial={false}>
+                  {progress.cleared && (
+                    <motion.span
+                      className={styles.cleared}
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0, transition: CLEARED.label.on }}
+                      exit={{ opacity: 0, transition: CLEARED.label.off }}
+                    >
+                      {CLEARED_LABEL}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </span>
+            </div>
             <h1 className={styles.title}>{formatDay(day)}</h1>
           </div>
           {inFront && day !== today && (
@@ -129,24 +170,39 @@ export function DayCard({
           )}
         </header>
 
-        {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
-        <motion.ul className={styles.todos} layoutScroll>
-          {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
-              while it fades instead of jumping up afterwards. */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            {ordered.map((todo) => (
-              <TodoItem
-                key={todo.id}
-                todo={todo}
-                order={order}
-                isNew={!initialIds.has(todo.id)}
-                animateEnter={animateEnter}
-                onToggleStatus={onToggleStatus}
-                onRemove={onRemove}
-              />
-            ))}
+        <div className={styles.body}>
+          <AnimatePresence initial={false}>
+            {todos.length === 0 && (
+              <motion.p
+                className={styles.empty}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: EMPTY_ENTER }}
+                exit={{ opacity: 0, transition: ROW_EXIT }}
+              >
+                {emptyDayLine(day, today)}
+              </motion.p>
+            )}
           </AnimatePresence>
-        </motion.ul>
+
+          {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
+          <motion.ul className={styles.todos} layoutScroll>
+            {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
+                while it fades instead of jumping up afterwards. */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {ordered.map((todo) => (
+                <TodoItem
+                  key={todo.id}
+                  todo={todo}
+                  order={order}
+                  isNew={!initialIds.has(todo.id)}
+                  animateEnter={animateEnter}
+                  onToggleStatus={onToggleStatus}
+                  onRemove={onRemove}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.ul>
+        </div>
 
         {inFront && <AddTodoForm onAdd={add} />}
       </motion.div>

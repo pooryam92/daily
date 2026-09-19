@@ -28,6 +28,37 @@ export const CHECK = {
   }
 } as const satisfies Record<string, Record<'on' | 'off', Transition>>
 
+/** The arc of the progress ring following the day's todos. */
+export const RING: Transition = { type: 'spring', duration: 0.5, bounce: 0 }
+
+/**
+ * Clearing the day, the app's one flourish. It does not block anything, so it may take longer than
+ * the 400ms budget: the arc closes (`RING`), the ring dips and then fills, pops and sends out a
+ * halo, the check is drawn, and the header line says so. About 0.9s in all, then the card rests.
+ * Reopening runs the other way round and faster, like the checkbox.
+ */
+export const CLEARED = {
+  /** How long the arc gets to close before the ring turns into the check. */
+  fill: {
+    on: { duration: FAST, ease: EASE_OUT, delay: 0.25 },
+    off: { duration: FAST, ease: EASE_OUT, delay: 0.08 }
+  },
+  draw: {
+    on: { duration: 0.18, ease: EASE_OUT, delay: 0.33 },
+    off: { duration: 0.1, ease: EASE_OUT }
+  },
+  /** "A big action needs a big wind-up": a dip while the arc closes, a pop as the ring fills. */
+  pop: { duration: 0.6, times: [0, 0.4, 0.62, 1], ease: EASE_OUT },
+  halo: { duration: 0.7, ease: EASE_OUT, delay: 0.25 },
+  label: {
+    on: { duration: BASE, ease: EASE_OUT, delay: 0.45 },
+    off: { duration: FAST, ease: EASE_OUT }
+  }
+} as const satisfies Record<string, Transition | Record<'on' | 'off', Transition>>
+
+/** The empty-day line waits for the row that was deleted last to fade out. */
+export const EMPTY_ENTER: Transition = { duration: BASE, ease: EASE_OUT, delay: FAST }
+
 /** A row moving to its new place. A spring keeps its velocity when the target changes mid-flight. */
 export const ROW_LAYOUT: Transition = { type: 'spring', duration: 0.4, bounce: 0 }
 

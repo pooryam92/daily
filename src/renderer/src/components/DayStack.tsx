@@ -5,6 +5,7 @@ import { useDeckDrag } from '../hooks/useDeckDrag'
 import { useDeckSwipe } from '../hooks/useDeckSwipe'
 import { useDeckView } from '../hooks/useDeckView'
 import { useRemoveWithUndo } from '../hooks/useRemoveWithUndo'
+import { useSounds } from '../hooks/useSounds'
 import type { TodoActions } from '../hooks/useTodoStore'
 import { addDays } from '../lib/dates'
 import { DayCard } from './DayCard'
@@ -22,11 +23,14 @@ interface DayStackProps {
   readonly days: DaysMap
   readonly actions: TodoActions
   readonly navigation: DayNavigation
+  /** Whether marking a todo makes a sound. */
+  readonly sound: boolean
 }
 
-export function DayStack({ today, days, actions, navigation }: DayStackProps) {
+export function DayStack({ today, days, actions, navigation, sound }: DayStackProps) {
   const { current, source, goTo, goBy } = navigation
   const removeWithUndo = useRemoveWithUndo(days, actions)
+  const playMark = useSounds(sound)
 
   const stack = useRef<HTMLDivElement>(null)
   const deck = useDeckView(current, source)
@@ -83,6 +87,7 @@ export function DayStack({ today, days, actions, navigation }: DayStackProps) {
               actions.add(day, text)
             }}
             onToggleStatus={(id, status) => {
+              playMark(days[day] ?? [], id, status)
               actions.toggleStatus(day, id, status)
             }}
             onRemove={(id) => {

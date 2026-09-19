@@ -1,0 +1,76 @@
+/*
+ * 16px in the header, 12px on the tab of a card behind. The arc is --done on a --border track:
+ * 4.7 / 7.1 against the surface and 3.3 / 5.4 against the track (light / dark), so the arc alone
+ * carries the information and the track is decoration (WCAG 1.4.11 asks for 3:1).
+ */
+.ring {
+  display: block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.ring[data-size='sm'] {
+  width: 12px;
+  height: 12px;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  /* The halo grows past the ring's box. */
+  overflow: visible;
+}
+
+.track {
+  stroke: var(--border);
+  stroke-width: 2.5;
+}
+
+.arc {
+  stroke: var(--done);
+  stroke-width: 2.5;
+}
+
+/* Covers the ring, stroke included, so a cleared day is one solid shape, like a checked box. */
+.disc {
+  fill: var(--done);
+}
+
+.tick {
+  stroke: var(--surface);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.halo {
+  stroke: var(--done);
+  stroke-width: 1.5;
+}
+
+/* The small one has no room for a finer line. */
+.ring[data-size='sm'] .tick {
+  stroke-width: 2.25;
+}
+
+/* Forced colours keep strokes but not these fills. */
+@media (forced-colors: active) {
+  .track {
+    stroke: GrayText;
+  }
+
+  .arc {
+    stroke: Highlight;
+  }
+
+  .disc {
+    fill: Highlight;
+  }
+
+  .tick {
+    stroke: HighlightText;
+  }
+}
