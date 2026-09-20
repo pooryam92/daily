@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, dayIndex, formatDay, formatWeekday, fromDayKey, relativeLabel, toDayKey } from './dates'
+import {
+  addDays,
+  dayIndex,
+  formatDate,
+  formatDay,
+  formatDistance,
+  formatLongWeekday,
+  formatWeekday,
+  fromDayKey,
+  relativeLabel,
+  toDayKey
+} from './dates'
 
 describe('toDayKey / fromDayKey', () => {
   it('uses the local date, zero-padded', () => {
@@ -43,7 +54,39 @@ describe('addDays', () => {
 
 describe('formatDay', () => {
   it('formats as weekday, day and month', () => {
-    expect(formatDay('2026-09-19', 'en-US')).toBe('Saturday, September 19')
+    expect(formatDay('2026-09-19', '2026-09-20', 'en-US')).toBe('Saturday, September 19')
+  })
+
+  it('says the year only when it is not the year of today', () => {
+    expect(formatDay('2027-01-01', '2026-12-31', 'en-US')).toBe('Friday, January 1, 2027')
+  })
+})
+
+describe('formatDate', () => {
+  it('formats as day and month', () => {
+    expect(formatDate('2026-09-24', '2026-09-20', 'en-US')).toBe('September 24')
+    expect(formatDate('2026-09-24', '2026-09-20', 'en-GB')).toBe('24 September')
+  })
+
+  it('says the year only when it is not the year of today', () => {
+    expect(formatDate('2025-12-30', '2026-01-02', 'en-US')).toBe('December 30, 2025')
+  })
+})
+
+describe('formatLongWeekday', () => {
+  it('formats as the whole weekday', () => {
+    expect(formatLongWeekday('2026-09-24', 'en-US')).toBe('Thursday')
+  })
+})
+
+describe('formatDistance', () => {
+  it('counts the days to or from today', () => {
+    expect(formatDistance('2026-09-24', '2026-09-20', 'en-US')).toBe('in 4 days')
+    expect(formatDistance('2026-09-17', '2026-09-20', 'en-US')).toBe('3 days ago')
+  })
+
+  it('counts across a daylight-saving change', () => {
+    expect(formatDistance('2026-03-30', '2026-03-28', 'en-US')).toBe('in 2 days')
   })
 })
 

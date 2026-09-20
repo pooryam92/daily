@@ -38,9 +38,8 @@
   width: 48px;
   height: 48px;
   border-radius: var(--radius-full);
-  font-size: 32px;
-  line-height: 1;
-  padding-bottom: var(--space-1);
+  display: grid;
+  place-items: center;
   color: var(--text-muted);
   transition:
     color var(--duration-fast) var(--ease-out),
@@ -69,4 +68,46 @@
 
 .nav[data-direction='next'] {
   right: max(-12px, 50% - var(--card-max) / 2 - var(--peek) - 56px);
+}
+
+/*
+ * "Back to today", centred over the deck. Where the window is taller than the card it floats in the
+ * room above it, 12px clear of the card (whose height is min(100%, --card-max-height)). Where there
+ * is no such room it sits on the card's top edge instead, half in the window's padding and half in
+ * the header's, in the middle, where the header has nothing. It is a small object of the card's
+ * material, so it reads as lying on the deck either way.
+ */
+.today {
+  --height: 28px;
+
+  position: absolute;
+  top: max(50% - min(50%, var(--card-max-height) / 2) - var(--height) - 12px, var(--height) / -2);
+  left: 50%;
+  z-index: 5;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-peek);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  color: var(--accent);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
+}
+
+.today:hover {
+  background: color-mix(in srgb, var(--surface), var(--text) 8%);
+}
+
+.today:focus-visible {
+  box-shadow: var(--focus-ring-on-bg);
 }

@@ -40,8 +40,12 @@ export function useDayNavigation(today: DayKey): DayNavigation {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented) return
+      if (event.target instanceof Element && event.target.closest('[data-todo-handle]') !== null) return
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-      // Leave the arrow keys alone while there is text to move the cursor through.
+      // Leave the arrow keys alone while there is text to move the cursor through: a todo being
+      // edited always has some, the add-todo input only once something has been typed into it.
+      if (event.target instanceof HTMLTextAreaElement) return
       if (event.target instanceof HTMLInputElement && event.target.value !== '') return
       goBy(event.key === 'ArrowLeft' ? -1 : 1, event.repeat ? 'held-key' : 'key')
     }

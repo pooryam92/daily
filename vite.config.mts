@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
@@ -8,6 +8,9 @@ import type { Plugin } from 'vite'
 
 const sha256 = (content: string): string =>
   `'sha256-${createHash('sha256').update(content).digest('base64')}'`
+
+// dnd-kit injects runtime styles; authorize its injector without allowing arbitrary inline styles.
+const styleNonce = randomBytes(16).toString('base64')
 
 /**
  * Two libraries add a `<style>` element at runtime, which `style-src 'self'` blocks. Instead of
@@ -32,7 +35,7 @@ const contentSecurityPolicy: Plugin = {
       tag: 'meta',
       attrs: {
         'http-equiv': 'Content-Security-Policy',
-        content: `default-src 'self'; script-src 'self'; style-src 'self' ${inlineStyleHashes()}`
+        content: `default-src 'self'; script-src 'self'; style-src 'self' ${inlineStyleHashes()} 'nonce-${styleNonce}'`
       },
       injectTo: 'head-prepend'
     }
@@ -43,6 +46,7 @@ export default defineConfig({
   root: 'src/renderer',
   // Relative asset paths so the built page works over file://
   base: './',
+  define: { __STYLE_NONCE__: JSON.stringify(styleNonce) },
   plugins: [react(), contentSecurityPolicy],
   resolve: {
     alias: { '@shared': path.resolve(import.meta.dirname, 'src/shared') }

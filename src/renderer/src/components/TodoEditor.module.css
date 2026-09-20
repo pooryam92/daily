@@ -1,0 +1,23 @@
+/*
+ * The same box as the text it replaces (TodoItem.module.css, .text), so nothing moves when editing
+ * starts or ends. `field-sizing` lets the field grow with its text, line by line, like the row does.
+ */
+.editor {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  /* Full ink, whatever the todo's state: while it is being written, it is what matters. */
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  /* The row carries the focus indicator; the transparent outline shows in forced colours. */
+  outline: 2px solid transparent;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  field-sizing: content;
+  user-select: text;
+  cursor: text;
+}

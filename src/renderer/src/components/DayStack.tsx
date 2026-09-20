@@ -1,3 +1,5 @@
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
 import type { DayKey, DaysMap } from '@shared/todo'
 import type { DayNavigation } from '../hooks/useDayNavigation'
@@ -7,7 +9,8 @@ import { useDeckView } from '../hooks/useDeckView'
 import { useRemoveWithUndo } from '../hooks/useRemoveWithUndo'
 import { useSounds } from '../hooks/useSounds'
 import type { TodoActions } from '../hooks/useTodoStore'
-import { addDays } from '../lib/dates'
+import { addDays, dayIndex } from '../lib/dates'
+import { ROW_ENTER, ROW_EXIT } from '../lib/motion'
 import { DayCard } from './DayCard'
 import type { StackOffset } from './DayCard'
 import styles from './DayStack.module.css'
@@ -57,6 +60,10 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
     }
   }, [view])
 
+  // Which arrow leads to today, once the deck has left it.
+  const away = dayIndex(today) - dayIndex(current)
+  const towardsToday = away === 0 ? null : away < 0 ? 'previous' : 'next'
+
   return (
     <div ref={stack} className={styles.stack} {...drag}>
       <button
@@ -68,7 +75,7 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
           goBy(-1)
         }}
       >
-        ‹
+        <ChevronLeft size={28} aria-hidden="true" />
       </button>
 
       {OFFSETS.map((offset) => {
@@ -93,11 +100,14 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
             onRemove={(id) => {
               removeWithUndo(day, id)
             }}
+            onEdit={(id, text) => {
+              actions.edit(day, id, text)
+            }}
+            onReorder={(id, targetId) => {
+              actions.reorder(day, id, targetId)
+            }}
             onSelect={() => {
               goTo(day)
-            }}
-            onBackToToday={() => {
-              goTo(today)
             }}
           />
         )
@@ -112,8 +122,29 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
           goBy(1)
         }}
       >
-        ›
+        <ChevronRight size={28} aria-hidden="true" />
       </button>
+
+      {/* The way back to today, over the middle of the deck: it belongs to the deck and not to a day,
+          and it is one flip from any distance. Its arrow says which way that flip goes. */}
+      <AnimatePresence initial={false}>
+        {towardsToday !== null && (
+          <motion.button
+            type="button"
+            className={styles.today}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0, transition: ROW_ENTER }}
+            exit={{ opacity: 0, transition: ROW_EXIT }}
+            onClick={() => {
+              goTo(today)
+            }}
+          >
+            {towardsToday === 'previous' && <ArrowLeft size={14} aria-hidden="true" />}
+            Back to today
+            {towardsToday === 'next' && <ArrowRight size={14} aria-hidden="true" />}
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

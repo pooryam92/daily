@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  padding: var(--space-1);
   border-radius: var(--radius-md);
 }
 
@@ -15,20 +15,102 @@
   background: var(--hover);
 }
 
-.todo::before {
-  content: '•';
-  margin-right: var(--space-2);
-  color: var(--text-faint);
+/* While its text is edited the row is the field, and it says so like the add-todo input does. */
+.todo[data-editing] {
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 0 1px var(--accent);
 }
 
+/*
+ * A row that is being dragged is lifted off the card: it gets the card's surface and a shadow, since
+ * it now lies over other rows. The row itself travels; what stays behind in the list is its gap.
+ */
+.todo[data-dragging] {
+  background: var(--surface);
+  box-shadow: var(--shadow-drag);
+}
+
+/*
+ * The bullet is also where the row is picked up to reorder it: a drawn dot, so it looks the same
+ * whatever font is installed, that turns into a grip once there is a pointer to use it with.
+ * 24 by 28px, the size of a target (WCAG 2.5.8).
+ */
+.handle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  cursor: grab;
+  /* A finger that lands here drags the row, not the list. */
+  touch-action: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+/* No press feedback: what is pressed here is about to move as a whole. */
+.handle:active {
+  scale: none;
+}
+
+.handle:hover {
+  color: var(--text);
+}
+
+.bullet,
+.grip {
+  grid-area: 1 / 1;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.bullet {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+  opacity: 0;
+}
+
+/* The grip waits for the row to be hovered, but only where hovering exists: on touch it stays. */
+@media (hover: hover) and (pointer: fine) {
+  .bullet {
+    opacity: 1;
+  }
+
+  .grip {
+    opacity: 0;
+  }
+
+  :is(.todo:hover, .todo[data-dragging]) .bullet,
+  .handle:focus-visible .bullet {
+    opacity: 0;
+  }
+
+  :is(.todo:hover, .todo[data-dragging]) .grip,
+  .handle:focus-visible .grip {
+    opacity: 1;
+  }
+}
+
+/* The text is a button (click it to edit it) that looks and selects like the text it is. */
 .text {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  text-align: start;
   overflow-wrap: anywhere;
   text-wrap: pretty;
   user-select: text;
   cursor: text;
   transition: color var(--duration-base) var(--ease-out);
+}
+
+/* Pressing text does not squeeze it. */
+.text:active {
+  scale: none;
 }
 
 /*
@@ -114,6 +196,7 @@
   background: var(--hover-strong);
 }
 
+/* Both are the same icon; the pressed one has the heavier stroke (TodoItem.tsx). */
 .idle,
 .pressed {
   grid-area: 1 / 1;
@@ -121,7 +204,6 @@
 }
 
 .pressed {
-  font-weight: var(--weight-bold);
   color: var(--dropped);
   opacity: 0;
 }

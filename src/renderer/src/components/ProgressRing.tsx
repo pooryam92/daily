@@ -7,8 +7,8 @@ import styles from './ProgressRing.module.css'
 
 interface ProgressRingProps {
   readonly progress: DayProgress
-  /** `sm` is the one on the tab of a card behind. */
-  readonly size?: 'md' | 'sm'
+  /** `lg` is the one in the header of the card in front, `sm` the one on the tab of a card behind. */
+  readonly size?: 'lg' | 'md' | 'sm'
 }
 
 // Starting from `null` means from wherever the scale is, so the pop can be interrupted like the rest.

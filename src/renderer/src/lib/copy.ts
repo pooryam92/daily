@@ -1,11 +1,25 @@
 import type { DayKey } from '@shared/todo'
-import { relativeLabel } from './dates'
+import { formatDate, formatDay, formatDistance, formatLongWeekday, relativeLabel } from './dates'
 
 /*
  * The words on a card. They say where the day stands and nothing about how it went: an empty day or
  * an unfinished one gets no comment. The wording stays the same from day to day and only the part
  * that differs changes (docs/DESIGN.md §10).
  */
+
+/** The card's title is what the day is called out loud: "Today", "Yesterday", "Tomorrow", otherwise its weekday. */
+export function dayTitle(day: DayKey, today: DayKey, locale?: string): string {
+  return relativeLabel(day, today) ?? formatLongWeekday(day, locale)
+}
+
+/**
+ * The line under the title says what the title leaves out. Under a name like "Today" that is the
+ * whole date; under a weekday it is the rest of the date and how far from today the day is.
+ */
+export function dayDetail(day: DayKey, today: DayKey, locale?: string): string {
+  if (relativeLabel(day, today) !== null) return formatDay(day, today, locale)
+  return `${formatDate(day, today, locale)} · ${formatDistance(day, today, locale)}`
+}
 
 /** Shown in place of the list on a day without todos. It has no tense, so it reads the same for any day. */
 export function emptyDayLine(day: DayKey, today: DayKey): string {

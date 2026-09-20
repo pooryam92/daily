@@ -72,6 +72,37 @@ describe('daysReducer', () => {
     expect(daysReducer(days, { type: 'restored', day: DAY, todo: milk, index: 1 })).toBe(days)
   })
 
+  it('moves a todo to the place of the todo it was dropped on', () => {
+    const plants: Todo = { id: 'plants', text: 'Water plants', status: 'open' }
+    const three = { [DAY]: [milk, taxes, plants] }
+    expect(daysReducer(three, { type: 'reordered', day: DAY, id: 'milk', targetId: 'plants' })[DAY]).toEqual([
+      taxes,
+      plants,
+      milk
+    ])
+    expect(daysReducer(three, { type: 'reordered', day: DAY, id: 'plants', targetId: 'milk' })[DAY]).toEqual([
+      plants,
+      milk,
+      taxes
+    ])
+  })
+
+  it('ignores a reorder whose ends are not both there', () => {
+    expect(daysReducer(days, { type: 'reordered', day: DAY, id: 'milk', targetId: 'gone' })).toBe(days)
+    expect(daysReducer(days, { type: 'reordered', day: DAY, id: 'milk', targetId: 'milk' })).toBe(days)
+  })
+
+  it('edits the text of a todo and leaves its status alone', () => {
+    const done = daysReducer(days, { type: 'statusToggled', day: DAY, id: 'milk', status: 'done' })
+    const next = daysReducer(done, { type: 'edited', day: DAY, id: 'milk', text: 'Buy oat milk' })
+    expect(next[DAY]).toEqual([{ ...milk, text: 'Buy oat milk', status: 'done' }, taxes])
+  })
+
+  it('ignores an edit that changes nothing', () => {
+    expect(daysReducer(days, { type: 'edited', day: DAY, id: 'milk', text: milk.text })).toBe(days)
+    expect(daysReducer(days, { type: 'edited', day: DAY, id: 'gone', text: 'Whatever' })).toBe(days)
+  })
+
   it('does not mutate its input', () => {
     const snapshot = structuredClone(days)
     daysReducer(days, { type: 'removed', day: DAY, id: 'milk' })

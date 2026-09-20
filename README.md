@@ -2,6 +2,10 @@
 
 A small Electron todo app with one card per day. Every day starts empty; todos are open, done (✓) or dropped (✗).
 
+Click a todo's text to edit it. Enter or clicking away saves; Escape cancels.
+Drag its bullet/grip to reorder within the open or resolved part of the day.
+With the grip focused, Space/Enter picks up and drops, arrow keys move, and Escape cancels.
+
 ## Scripts
 
 | Command          | What it does                                                      |

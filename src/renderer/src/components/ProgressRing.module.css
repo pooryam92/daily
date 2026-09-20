@@ -1,5 +1,5 @@
 /*
- * 16px in the header, 12px on the tab of a card behind. The arc is --done on a --border track:
+ * 20px in the header, 12px on the tab of a card behind. The arc is --done on a --border track:
  * 4.7 / 7.1 against the surface and 3.3 / 5.4 against the track (light / dark), so the arc alone
  * carries the information and the track is decoration (WCAG 1.4.11 asks for 3:1).
  */
@@ -8,6 +8,12 @@
   flex: none;
   width: 16px;
   height: 16px;
+}
+
+/* Beside the date, where it stands on its own. */
+.ring[data-size='lg'] {
+  width: 20px;
+  height: 20px;
 }
 
 .ring[data-size='sm'] {

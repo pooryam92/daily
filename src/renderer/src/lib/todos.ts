@@ -6,6 +6,9 @@ export type TodoAction =
   | { type: 'removed'; day: DayKey; id: string }
   /** Undoes a `removed`: puts the todo back where it was. */
   | { type: 'restored'; day: DayKey; todo: Todo; index: number }
+  /** Moves the todo to the place `targetId` has now, like dragging it there. */
+  | { type: 'reordered'; day: DayKey; id: string; targetId: string }
+  | { type: 'edited'; day: DayKey; id: string; text: string }
 
 export function createTodo(text: string): Todo {
   return { id: crypto.randomUUID(), text, status: 'open' }
@@ -44,18 +47,35 @@ export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
         todos.filter((todo) => todo.id !== action.id)
       )
 
-    case 'restored':
+    case 'restored': {
       // Restoring twice (two clicks on the same undo) must not duplicate the todo.
       if (todos.some((todo) => todo.id === action.todo.id)) return days
       return withDay(days, action.day, todos.toSpliced(action.index, 0, action.todo))
+    }
+
+    case 'reordered': {
+      const from = todos.findIndex((todo) => todo.id === action.id)
+      const to = todos.findIndex((todo) => todo.id === action.targetId)
+      const moved = todos[from]
+      // Both ends have to still be there: a drag can end on a todo another window has deleted.
+      if (moved === undefined || to === -1 || from === to) return days
+      return withDay(days, action.day, todos.toSpliced(from, 1).toSpliced(to, 0, moved))
+    }
+
+    case 'edited': {
+      const index = todos.findIndex((todo) => todo.id === action.id)
+      const todo = todos[index]
+      if (todo === undefined || todo.text === action.text) return days
+      return withDay(days, action.day, todos.with(index, { ...todo, text: action.text }))
+    }
   }
 }
 
 /**
  * The order a day is shown in: settled todos below the others, each group in the order the todos
- * were added. `settled` is the resolved ids as they were a moment ago (see `useSettledTodos`), so a
+ * are stored. `settled` is the resolved ids as they were a moment ago (see `useSettledTodos`), so a
  * todo that was only just marked, or reopened, stays under the pointer until the delay has passed.
- * The stored order never changes.
+ * Nothing but a drag (`reordered`) changes the stored order.
  */
 export function displayOrder(todos: readonly Todo[], settled: ReadonlySet<string>): readonly Todo[] {
   return [...todos.filter((todo) => !settled.has(todo.id)), ...todos.filter((todo) => settled.has(todo.id))]

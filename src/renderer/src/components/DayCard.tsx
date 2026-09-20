@@ -1,10 +1,15 @@
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers'
+import { StyleInjector } from '@dnd-kit/dom'
+import { RestrictToElement } from '@dnd-kit/dom/modifiers'
+import { DragDropProvider } from '@dnd-kit/react'
+import { isSortable } from '@dnd-kit/react/sortable'
 import { AnimatePresence, motion, useTransform } from 'motion/react'
 import type { MotionValue } from 'motion/react'
 import { useMemo, useRef, useState } from 'react'
 import type { DayKey, ResolvedStatus, Todo } from '@shared/todo'
 import { useSettledTodos } from '../hooks/useSettledTodos'
-import { CLEARED_LABEL, emptyDayLine } from '../lib/copy'
-import { dayIndex, formatDay, formatWeekday, fromDayKey, relativeLabel } from '../lib/dates'
+import { CLEARED_LABEL, dayDetail, dayTitle, emptyDayLine } from '../lib/copy'
+import { dayIndex, formatWeekday, fromDayKey } from '../lib/dates'
 import { deckTransform, deckZIndex } from '../lib/deck'
 import { CLEARED, EMPTY_ENTER, QUICK_ADD_MS, ROW_ENTER, ROW_EXIT } from '../lib/motion'
 import { dayProgress } from '../lib/todos'
@@ -29,10 +34,18 @@ interface DayCardProps {
   readonly onAdd: (text: string) => void
   readonly onToggleStatus: (id: string, status: ResolvedStatus) => void
   readonly onRemove: (id: string) => void
+  readonly onEdit: (id: string, text: string) => void
+  /** Move a todo to the place the todo `targetId` has now. */
+  readonly onReorder: (id: string, targetId: string) => void
   /** Bring this card to the front. */
   readonly onSelect: () => void
-  readonly onBackToToday: () => void
 }
+
+/*
+ * The drag library adds its styles as a <style> element, which the built page's CSP only lets
+ * through with the nonce of that build (vite.config.mts).
+ */
+const DRAG_PLUGINS = [StyleInjector.configure({ nonce: __STYLE_NONCE__ })]
 
 /** A todo's bar in the glance is short, medium or long, like its text. */
 const glanceLength = (text: string): 'short' | 'medium' | 'long' =>
@@ -47,8 +60,9 @@ export function DayCard({
   onAdd,
   onToggleStatus,
   onRemove,
-  onSelect,
-  onBackToToday
+  onEdit,
+  onReorder,
+  onSelect
 }: DayCardProps) {
   const inFront = offset === 0
 
@@ -72,10 +86,16 @@ export function DayCard({
   const [side, setSide] = useState<'before' | 'after'>(offset < 0 ? 'before' : 'after')
   if (offset !== 0 && side !== (offset < 0 ? 'before' : 'after')) setSide(offset < 0 ? 'before' : 'after')
 
-  const label = relativeLabel(day, today)
   const progress = useMemo(() => dayProgress(todos), [todos])
-  const ordered = useSettledTodos(todos)
+  // While a row is being dragged, nothing else may move the list.
+  const [dragging, setDragging] = useState(false)
+  const { ordered, settled } = useSettledTodos(todos, dragging)
   const order = ordered.map((todo) => todo.id).join()
+  const [list, setList] = useState<HTMLUListElement | null>(null)
+  const modifiers = useMemo(
+    () => [RestrictToVerticalAxis, RestrictToElement.configure({ element: () => list })],
+    [list]
+  )
 
   // Todos that were there when the card mounted are not new: they neither animate in nor scroll.
   const [initialIds] = useState(() => new Set(todos.map((todo) => todo.id)))
@@ -128,46 +148,42 @@ export function DayCard({
       </motion.div>
       <motion.div className={styles.content} style={{ opacity: content }} inert={!inFront}>
         <header className={styles.header}>
+          {/* On the left, which day it is; on the right, where it stands. */}
           <div>
-            {/* Where the day stands: which day it is, how far along, and whether anything is left.
-                A day without todos has no ring, because there is nothing to be part-way through. */}
-            <div className={styles.status}>
-              {label !== null && <span className={styles.relative}>{label}</span>}
+            <h1 className={styles.title}>{dayTitle(day, today)}</h1>
+            <p className={styles.detail}>{dayDetail(day, today)}</p>
+          </div>
+          {/* How far along the day is and whether anything is left, over the column of checkboxes
+              it sums up. A day without todos has no ring: there is nothing to be part-way through. */}
+          <div className={styles.status}>
+            {/* A live region has to be there before its text is, or the text is not announced. */}
+            <span role="status">
               <AnimatePresence initial={false}>
-                {progress.total > 0 && (
+                {progress.cleared && (
                   <motion.span
-                    key="ring"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: ROW_ENTER }}
-                    exit={{ opacity: 0, transition: ROW_EXIT }}
+                    className={styles.cleared}
+                    initial={{ opacity: 0, x: 4 }}
+                    animate={{ opacity: 1, x: 0, transition: CLEARED.label.on }}
+                    exit={{ opacity: 0, transition: CLEARED.label.off }}
                   >
-                    <ProgressRing progress={progress} />
+                    {CLEARED_LABEL}
                   </motion.span>
                 )}
               </AnimatePresence>
-              {/* A live region has to be there before its text is, or the text is not announced. */}
-              <span role="status">
-                <AnimatePresence initial={false}>
-                  {progress.cleared && (
-                    <motion.span
-                      className={styles.cleared}
-                      initial={{ opacity: 0, x: -4 }}
-                      animate={{ opacity: 1, x: 0, transition: CLEARED.label.on }}
-                      exit={{ opacity: 0, transition: CLEARED.label.off }}
-                    >
-                      {CLEARED_LABEL}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </span>
-            </div>
-            <h1 className={styles.title}>{formatDay(day)}</h1>
+            </span>
+            <AnimatePresence initial={false}>
+              {progress.total > 0 && (
+                <motion.span
+                  key="ring"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, transition: ROW_ENTER }}
+                  exit={{ opacity: 0, transition: ROW_EXIT }}
+                >
+                  <ProgressRing progress={progress} size="lg" />
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
-          {inFront && day !== today && (
-            <button type="button" className={styles.backToToday} onClick={onBackToToday}>
-              Back to today
-            </button>
-          )}
         </header>
 
         <div className={styles.body}>
@@ -184,24 +200,48 @@ export function DayCard({
             )}
           </AnimatePresence>
 
-          {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
-          <motion.ul className={styles.todos} layoutScroll>
-            {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
-                while it fades instead of jumping up afterwards. */}
-            <AnimatePresence mode="popLayout" initial={false}>
-              {ordered.map((todo) => (
-                <TodoItem
-                  key={todo.id}
-                  todo={todo}
-                  order={order}
-                  isNew={!initialIds.has(todo.id)}
-                  animateEnter={animateEnter}
-                  onToggleStatus={onToggleStatus}
-                  onRemove={onRemove}
-                />
-              ))}
-            </AnimatePresence>
-          </motion.ul>
+          {/* A dragged row moves up and down only, and stays on the list: there is nowhere else to
+              drop it. While it is held the library moves the rows, so there is nothing to commit
+              until it is let go: then the row has an index again, and the todo that was there
+              says where in the stored order that is. */}
+          <DragDropProvider
+            plugins={(defaults) => [...defaults, ...DRAG_PLUGINS]}
+            modifiers={modifiers}
+            onDragStart={() => {
+              setDragging(true)
+            }}
+            onDragEnd={({ operation: { source }, canceled }) => {
+              setDragging(false)
+              if (canceled || !isSortable(source)) return
+              const target = ordered[source.index]
+              if (target !== undefined && source.index !== source.initialIndex) {
+                onReorder(String(source.id), target.id)
+              }
+            }}
+          >
+            {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
+            <motion.ul ref={setList} className={styles.todos} layoutScroll>
+              {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
+                  while it fades instead of jumping up afterwards. */}
+              <AnimatePresence mode="popLayout" initial={false}>
+                {ordered.map((todo, index) => (
+                  <TodoItem
+                    key={todo.id}
+                    todo={todo}
+                    index={index}
+                    group={settled.has(todo.id) ? 'settled' : 'open'}
+                    sorting={dragging}
+                    order={order}
+                    isNew={!initialIds.has(todo.id)}
+                    animateEnter={animateEnter}
+                    onToggleStatus={onToggleStatus}
+                    onRemove={onRemove}
+                    onEdit={onEdit}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.ul>
+          </DragDropProvider>
         </div>
 
         {inFront && <AddTodoForm onAdd={add} />}

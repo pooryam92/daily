@@ -137,8 +137,8 @@ distinguish it from done by the missing strike-through alone.
 
 ### Accent rules
 
-- "Today" is the temporal anchor of the whole app. Only the **Today** label gets `--accent`;
-  "Yesterday" and "Tomorrow" use `--text-muted`. If three labels are blue, none of them is the
+- "Today" is the temporal anchor of the whole app. Only the **Today** title gets `--accent`;
+  "Yesterday", "Tomorrow" and the weekdays use `--text`. If three labels are blue, none of them is the
   landmark (isolation effect).
 - Blue was chosen because it is the one hue that collides with neither status colour and stays
   distinct under red-green colour blindness — not because blue "means" anything **[convention]**.
@@ -167,12 +167,12 @@ app must never load fonts from a CDN).
 
 Four sizes. Fewer sizes means each size carries meaning.
 
-| Token       | Size / line-height | Weight  | Tracking            | Used for                                  |
-| ----------- | ------------------ | ------- | ------------------- | ----------------------------------------- |
-| `--text-xs` | 12px / 1.4         | 600     | `0.06em`, uppercase | Relative-day label (TODAY)                |
-| `--text-sm` | 13px / 1.4         | 400–500 | 0                   | `delete`, error banner, secondary buttons |
-| `--text-md` | 16px / 1.5         | 400     | 0                   | Todo text, the add-todo input             |
-| `--text-xl` | 24px / 1.2         | 650     | `-0.01em`           | Day title ("Saturday 19 September")       |
+| Token       | Size / line-height | Weight  | Tracking            | Used for                                                  |
+| ----------- | ------------------ | ------- | ------------------- | --------------------------------------------------------- |
+| `--text-xs` | 12px / 1.4         | 600     | `0.06em`, uppercase | Tab weekday (SUN), "Cleared"                              |
+| `--text-sm` | 13px / 1.4         | 400–500 | 0                   | The date under the title, error banner, secondary buttons |
+| `--text-md` | 16px / 1.5         | 400     | 0                   | Todo text, the add-todo input                             |
+| `--text-xl` | 24px / 1.2         | 650     | `-0.01em`           | Day title ("Today", "Thursday")                           |
 
 - **16px body, up from 15px.** Reading is fluent once x-height subtends about 0.2° of visual angle
   (Legge & Bigelow 2011) **[strong]**. At a 60 cm desktop viewing distance, Inter at 15px lands at
@@ -459,8 +459,9 @@ Each would undercut the fresh-start premise of the app:
   sits where the first todo will go; the input below it is the way forward (NN/g on empty states)
   **[verified]**. A cleared day adds one word, "Cleared". An unfinished day, past or present, gets
   no words at all: no guilt copy (fresh start effect) **[strong]**.
-- **Sound is off until switched on** (Settings, decision D1). The more often an action happens, the
-  quieter its sound has to be (Material) **[verified]**. Three sounds: a soft tick for a check,
+- **Sound is off until switched on** (Settings; decision D1 in `ARCHIVE.md`). The more often an
+  action happens, the quieter its sound has to be (Material) **[verified]**. Three sounds: a soft
+  tick for a check,
   climbing a major pentatonic scale from E5 over consecutive checks within 4s and staying at E6
   (after Clear's rising scale **[verified]**); a lower, softer note that slides down for ✗, which
   is a release and never an error tone; a C major arpeggio that lingers for the cleared day, played

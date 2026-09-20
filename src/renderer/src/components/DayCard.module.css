@@ -180,22 +180,23 @@
 
 .header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--space-3);
   padding: var(--space-5) var(--space-6) var(--space-3);
 }
 
-/* One line above the date: the day's label, the progress ring and, once nothing is left, "Cleared". */
+/*
+ * The right end of the header, at the edge the rows' controls end on: the progress ring and, once
+ * nothing is left, "Cleared" in front of it.
+ */
 .status {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  /* Holds the line open on days that have neither a label nor todos. */
-  min-height: calc(var(--text-xs) * var(--leading-ui));
+  margin-left: auto;
 }
 
-/* Only "Today" is accent-coloured: if every label is blue, none of them is the landmark. */
-.relative,
+/* The ring has just turned into a check in this colour, and the word belongs to it. */
 .cleared {
   display: block;
   font-size: var(--text-xs);
@@ -203,44 +204,31 @@
   line-height: var(--leading-ui);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.card[data-today='true'] .relative {
-  color: var(--accent);
-}
-
-/* The ring has just turned into a check in this colour, and the word belongs to it. */
-.cleared {
   color: var(--done);
 }
 
+/* What the day is called: "Today", "Yesterday", "Tomorrow", otherwise its weekday. */
 .title {
   margin: 0;
   font-size: var(--text-xl);
   font-weight: var(--weight-title);
   line-height: var(--leading-tight);
   letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
   text-wrap: balance;
 }
 
-.backToToday {
-  margin-left: auto;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-full);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  line-height: var(--leading-ui);
-  white-space: nowrap;
+/* Only "Today" is accent-coloured: if every name is blue, none of them is the landmark. */
+.card[data-today='true'] .title {
   color: var(--accent);
-  transition:
-    background-color var(--duration-fast) var(--ease-out),
-    scale var(--duration-fast) var(--ease-out);
 }
 
-.backToToday:hover {
-  background: var(--hover-strong);
+/* The exact date, said quietly under the name. */
+.detail {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
 }
 
 /* The list, and over it the line that stands in for it on a day without todos. */

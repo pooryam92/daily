@@ -40,6 +40,7 @@
     0 4px 8px var(--shadow-layer), 0 8px 16px var(--shadow-layer), 0 16px 32px var(--shadow-layer),
     0 32px 64px var(--shadow-layer);
   --shadow: var(--shadow-peek), var(--shadow-lift);
+  --shadow-drag: var(--shadow-peek), 0 4px 8px var(--shadow-layer);
 
   /* type */
   --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;

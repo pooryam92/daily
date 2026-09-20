@@ -11,6 +11,9 @@ export interface TodoActions {
   readonly remove: (day: DayKey, id: string) => void
   /** Puts a removed todo back at `index` of its day. */
   readonly restore: (day: DayKey, todo: Todo, index: number) => void
+  /** Moves a todo to the place the todo it was dropped on has now. */
+  readonly reorder: (day: DayKey, id: string, targetId: string) => void
+  readonly edit: (day: DayKey, id: string, text: string) => void
 }
 
 type State =
@@ -91,6 +94,12 @@ export function useTodoStore(): TodoStore {
       },
       restore: (day, todo, index) => {
         dispatch({ type: 'restored', day, todo, index })
+      },
+      reorder: (day, id, targetId) => {
+        dispatch({ type: 'reordered', day, id, targetId })
+      },
+      edit: (day, id, text) => {
+        dispatch({ type: 'edited', day, id, text })
       }
     }),
     []
