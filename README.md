@@ -18,36 +18,47 @@ With the grip focused, Space/Enter picks up and drops, arrow keys move, and Esca
 | `npm run lint`   | ESLint (type-aware)                                               |
 | `npm run format` | Prettier                                                          |
 
-Changes to `src/main` or `src/preload` need a restart of `npm run dev`; the renderer hot-reloads.
+Changes to `src/electron/main` or `src/electron/preload` need a restart of `npm run dev`; the UI hot-reloads.
 
 ## Structure
 
+The layers point inwards: `domain` knows nothing about anything else, `ui` knows the domain and the
+gateway interface, and only `electron/` knows it is Electron. A web build would add `src/web/` next
+to `src/electron/` with its own entry and gateway, and reuse `domain/`, `application/` and `ui/`
+unchanged.
+
 ```
 src/
-  shared/      Types and validation used by every process
-    todo.ts            domain types: Todo, DayKey, StoreData
-    ipc.ts             the IPC contract between renderer and main
+  domain/      The app itself: types, rules and validation. No React, no Node, no Electron.
+    todo.ts            Todo, TodoStatus, DayKey, DaysMap
+    todo-rules.ts      createTodo, the days reducer, display order, progress
+    dates.ts           day-key maths and formatting
+    store.ts           StoreData: the document that is loaded and saved
     store-schema.ts    runtime validation of persisted / received data
-  main/        Electron main process (Node)
-    index.ts           app lifecycle
-    window.ts          the window and its security settings
-    ipc.ts             typed IPC handlers
-    todo-store.ts      the JSON file the todos live in
-  preload/     Bridge that exposes `window.api` to the renderer
-  renderer/    The React UI (browser)
-    src/lib/           pure logic: dates, todo reducer — unit tested
-    src/hooks/         state: today, day navigation, the todo store, settings, sounds
-    src/components/    DayStack > DayCard > TodoItem / AddTodoForm, each with its CSS module
-    src/styles/        design tokens and global styles
+    settings.ts        Settings, ThemeMode
+    settings-schema.ts runtime validation of the settings file
+  application/
+    ports.ts           DailyGateway: everything the UI needs from its platform
+  ui/          The React app. Platform-agnostic: it only ever talks to the gateway.
+    gateway.tsx        the context the gateway is handed in through
+    lib/               browser-side helpers: deck geometry, sound synthesis, wording
+    hooks/             state: today, day navigation, the todo store, settings, sounds
+    components/        DayStack > DayCard > TodoItem / AddTodoForm, each with its CSS module
+    styles/            design tokens and global styles
+  electron/    This platform: the gateway implemented over IPC.
+    ipc-contract.ts    the channels between renderer and main
+    main/              app lifecycle, the window, IPC handlers, the JSON files
+    preload/           exposes the gateway to the renderer as `window.api`
+    renderer/          index.html and the entry that mounts `ui/` with that gateway
 ```
 
 Rules of thumb:
 
-- Logic that doesn't need React goes in `lib/` as pure functions, with tests.
+- Logic that doesn't need React or a platform goes in `domain/` as pure functions, with tests.
 - Hooks own state and side effects; components only render and call actions.
-- The renderer never touches Node or the file system. It talks to the main process through the
-  typed contract in `shared/ipc.ts`, and the main process validates everything it receives.
-- The preload script is sandboxed, so it may only import _types_ from `shared/`.
+- The UI never touches Node, the file system or `window.api`. It calls the gateway it was given,
+  and the main process validates everything it receives.
+- The preload script is sandboxed, so every import but `electron` must be _type-only_.
 
 ## Data
 

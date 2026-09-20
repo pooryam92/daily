@@ -20,12 +20,61 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true, varsIgnorePattern: '^_' }]
     }
   },
+  // The layers point inwards (README, "Structure"). `@/` and relative paths are both covered.
   {
-    files: ['src/main/**', 'src/preload/**'],
+    files: ['src/domain/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { regex: '(^@/|/)(application|ui|electron)(/|$)', message: 'domain/ imports nothing but itself.' }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/application/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [{ regex: '(^@/|/)(ui|electron)(/|$)', message: 'application/ may only import domain/.' }]
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/ui/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '(^@/|/)electron(/|$)|^electron$',
+              message: 'ui/ is platform-agnostic: it may only import domain/ and application/.'
+            }
+          ]
+        }
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'window',
+          property: 'api',
+          message: 'ui/ reaches its platform through useGateway(), never window.api.'
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/electron/main/**', 'src/electron/preload/**'],
     languageOptions: { globals: globals.node }
   },
   {
-    files: ['src/renderer/**'],
+    files: ['src/ui/**', 'src/electron/renderer/**'],
     extends: [reactHooks.configs.flat.recommended],
     languageOptions: { globals: globals.browser }
   }

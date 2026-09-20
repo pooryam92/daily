@@ -43,16 +43,16 @@ const contentSecurityPolicy: Plugin = {
 }
 
 export default defineConfig({
-  root: 'src/renderer',
+  root: 'src/electron/renderer',
   // Relative asset paths so the built page works over file://
   base: './',
   define: { __STYLE_NONCE__: JSON.stringify(styleNonce) },
   plugins: [react(), contentSecurityPolicy],
   resolve: {
-    alias: { '@shared': path.resolve(import.meta.dirname, 'src/shared') }
+    alias: { '@': path.resolve(import.meta.dirname, 'src') }
   },
   build: {
-    outDir: path.resolve(import.meta.dirname, 'out/renderer'),
+    outDir: path.resolve(import.meta.dirname, 'out/electron/renderer'),
     emptyOutDir: true
   },
   server: {

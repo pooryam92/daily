@@ -9,6 +9,12 @@
     "outDir": "out",
     "tsBuildInfoFile": "out/.tsbuildinfo.node"
   },
-  "include": ["src/main", "src/preload", "src/shared"],
+  "include": [
+    "src/electron/main",
+    "src/electron/preload",
+    "src/electron/ipc-contract.ts",
+    "src/application",
+    "src/domain"
+  ],
   "exclude": ["**/*.test.ts"]
 }

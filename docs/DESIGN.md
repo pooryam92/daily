@@ -1,7 +1,7 @@
 # Daily — design foundations
 
 Design tokens for Daily (colour, typography, spacing, motion) and the reasoning behind each choice.
-The tokens live in `src/renderer/src/styles/global.css`; component CSS modules should only ever
+The tokens live in `src/ui/styles/global.css`; component CSS modules should only ever
 reference tokens, never raw values.
 
 Every choice below is tagged with how solid its evidence is:
@@ -324,7 +324,7 @@ is the quieter `border-color: var(--accent)` plus a 1px ring.
 
 ## 7. Token block
 
-The core of the `:root` blocks in `src/renderer/src/styles/global.css`; the file adds the layered
+The core of the `:root` blocks in `src/ui/styles/global.css`; the file adds the layered
 `--shadow` / `--shadow-peek` / `--shadow-lift`, `--focus-ring-on-bg`, `--weight-bold` and `--card-max`. Renames: `--card` → `--surface`,
 `--muted` → `--text-muted`; `--dropped` changes meaning (neutral, no longer the error colour).
 
@@ -333,24 +333,23 @@ The core of the `:root` blocks in `src/renderer/src/styles/global.css`; the file
   color-scheme: light dark;
 
   /* colour */
-  --bg: #eceae4;
-  --surface: #fdfcf9;
-  --border: #d9d6cd;
-  --border-strong: #918d82;
-  --text: #22211e;
-  --text-muted: #66625a;
-  --text-faint: #8a867b;
-  --accent: #2f5fd0;
-  --done: #23824a;
-  --dropped: #57534a;
-  --danger: #b93a2c;
+  --bg: light-dark(#eceae4, #191816);
+  --surface: light-dark(#fdfcf9, #242320);
+  --border: light-dark(#d9d6cd, #383630);
+  --border-strong: light-dark(#918d82, #78756d);
+  --text: light-dark(#22211e, #ecebe7);
+  --text-muted: light-dark(#66625a, #a09d94);
+  --text-faint: light-dark(#8a867b, #7a776f);
+  --accent: light-dark(#2f5fd0, #86a3f7);
+  --done: light-dark(#23824a, #4cc381);
+  --dropped: light-dark(#57534a, #b5b2a9);
+  --danger: light-dark(#b93a2c, #f07a6d);
   --danger-solid: #b93a2c;
   --on-danger: #ffffff;
   --hover: rgb(128 128 128 / 0.1);
   --hover-strong: rgb(128 128 128 / 0.18);
-  /* --shadow (= --shadow-peek + --shadow-lift), --shadow-peek: six and two layers of rgb(var(--shadow-tint) / var(--shadow-alpha)) */
-  --shadow-tint: 64 56 40;
-  --shadow-alpha: 0.05;
+  /* --shadow (= --shadow-peek + --shadow-lift), --shadow-peek: six and two layers of --shadow-layer */
+  --shadow-layer: light-dark(rgb(64 56 40 / 0.05), rgb(0 0 0 / 0.16));
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 
   /* type */
@@ -389,24 +388,19 @@ The core of the `:root` blocks in `src/renderer/src/styles/global.css`; the file
   --press-scale: 0.97;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #191816;
-    --surface: #242320;
-    --border: #383630;
-    --border-strong: #78756d;
-    --text: #ecebe7;
-    --text-muted: #a09d94;
-    --text-faint: #7a776f;
-    --accent: #86a3f7;
-    --done: #4cc381;
-    --dropped: #b5b2a9;
-    --danger: #f07a6d;
-    --shadow-tint: 0 0 0;
-    --shadow-alpha: 0.16;
-  }
+/* A platform that cannot switch the scheme for the whole window (a browser) sets this instead. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 ```
+
+Every themed colour is one `light-dark()` pair, so `color-scheme` is the only theme switch and the
+two themes cannot drift apart in separate blocks. Electron flips it for the whole window
+(`nativeTheme.themeSource`); a platform that can't sets `data-theme` on the root.
 
 ## 8. What changed in the components
 

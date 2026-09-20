@@ -44,7 +44,7 @@ It replaces `TASKS.md`, the phased task list of 2026-09-19. The last committed v
 - **✗ is calm:** a 150ms cross-fade and no reward animation. Dropping is release, not achievement.
 - **Settling.** A resolved row moves below the open ones after 700ms of quiet, and a reopened row
   waits the same before it goes back up, so a mis-click can be undone first. The rule is
-  `displayOrder` in `lib/todos.ts`; the delay is `useSettledTodos`.
+  `displayOrder` in `domain/todo-rules.ts`; the delay is `useSettledTodos`.
 - **New rows** fade and slide in, and scroll into view.
 - **Delete is an undo toast** (`sonner`, 6s), not a confirm dialog. It sits bottom centre above the
   input, in inverted colours so it needs no new token.
@@ -101,7 +101,7 @@ It replaces `TASKS.md`, the phased task list of 2026-09-19. The last committed v
 - **D5. No confetti.** Per-item feedback stays small.
 - **Ring.** 16px, after the day's label, and 12px on the tab of a card behind. Dropped todos count
   as progress; a day without todos has no ring and is not cleared (`dayProgress` in
-  `lib/todos.ts`).
+  `domain/todo-rules.ts`).
 - **Cleared.** The ring closes and morphs into a check, and the word "Cleared" appears in a live
   region. This happens once per clearing: a cleared day that comes into view gets no flourish.
   Deleting the last open todo clears the day quietly. The timings are `CLEARED` in

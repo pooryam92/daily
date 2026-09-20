@@ -10,7 +10,7 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
     "tsBuildInfoFile": "out/.tsbuildinfo.web",
-    "paths": { "@shared/*": ["./src/shared/*"] }
+    "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src/renderer", "src/shared"]
+  "include": ["src/ui", "src/electron/renderer", "src/application", "src/domain"]
 }
