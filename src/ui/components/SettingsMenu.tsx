@@ -19,8 +19,13 @@ const THEMES = [
   { mode: 'dark', label: 'Dark', Icon: Moon }
 ] as const satisfies readonly { mode: ThemeMode; label: string; Icon: typeof Sun }[]
 
+interface SettingsMenuProps extends SettingsState {
+  /** Null until it is known; the line is left out until then. */
+  readonly version: string | null
+}
+
 /** The app's one home for preferences: a quiet button in the corner of the window. */
-export function SettingsMenu({ settings, setTheme, setSound }: SettingsState) {
+export function SettingsMenu({ settings, setTheme, setSound, version }: SettingsMenuProps) {
   const themeLabel = useId()
   const soundLabel = useId()
   const pill = useId()
@@ -73,6 +78,7 @@ export function SettingsMenu({ settings, setTheme, setSound }: SettingsState) {
                   <Switch.Thumb className={styles.thumb} />
                 </Switch.Root>
               </div>
+              {version !== null && <p className={styles.version}>Daily {version}</p>}
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>

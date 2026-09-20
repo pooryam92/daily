@@ -13,6 +13,7 @@ export interface IpcContract {
   'settings:load': { args: []; result: Settings }
   'settings:setTheme': { args: [theme: ThemeMode]; result: undefined }
   'settings:setSound': { args: [sound: boolean]; result: undefined }
+  'app:version': { args: []; result: string }
 }
 
 export type IpcChannel = keyof IpcContract

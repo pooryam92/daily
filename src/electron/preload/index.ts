@@ -22,6 +22,9 @@ const gateway: DailyGateway = {
     load: () => invoke('settings:load'),
     setTheme: (theme) => invoke('settings:setTheme', theme),
     setSound: (sound) => invoke('settings:setSound', sound)
+  },
+  app: {
+    version: () => invoke('app:version')
   }
 }
 

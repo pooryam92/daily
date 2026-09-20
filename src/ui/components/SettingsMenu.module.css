@@ -80,6 +80,15 @@
   margin-bottom: 0;
 }
 
+/* Which build is running: the last and quietest line of the menu. */
+.version {
+  margin: var(--space-3) var(--space-1) 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-ui);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
 /* 36×20px on a 24px-high target would be tight; the row around it is 28px, like a segment. */
 .switch {
   position: relative;

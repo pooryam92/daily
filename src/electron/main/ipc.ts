@@ -1,4 +1,4 @@
-import { ipcMain, nativeTheme } from 'electron'
+import { app, ipcMain, nativeTheme } from 'electron'
 import { isThemeMode } from '../../domain/settings-schema'
 import { parseStoreData } from '../../domain/store-schema'
 import type { IpcChannel, IpcContract } from '../ipc-contract'
@@ -39,4 +39,6 @@ export function registerIpcHandlers(store: TodoStore, settings: SettingsStore): 
     await settings.update({ sound })
     return undefined
   })
+
+  handle('app:version', () => app.getVersion())
 }

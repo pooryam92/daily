@@ -62,5 +62,10 @@ Rules of thumb:
 
 ## Data
 
-Todos are stored in `todos.json` in Electron's user-data folder (`~/.config/daily/` on Linux).
+Todos are stored in `todos.json` in Electron's user-data folder: `~/.config/daily/` on Linux for the
+installed app, and `~/.config/daily-dev/` for a build run from this repo, so development never touches
+the real todos. Only one instance runs per folder; a second launch focuses the first.
+
 A file that can't be read is moved aside as `todos.json.corrupt-<timestamp>` rather than overwritten.
+The first start of each new version copies the file to `todos.before-v<version>.json`; the newest
+five are kept.

@@ -3,6 +3,7 @@ import { Toaster } from 'sonner'
 import styles from './App.module.css'
 import { DayStack } from './components/DayStack'
 import { SettingsMenu } from './components/SettingsMenu'
+import { useAppVersion } from './hooks/useAppVersion'
 import { useDayNavigation } from './hooks/useDayNavigation'
 import { useSettings } from './hooks/useSettings'
 import { useTodoStore } from './hooks/useTodoStore'
@@ -13,6 +14,7 @@ export function App() {
   const navigation = useDayNavigation(today)
   const store = useTodoStore()
   const settings = useSettings()
+  const version = useAppVersion()
 
   if (store.phase === 'loading') return null
 
@@ -42,7 +44,7 @@ export function App() {
           navigation={navigation}
           sound={settings.settings?.sound ?? false}
         />
-        <SettingsMenu {...settings} />
+        <SettingsMenu {...settings} version={version} />
         {/* Bottom centre, lifted clear of the add-todo input so an undo toast never covers typing. */}
         <Toaster
           className={styles.toaster}

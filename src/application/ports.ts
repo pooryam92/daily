@@ -8,12 +8,18 @@ import type { StoreData } from '../domain/store'
 export interface DailyGateway {
   readonly todos: TodoGateway
   readonly settings: SettingsGateway
+  readonly app: AppGateway
 }
 
 /** Where the todos are kept. The whole document is read and written at once; it is small. */
 export interface TodoGateway {
   readonly load: () => Promise<StoreData>
   readonly save: (data: StoreData) => Promise<void>
+}
+
+/** What the UI may know about the app it is part of. */
+export interface AppGateway {
+  readonly version: () => Promise<string>
 }
 
 export interface SettingsGateway {

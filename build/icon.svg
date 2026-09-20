@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- A new day: the sun on the horizon. Paper on the app's one blue, the colour of "Today" (docs/DESIGN.md). -->
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3c69db" />
+      <stop offset="1" stop-color="#2a54ba" />
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="208" fill="url(#plate)" />
+  <path d="M332 482 A180 180 0 0 1 692 482 Z" fill="#fdfcf9" />
+  <rect x="232" y="530" width="560" height="72" rx="36" fill="#fdfcf9" />
+  <rect x="352" y="650" width="320" height="72" rx="36" fill="#fdfcf9" fill-opacity="0.5" />
+</svg>
