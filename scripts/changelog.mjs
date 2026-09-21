@@ -30,6 +30,21 @@ function section(changelog, version) {
   return (end === -1 ? rest : rest.slice(0, end)).join('\n').trim()
 }
 
+/**
+ * GitHub shows a release's text like a comment: every line break in it is kept. The file is wrapped
+ * for reading as a file, so a wrapped line goes back onto the one it continues.
+ */
+function unwrapped(text) {
+  const lines = []
+  for (const line of text.split('\n')) {
+    const continues =
+      lines.length > 0 && lines.at(-1) !== '' && line !== '' && !/^\s*([-#]|\d+\.) /.test(line)
+    if (continues) lines[lines.length - 1] += ` ${line.trim()}`
+    else lines.push(line)
+  }
+  return lines.join('\n')
+}
+
 const changelog = await readFile(CHANGELOG, 'utf8')
 
 const notes = process.argv.indexOf('--notes')
@@ -37,7 +52,7 @@ if (notes !== -1) {
   const version = (process.argv[notes + 1] ?? '').replace(/^v/, '')
   const text = section(changelog, version)
   if (!text) fail(`CHANGELOG.md has no section for ${version}, or an empty one.`)
-  console.log(text)
+  console.log(unwrapped(text))
   process.exit(0)
 }
 
