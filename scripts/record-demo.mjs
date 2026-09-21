@@ -160,22 +160,23 @@ async function story(page) {
   const row = (text) => page.getByRole('listitem').filter({ hasText: text }).locator('visible=true').first()
 
   await page.mouse.move(at.x, at.y)
-  await pause(1000)
+  await pause(300)
 
-  await add.pressSequentially('Call the landlord', { delay: 65 })
-  await pause(250)
+  // Today is kept brisk, so the other days and the themes get their share of the GIF.
+  await add.pressSequentially('Call the landlord', { delay: 45 })
+  await pause(100)
   await page.keyboard.press('Enter')
-  await pause(900)
+  await pause(300)
 
   await click(row('Water the plants').getByLabel('Done'))
-  await pause(1100)
+  await pause(450)
   await click(row('Renew the library card').getByLabel('Dropped'))
-  await pause(1200)
+  await pause(500)
   await click(row('Write the release notes').getByLabel('Done'))
-  await pause(900)
+  await pause(400)
   // The last open todo: the ring closes into a check.
   await click(row('Call the landlord').getByLabel('Done'))
-  await pause(2200)
+  await pause(1100)
 
   await click(page.getByLabel('Next day'))
   await pause(900)
