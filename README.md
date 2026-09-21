@@ -1,154 +1,157 @@
 # Daily
 
-A small Electron todo app with one card per day. Every day starts empty; todos are open, done (✓) or dropped (✗).
+A todo list for today, and nothing else. One card per day, a line to type into, and a checkbox.
 
-Click a todo's text to edit it. Enter or clicking away saves; Escape cancels.
-Drag its bullet/grip to reorder within the open or resolved part of the day.
-With the grip focused, Space/Enter picks up and drops, arrow keys move, and Escape cancels.
+![Daily: adding todos, checking them off until the day is cleared, and moving between days](docs/media/demo.gif)
+
+Most todo apps grow into project managers: priorities, tags, due dates, projects, and an overdue list
+that is longer every week. Daily goes the other way. There is nothing to set up and nothing to
+organise. Open it, write down what today is for, and tick things off.
+
+## Simple on purpose
+
+- **Every day starts empty.** Nothing rolls over. What was not done yesterday stays on yesterday's
+  card, and today is a fresh page. There is no overdue list and no red badge.
+- **A todo is a line of text.** No priority, no tag, no due date, no project. The day it is on is all
+  it has, so there is nothing to decide but what to do.
+- **Three states.** A todo is open, done (the checkbox) or dropped (the ✗). Dropping is a decision,
+  not a failure, and it counts as progress.
+- **A ring, not a score.** It closes as the day's todos are resolved. Resolve the last one and the day
+  is "Cleared". No streaks, no points, no statistics.
+- **No account, no sync, no cloud.** Your todos stay on your machine, in one readable JSON file. The
+  app's only network request is the check for a newer version.
+
+What is left out is left out deliberately: each of those features would undo the fresh start that the
+app is built on.
+
+## What it does
+
+- **Days.** The app opens on today. The day before and the day after peek out behind it; move with
+  the arrow keys, the arrow buttons, a drag or a two-finger swipe, and come back with "Back to
+  today". Todos can be added to any day, past or future.
+- **Edit, reorder, delete.** Click a todo's text to edit it, drag its grip to reorder, and `delete`
+  removes it at once with six seconds to undo. All of it works from the keyboard.
+- **Light and dark,** following the system or set by hand, and optional sounds. Both are behind the
+  gear in the bottom-left corner.
+
+Every feature in detail: [docs/features.md](docs/features.md).
 
 ## Install
 
-Download the file for your system from the
-[latest release](https://github.com/pooryam92/daily/releases/latest). There is no macOS build.
+[![Latest release](https://img.shields.io/github/v/release/pooryam92/daily?label=latest%20release)](https://github.com/pooryam92/daily/releases/latest)
 
-| System           | File                        | Updates                                         |
-| ---------------- | --------------------------- | ----------------------------------------------- |
-| Windows          | `Daily-Setup-<version>.exe` | By itself                                       |
-| Any Linux        | `Daily-<version>.AppImage`  | By itself                                       |
-| Debian, Ubuntu   | the `.deb`                  | The app says when there is one; install by hand |
-| Fedora, openSUSE | the `.rpm`                  | The app says when there is one; install by hand |
+**[Download the latest release](https://github.com/pooryam92/daily/releases/latest)** and take the
+file for your system from "Assets" at the bottom of that page.
+
+| System                      | File                        | Updates                           |
+| --------------------------- | --------------------------- | --------------------------------- |
+| [Windows](#windows)         | `Daily-Setup-<version>.exe` | By itself                         |
+| [macOS](#macos), Apple chip | `Daily-<version>-arm64.dmg` | The app tells you; you install it |
+| [macOS](#macos), Intel chip | `Daily-<version>-x64.dmg`   | The app tells you; you install it |
+| [Any Linux](#linux)         | `Daily-<version>.AppImage`  | By itself                         |
+| [Debian, Ubuntu](#linux)    | the `.deb`                  | The app tells you; you install it |
+| [Fedora, openSUSE](#linux)  | the `.rpm`                  | The app tells you; you install it |
+
+Nothing here is signed, because a certificate is a yearly cost that a personal app does not justify.
+Windows and macOS therefore warn at the first start. The steps below get past that, once.
 
 ### Windows
 
-Run `Daily-Setup-<version>.exe`. It installs for your user only and asks for no administrator.
+1. Run `Daily-Setup-<version>.exe`. The browser may warn about the download first ("isn't commonly
+   downloaded"); choose **Keep**.
+2. Windows stops it with a blue SmartScreen box, "Windows protected your PC". Click **More info**,
+   then **Run anyway**.
 
-The installer is not signed, because a certificate is a yearly cost that a personal app does not
-justify. Windows therefore stops it with a blue SmartScreen box, "Windows protected your PC". Click
-**More info**, then **Run anyway**. The browser may warn about the download first ("isn't commonly
-downloaded"); choose **Keep**.
+It installs for your user only, asks for no administrator, and updates itself from then on.
+
+### macOS
+
+1. Take `Daily-<version>-arm64.dmg` for a Mac with Apple silicon (M1 and later),
+   `Daily-<version>-x64.dmg` for one with an Intel chip.
+2. Open it and drag Daily into Applications.
+3. macOS refuses the first start: "Apple could not verify Daily is free of malware". Close that box,
+   open **System Settings → Privacy & Security**, scroll down to the line about Daily and click
+   **Open Anyway**. It asks once.
+
+Step 3 from a terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Daily.app
+```
+
+macOS lets only a signed app replace itself, so the app says "Update available" and opens the
+release page. Install the new `.dmg` over the old app; the todos are not in it and stay.
 
 ### Linux
 
-- **AppImage.** Make it executable and run it:
+- **AppImage.** One file that can live anywhere and replaces itself on an update. Make it executable
+  and run it:
 
   ```sh
   chmod +x Daily-*.AppImage
   ./Daily-*.AppImage
   ```
 
-  It is one file that can live anywhere, and it replaces itself on an update. It has no launcher
-  entry of its own. If it stops with a message about FUSE, install `libfuse2` (`libfuse2t64` from
-  Ubuntu 24.04 on).
+  It has no launcher entry of its own. If it stops with a message about FUSE, install `libfuse2`
+  (`libfuse2t64` from Ubuntu 24.04 on).
 
-- **`.deb`.** `sudo apt install ./daily_<version>_amd64.deb`
-- **`.rpm`.** `sudo dnf install ./daily-<version>.x86_64.rpm`, or `sudo zypper install` on openSUSE.
-  The package is not signed, which zypper asks about.
+- **`.deb`.**
+
+  ```sh
+  sudo apt install ./daily_<version>_amd64.deb
+  ```
+
+- **`.rpm`.** The package is not signed, which zypper asks about.
+
+  ```sh
+  sudo dnf install ./daily-<version>.x86_64.rpm      # Fedora
+  sudo zypper install ./daily-<version>.x86_64.rpm   # openSUSE
+  ```
 
 The `.deb` and the `.rpm` add Daily to the launcher. They belong to the package manager, so the app
 does not replace them: it says "Update available" and opens the release page.
 
-The todos are in `~/.config/daily/` on Linux and `%APPDATA%\daily\` on Windows. Uninstalling leaves
-them there.
+## Updates
 
-## Scripts
+The installed app looks for a newer release when it starts and every four hours. The Windows install
+and the AppImage download it in the background and show "Update ready" with a Restart button; it is
+installed when the app quits either way. The macOS app, the `.deb` and the `.rpm` only say "Update
+available" and open the release page. Being offline shows nothing.
 
-| Command          | What it does                                                      |
-| ---------------- | ----------------------------------------------------------------- |
-| `npm run dev`    | Run the app against the Vite dev server (hot reload)              |
-| `npm start`      | Build everything and run the built app                            |
-| `npm run build`  | Compile main + preload with `tsc`, bundle the renderer            |
-| `npm run dist`   | Build, then package for this platform into `release/`             |
-| `npm run check`  | Type-check, lint, test and check formatting — run before a commit |
-| `npm test`       | Unit tests (Vitest)                                               |
-| `npm run lint`   | ESLint (type-aware)                                               |
-| `npm run format` | Prettier                                                          |
+## Your data
 
-Changes to `src/electron/main` or `src/electron/preload` need a restart of `npm run dev`; the UI hot-reloads.
+`todos.json` and `settings.json`, in `~/.config/daily/` on Linux, `%APPDATA%\daily\` on Windows and
+`~/Library/Application Support/daily/` on macOS.
+Uninstalling leaves them there.
 
-## Structure
+- Every change is saved at once. A file that cannot be read is moved aside as
+  `todos.json.corrupt-<timestamp>`, never overwritten.
+- The first start of each new version copies the todos to `todos.before-v<version>.json`; the newest
+  five are kept.
+- To move to another machine, copy the two files.
 
-Three parts, joined by one interface. `domain/` is the pure core and imports nothing, `ui/` is the
-React app and knows the domain and the gateway interface in `ports.ts`, and only `electron/` knows
-it is Electron. A web build would add `src/web/` next to `src/electron/` with its own entry and
-gateway, and reuse `domain/`, `ports.ts` and `ui/` unchanged.
+## Building it yourself
 
-```
-src/
-  domain/      The app itself: types, rules and validation. No React, no Node, no Electron.
-    todo.ts            Todo, TodoStatus, DayKey, DaysMap
-    todo-rules.ts      createTodo, the days reducer, display order, progress
-    dates.ts           day-key maths and formatting
-    store.ts           StoreData: the document that is loaded and saved
-    store-schema.ts    runtime validation of persisted / received data
-    settings.ts        Settings, ThemeMode
-    settings-schema.ts runtime validation of the settings file
-  ports.ts     DailyGateway: everything the UI needs from its platform.
-  ui/          The React app, grouped by feature. It only ever talks to the gateway.
-    App.tsx            wires the features together
-    gateway.tsx        the context the gateway is handed in through
-    deck/              the stack of days and moving through it: DayStack, drag, swipe, geometry
-    day/               one day's card: DayCard, ProgressRing, today's date, wording
-    todos/             TodoItem, TodoEditor, AddTodoForm, DoneCheckbox, the todo store, undo
-    settings/          SettingsMenu and the settings state
-    sound/             sound synthesis and when it plays
-    updates/           the update notice and the app's version
-    lib/               shared by every feature: motion tokens, error messages
-    styles/            design tokens and global styles
-  electron/    This platform: the gateway implemented over IPC.
-    ipc-contract.ts    the channels between renderer and main
-    main/              app lifecycle, the window, IPC handlers, the JSON files, the updater
-    preload/           exposes the gateway to the renderer as `window.api`
-    renderer/          index.html and the entry that mounts `ui/` with that gateway
+```sh
+git clone https://github.com/pooryam92/daily.git
+cd daily
+npm install
+npm start
 ```
 
-Rules of thumb:
-
-- Logic that doesn't need React or a platform goes in `domain/` as pure functions, with tests.
-- Hooks own state and side effects; components only render and call actions.
-- In `ui/`, a file lives in the folder of its feature, next to its CSS module and its test. Only
-  what every feature uses goes in `ui/lib/`.
-- The UI never touches Node, the file system or `window.api`. It calls the gateway it was given,
-  and the main process validates everything it receives.
-- The preload script is sandboxed, so every import but `electron` must be _type-only_.
+The rest is in [docs/development.md](docs/development.md).
 
 ## Docs
 
 | File                                         | What is in it                                                        |
 | -------------------------------------------- | -------------------------------------------------------------------- |
 | [docs/features.md](docs/features.md)         | What the app does, feature by feature                                |
+| [docs/development.md](docs/development.md)   | Scripts, the folder structure, packaging, releasing, the demo        |
 | [docs/architecture.md](docs/architecture.md) | How it is built: structure, IPC, security, data, packaging, updates  |
 | [docs/design.md](docs/design.md)             | Colour, type, space and motion, with the evidence behind each choice |
 | [docs/archive.md](docs/archive.md)           | What was built and decided, one short entry per feature              |
 | [docs/research.md](docs/research.md)         | Facts and their sources; no conclusions                              |
 | [docs/release.md](docs/release.md)           | The checklist to the first release; deleted when it is done          |
-
-File names in `docs/` are lowercase.
-
-## Packaging and updates
-
-`npm run dist` packages with electron-builder (`electron-builder.yml`): an AppImage, a `.deb` and an
-`.rpm` on Linux, an NSIS installer on Windows. The `.rpm` needs `rpmbuild` (`sudo apt install rpm`).
-It never uploads anything. The renderer's libraries are
-`devDependencies` because Vite bundles them; only what the main process loads at runtime
-(`electron-updater`) is a `dependency`, and only that is copied into the app.
-
-A release is made by pushing a `v<version>` tag that matches `package.json`: the release workflow
-runs the check, builds on Linux and Windows, and publishes the GitHub release once both are done.
-
-The installed app looks for a newer GitHub release at launch and every four hours. An AppImage and a
-Windows install download it in the background, show "Update ready" with a Restart button, and
-install it when the app quits either way. A `.deb` or `.rpm` belongs to the package manager, so there the app
-only says "Update available" and opens the release page. A build run from the repo never checks.
-
-## Data
-
-Todos are stored in `todos.json` in Electron's user-data folder: `~/.config/daily/` on Linux for the
-installed app, and `~/.config/daily-dev/` for a build run from this repo, so development never touches
-the real todos. Only one instance runs per folder; a second launch focuses the first.
-
-A file that can't be read is moved aside as `todos.json.corrupt-<timestamp>` rather than overwritten.
-The first start of each new version copies the file to `todos.before-v<version>.json`; the newest
-five are kept.
 
 ## License
 

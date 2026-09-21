@@ -20,7 +20,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true, varsIgnorePattern: '^_' }]
     }
   },
-  // The layers point inwards (README, "Structure"). `@/` and relative paths are both covered.
+  // The layers point inwards (docs/development.md, "Structure"). `@/` and relative paths are both covered.
   {
     files: ['src/domain/**'],
     rules: {

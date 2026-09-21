@@ -2,7 +2,7 @@
 
 How the app is put together, and the decisions behind it. Each decision says what was chosen and why, and
 where there is an obvious alternative, why not that. `archive.md` has the same for the features on screen, `design.md` for
-how they look and move; the folder layout is in the README.
+how they look and move; the folder layout and the scripts are in `development.md`.
 
 Add a decision when one is made, in the section it belongs to. When one is reversed, rewrite its
 entry: this file describes the app as it is, and `git log` has the history.
@@ -156,34 +156,44 @@ The app loads no remote content, which makes the rules simple to hold.
 
 - **electron-builder, configured in `electron-builder.yml`.** Not Electron Forge, because
   `electron-updater` comes with electron-builder and reads the same config. `npm run dist` never uploads.
-- **Targets: AppImage, `.deb` and `.rpm` on Linux, NSIS on Windows.** The AppImage runs anywhere and
-  updates itself; the two packages are for people who want the app installed by their package
-  manager, on Debian/Ubuntu and on Fedora/openSUSE. No Flatpak, Snap or apt repository: none of
-  them would update itself either, and each is infrastructure to keep up. No macOS build: nobody
-  here runs it, and an unsigned macOS app cannot update itself. The NSIS installer keeps its
-  defaults, one click and per user, so an update needs no administrator.
+- **Targets: AppImage, `.deb` and `.rpm` on Linux, NSIS on Windows, `.dmg` on macOS.** The AppImage
+  runs anywhere and updates itself; the two packages are for people who want the app installed by
+  their package manager, on Debian/Ubuntu and on Fedora/openSUSE. No Flatpak, Snap or apt
+  repository: none of them would update itself either, and each is infrastructure to keep up. The
+  NSIS installer keeps its defaults, one click and per user, so an update needs no administrator.
 - **Only `out/` goes into the app.** The renderer's libraries are `devDependencies` because Vite has
   already bundled them; left in `dependencies`, all of `node_modules` was copied in as well.
   `electron-updater` is the one real `dependency`.
 - **The Linux icon is a size set** (`build/icons/`, 16 to 512px, scaled down from `build/icon.png`).
   electron-builder 26 does not make it: with the 1024px PNG alone the `.deb` installed only
   `hicolor/1024x1024`, a size no icon theme lists. Windows gets its `.ico` from the big PNG.
+- **macOS: one `.dmg` per chip, signed ad hoc.** arm64 and x64 are built on the same Apple silicon
+  runner, because the app has no native modules. Not a universal build: it is twice the download
+  for everyone. There is no Apple developer certificate, so `identity: '-'` signs ad hoc: Apple
+  silicon does not start an app with no signature at all. The hardened runtime is off, because it
+  is only needed for notarization, and with an ad-hoc signature its library validation keeps the
+  app from loading its own Electron framework. Gatekeeper still stops the first start, which the
+  README explains. The icon is `build/icon-mac.png`: `build/icon.png` scaled to 92% on a
+  transparent canvas, which puts the plate on Apple's grid (824 of 1024px). Drawn to the edge of
+  it, the icon is a size bigger than its neighbours in the Dock.
 - **`desktopName` in `package.json`, with `linux.syncDesktopName`.** Electron uses it as the
   window's app_id, and the `.desktop` file gets the same name. That match is what puts the icon on
   the running window.
 - **A `v*` tag makes the release** (`.github/workflows/release.yml`), with the built-in
   `GITHUB_TOKEN` and no secrets. It first fails when the tag is not the `package.json` version: the
   updater compares versions from the feed, which comes from `package.json`. Then it runs the check,
-  and builds on Linux and on Windows, because the NSIS installer cannot be built on Linux without Wine.
+  and builds on Linux, on Windows and on macOS: the NSIS installer cannot be built on Linux without
+  Wine, and the `.dmg` only on a Mac. Started by hand on a branch, it builds and releases nothing.
 - **The builds do not publish; a last job does.** Each build hands its installers and its feed
-  (`latest-linux.yml`, `latest.yml`) over as workflow artifacts, and one `gh release create` uploads
-  them all, which keeps the release a draft until the last file is there. Not
-  `electron-builder --publish`: two builds that each upload leave a release with one platform when
-  the other fails, and its installed apps get a 404 on the feed.
+  (`latest-linux.yml`, `latest.yml`, `latest-mac.yml`) over as workflow artifacts, and one
+  `gh release create` uploads them all, which keeps the release a draft until the last file is
+  there. Not `electron-builder --publish`: builds that each upload leave a release without a platform when
+  one of them fails, and that platform's installed apps get a 404 on the feed.
 - **The installer is `Daily-Setup-<version>.exe`,** not the default name with spaces. GitHub turns
   spaces in an uploaded file's name into dots, while the feed says dashes.
-- **Unsigned.** Windows shows a SmartScreen warning on install, which the README explains under
-  "Install". A certificate is a yearly cost that a personal app does not justify.
+- **Unsigned.** Windows shows a SmartScreen warning on install and macOS a Gatekeeper one on the
+  first start, which the README explains under "Install". A certificate is a yearly cost that a
+  personal app does not justify.
 
 ## 6. Updates
 
@@ -211,8 +221,11 @@ flowchart TD
 - **The UI hears about an update only once the user can act on it:** downloaded (`restart`), or
   available for download by hand (`manual`). "Checking" and "downloading" are not states the UI has.
 - **Who can replace itself:** Windows, and Linux when `APPIMAGE` is set. Everything else only
-  checks. electron-updater 6 could install a `.deb` itself through `pkexec dpkg -i`; not used,
-  because it asks for the password when the app quits and goes around apt.
+  checks. macOS is in "everything else": its updater (Squirrel.Mac) checks the new app's signature
+  against the running one's, which an ad-hoc signature never passes. The feed needs no `.zip` for
+  that, because only a download reads the file list; a check reads the version. electron-updater 6
+  could install a `.deb` itself through `pkexec dpkg -i`; not used, because it asks for the password
+  when the app quits and goes around apt.
 - **Restart gives up the single-instance lock first.** The updater starts the new AppImage before
   the old app is gone, and the new one would exit at the lock.
 - **The toast stays until it is answered.** Nobody may be looking when the update arrives. "Later"
@@ -229,6 +242,12 @@ flowchart TD
   `sound/sound.ts`), each test next to its file. Components and the main process are checked by
   driving the built app, where the real CSP applies, not by unit tests with mocks. The scripts for
   that are throwaway and not in the repo.
+- **The README's demo is recorded by a script** (`scripts/record-demo.mjs`, `npm run demo`), so it
+  is remade, not redone by hand, when the app looks different. It films the built renderer in
+  headless Chromium with a gateway that lives in the page: the second use of the seam in section 1.
+  `playwright-core` is a `devDependency` for it; the browser and `ffmpeg` are not installed by
+  `npm install`, because only someone recording needs them. Not a video file: GitHub plays one only
+  when it was uploaded by hand through the web editor.
 - **`npm run check` is the gate:** types, lint, tests, formatting. It is run before a commit, and
   `.github/workflows/check.yml` runs it on every push and pull request.
 - **Dependencies are pinned exactly while they are 0.x** (`@dnd-kit/*`).
