@@ -103,8 +103,9 @@ Decided so far:
     checks. The check reads `latest-mac.yml`, which the `.dmg` build writes.
   - The release workflow builds it on `macos-latest`, both chips on the one runner. The workflow
     can now be started by hand on a branch: it builds everything and releases nothing.
-  - Open: nothing of this has run. It cannot be built on Linux, so the first build is a hand-started
-    run of the workflow, and the first start on a Mac needs someone with a Mac: that it opens after
+  - Built for the first time by the release run of 2026-09-21 (6.1): both `.dmg` files and
+    `latest-mac.yml` are in the release.
+  - Open: the first start on a Mac, which needs someone with a Mac: that it opens after
     "Open Anyway", that the todos land in `~/Library/Application Support/daily`, the icon in the
     Dock, and the "Update available" toast (6.2).
 
@@ -171,23 +172,26 @@ Decided so far:
     "License" section in the README. `"private": true` stays: it only keeps the package off npm.
 - [x] **5.3 Merge `feat/progress-day-cleared` into `main`.**
   - A fast-forward: `main` had nothing the branch lacked, and the history has no merge commits.
-    This line is in the last commit that was merged. The tag `v1.0.0` stays where it is, on the
-    branch's earlier commit, which `main` now contains.
+    This line is in the last commit that was merged. The tag `v1.0.0` stayed on the branch's
+    earlier commit until it was moved (6.1).
 - [x] **5.4 README: an install section per platform, including the SmartScreen warning on Windows.**
   - The README is for someone using the app: the demo (`npm run demo`), what it does, install,
     updates, the data. Scripts, structure and packaging moved to `development.md`.
   - "Install": a table of which file is for which system and how it updates, the
     SmartScreen steps, and one command per Linux format. Done before 5.3 so that `main` has it.
-  - Open: the `.rpm` file name (`daily-<version>.x86_64.rpm`) is electron-builder's default and has
-    not been seen yet; its first build is the next tag (6.2). The FUSE hint is the general AppImage
-    one, not something met here.
+  - The `.rpm` file name is what the README says: the release of 2026-09-21 has
+    `daily-1.0.0.x86_64.rpm`. Open: the FUSE hint is the general AppImage one, not something met
+    here.
 - [ ] **5.5 Make the repo public.**
 
 ## Phase 6 — First release, and proof that updating works
 
 - [ ] **6.1 Tag and release the first version; install it from the release page.**
-  - `v1.0.0` is tagged and released (4.2). Open: installing it from the release page, on Linux and
-    on Windows.
+  - `v1.0.0` was released twice. The first release (4.2) had no `.rpm`, no macOS build and the old
+    README, and nobody else had it, so on 2026-09-21 Poorya had it deleted with its tag, and
+    `v1.0.0` tagged again on `main` (`7b0925f`). That run built Linux, Windows and macOS and
+    published ten files in 5m40s. The old tag was on `f676337`.
+  - Open: installing it from the release page, on Linux and on Windows.
 - [ ] **6.2 Release the next patch version and watch the installed app update itself.**
   - Why: the updater cannot be tested in dev. This is the only real test, and it has to pass once
     on Linux and once on Windows. On a Mac, and on a `.deb` install, the test is the "Update
