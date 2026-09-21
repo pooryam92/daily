@@ -27,6 +27,11 @@ linux:
 win:
   target: nsis
 
+nsis:
+  # The default name has spaces. GitHub turns those into dots when the release workflow uploads the
+  # file, while the update feed (latest.yml) says dashes, and the updater would get a 404.
+  artifactName: ${productName}-Setup-${version}.${ext}
+
 # Where the installed app looks for updates (docs/release.md, Phase 3). Building never uploads:
 # `npm run dist` passes `--publish never`, and the release workflow publishes on a tag.
 publish:

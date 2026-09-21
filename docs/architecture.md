@@ -168,6 +168,17 @@ The app loads no remote content, which makes the rules simple to hold.
 - **`desktopName` in `package.json`, with `linux.syncDesktopName`.** Electron uses it as the
   window's app_id, and the `.desktop` file gets the same name. That match is what puts the icon on
   the running window.
+- **A `v*` tag makes the release** (`.github/workflows/release.yml`), with the built-in
+  `GITHUB_TOKEN` and no secrets. It first fails when the tag is not the `package.json` version: the
+  updater compares versions from the feed, which comes from `package.json`. Then it runs the check,
+  and builds on Linux and on Windows, because the NSIS installer cannot be built on Linux without Wine.
+- **The builds do not publish; a last job does.** Each build hands its installers and its feed
+  (`latest-linux.yml`, `latest.yml`) over as workflow artifacts, and one `gh release create` uploads
+  them all, which keeps the release a draft until the last file is there. Not
+  `electron-builder --publish`: two builds that each upload leave a release with one platform when
+  the other fails, and its installed apps get a 404 on the feed.
+- **The installer is `Daily-Setup-<version>.exe`,** not the default name with spaces. GitHub turns
+  spaces in an uploaded file's name into dots, while the feed says dashes.
 - **Unsigned.** Windows shows a SmartScreen warning on install, which the README will explain
   (`release.md`, 5.4). A certificate is a yearly cost that a personal app does not justify.
 
@@ -215,6 +226,6 @@ flowchart TD
   `sound/sound.ts`), each test next to its file. Components and the main process are checked by
   driving the built app, where the real CSP applies, not by unit tests with mocks. The scripts for
   that are throwaway and not in the repo.
-- **`npm run check` is the gate:** types, lint, tests, formatting. It is run before a commit and
-  will run in CI (`release.md`, phase 4).
+- **`npm run check` is the gate:** types, lint, tests, formatting. It is run before a commit, and
+  `.github/workflows/check.yml` runs it on every push and pull request.
 - **Dependencies are pinned exactly while they are 0.x** (`@dnd-kit/*`).

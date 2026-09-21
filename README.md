@@ -87,6 +87,9 @@ Linux, an NSIS installer on Windows. It never uploads anything. The renderer's l
 `devDependencies` because Vite bundles them; only what the main process loads at runtime
 (`electron-updater`) is a `dependency`, and only that is copied into the app.
 
+A release is made by pushing a `v<version>` tag that matches `package.json`: the release workflow
+runs the check, builds on Linux and Windows, and publishes the GitHub release once both are done.
+
 The installed app looks for a newer GitHub release at launch and every four hours. An AppImage and a
 Windows install download it in the background, show "Update ready" with a Restart button, and
 install it when the app quits either way. A `.deb` belongs to the package manager, so there the app

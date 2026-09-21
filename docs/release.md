@@ -117,12 +117,20 @@ Decided so far:
 ## Phase 4 — CI
 
 - [ ] **4.1 Workflow that runs `npm run check` on every push and pull request.**
+  - `.github/workflows/check.yml`. Open: its first run on GitHub, after the push.
 - [ ] **4.2 Release workflow on a `v*` tag: build on Linux and Windows into a draft release.**
   - Uses the built-in `GITHUB_TOKEN`; there are no secrets to manage.
+  - `.github/workflows/release.yml`. The builds run `npm run dist` and hand their files over as
+    workflow artifacts. Open: its first run is 6.1, which is also the first Windows build.
+  - The installer is now `Daily-Setup-<version>.exe`: GitHub turns spaces in an uploaded file's name
+    into dots, while `latest.yml` says dashes, and the updater would get a 404.
 - [ ] **4.3 Publish the draft only after both builds succeeded.**
   - Why: a half-filled release gives installed apps a 404 on the update feed.
+  - A last job that needs both builds runs `gh release create` with every file, which keeps the
+    release a draft until the last upload is done.
 - [ ] **4.4 Fail the workflow when the tag differs from the `package.json` version.**
   - Why: the updater compares versions from the feed, which comes from `package.json`, not the tag.
+  - The first job of the release workflow; nothing is built before it passes.
 
 ## Phase 5 — Going public
 
