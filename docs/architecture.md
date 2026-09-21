@@ -191,6 +191,17 @@ The app loads no remote content, which makes the rules simple to hold.
   one of them fails, and that platform's installed apps get a 404 on the feed.
 - **The installer is `Daily-Setup-<version>.exe`,** not the default name with spaces. GitHub turns
   spaces in an uploaded file's name into dots, while the feed says dashes.
+- **The README links to the files of one release, by version.** GitHub's
+  `releases/latest/download/<file>` needs a file name that never changes, and the installers carry
+  their version. The names stay, because a downloaded file should say what it is;
+  `scripts/readme-version.mjs` rewrites the links instead, as the `version` script of `npm version`,
+  so the bump, the README and the tag are one commit. `npm run check` runs it with `--check` and
+  fails on a README that names another version. The cost: between the push and the end of the
+  release workflow the links on `main` give a 404, and they stay that way when the release fails.
+  A pre-release leaves the README alone, as `releases/latest` would.
+  The "latest release" badge is a static one that the same script rewrites: shields.io's live badge
+  cannot read a private repo ("no releases or repo not found"), and on a public one it would show the
+  new version minutes after the links do.
 - **Unsigned.** Windows shows a SmartScreen warning on install and macOS a Gatekeeper one on the
   first start, which the README explains under "Install". A certificate is a yearly cost that a
   personal app does not justify.

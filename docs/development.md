@@ -16,6 +16,7 @@ same commit.
 | `npm run build`  | Compile main + preload with `tsc`, bundle the renderer            |
 | `npm run dist`   | Build, then package for this platform into `release/`             |
 | `npm run demo`   | Build, then record `docs/media/demo.gif` again (see "The demo")   |
+| `npm run readme` | Put the README's download links on the `package.json` version     |
 | `npm run check`  | Type-check, lint, test and check formatting — run before a commit |
 | `npm test`       | Unit tests (Vitest)                                               |
 | `npm run lint`   | ESLint (type-aware)                                               |
@@ -80,7 +81,7 @@ Rules of thumb:
 
 ESLint enforces the import direction, so a wrong import fails `npm run check`.
 
-Outside `src/`: `build/` holds the icons, `scripts/` the demo recorder, `electron-builder.yml` the
+Outside `src/`: `build/` holds the icons, `scripts/` the demo recorder and the README's version, `electron-builder.yml` the
 packaging, and `.github/workflows/` the check and the release.
 
 ## Checking a change
@@ -109,10 +110,19 @@ needs `rpmbuild` (`sudo apt install rpm`). It never uploads anything. The render
 (`electron-updater`) is a `dependency`, and only that is copied into the app. The reasons are in
 `architecture.md`, section 5.
 
-A release is two steps:
+A release is two commands, on a clean working tree:
 
-1. Set the new version in `package.json` and commit it.
-2. Tag that commit `v<version>` and push the tag.
+```sh
+npm version patch        # or minor, major
+git push --follow-tags
+```
+
+`npm version` sets the version in `package.json`, puts the README's download links on it
+(`scripts/readme-version.mjs`), and makes one commit, "chore: release v<version>" (`.npmrc`), with
+the tag `v<version>` on it. The installers carry their version in the file name, so the README has
+to name the release; `npm run check` fails when it names another version than `package.json`, which
+is what catches a version set by hand. For the minutes the workflow takes, the links on `main` point
+at a release that is not there yet.
 
 The release workflow (`.github/workflows/release.yml`) does the rest. It fails at once when the tag
 is not the `package.json` version. Then it runs the check, builds on Linux, Windows and macOS, and

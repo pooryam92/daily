@@ -18,11 +18,13 @@
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --publish never",
     "demo": "npm run build && node scripts/record-demo.mjs",
+    "readme": "node scripts/readme-version.mjs && prettier --write README.md",
+    "version": "npm run readme && git add README.md",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm run test && prettier --check ."
+    "check": "npm run typecheck && npm run lint && npm run test && prettier --check . && node scripts/readme-version.mjs --check"
   },
   "type": "commonjs",
   "devDependencies": {

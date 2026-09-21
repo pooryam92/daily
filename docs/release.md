@@ -182,6 +182,12 @@ Decided so far:
   - The `.rpm` file name is what the README says: the release of 2026-09-21 has
     `daily-1.0.0.x86_64.rpm`. Open: the FUSE hint is the general AppImage one, not something met
     here.
+  - The file names in the table are download links to the release of the `package.json` version,
+    kept there by `scripts/readme-version.mjs` through `npm version` (`development.md`, "Packaging
+    and releasing"). Checked in a throwaway clone: `npm version minor` made one commit with
+    `package.json`, the lockfile and the README, and the tag `v1.1.0`; the check passed after it
+    and failed before it with the version set by hand. Open: the links themselves give a 404 while
+    the repo is private (5.5).
 - [ ] **5.5 Make the repo public.**
 
 ## Phase 6 — First release, and proof that updating works
@@ -193,6 +199,7 @@ Decided so far:
     published ten files in 5m40s. The old tag was on `f676337`.
   - Open: installing it from the release page, on Linux and on Windows.
 - [ ] **6.2 Release the next patch version and watch the installed app update itself.**
+  - With `npm version patch` and `git push --follow-tags`: its first real use.
   - Why: the updater cannot be tested in dev. This is the only real test, and it has to pass once
     on Linux and once on Windows. On a Mac, and on a `.deb` install, the test is the "Update
     available" toast.
