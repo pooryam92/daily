@@ -153,7 +153,10 @@ Decided so far:
 - [x] **5.2 Apply 0.3: add the license file and the `license` field in `package.json`.**
   - `LICENSE` (MIT, 2026, Poorya), `"license": "MIT"` in `package.json` and the lockfile, and a
     "License" section in the README. `"private": true` stays: it only keeps the package off npm.
-- [ ] **5.3 Merge `feat/progress-day-cleared` into `main`.**
+- [x] **5.3 Merge `feat/progress-day-cleared` into `main`.**
+  - A fast-forward: `main` had nothing the branch lacked, and the history has no merge commits.
+    This line is in the last commit that was merged. The tag `v1.0.0` stays where it is, on the
+    branch's earlier commit, which `main` now contains.
 - [x] **5.4 README: an install section per platform, including the SmartScreen warning on Windows.**
   - "Install", above "Scripts": a table of which file is for which system and how it updates, the
     SmartScreen steps, and one command per Linux format. Done before 5.3 so that `main` has it.
