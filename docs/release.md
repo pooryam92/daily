@@ -9,8 +9,9 @@ Decided so far:
 
 - Packaged with electron-builder, released through GitHub Releases on `pooryam92/daily`.
 - The repo becomes public, so the updater can read releases without a token inside the app.
-- Windows and Linux (AppImage) update themselves. There is no macOS build: nobody here runs it,
-  and unsigned macOS apps cannot update themselves. It can be added to the build matrix later.
+- Windows and Linux (AppImage) update themselves. macOS was left out at first, because nobody here
+  runs it and an unsigned macOS app cannot update itself; it came on 2026-09-21 as a build that only
+  says when there is an update (2.6).
 - The first version is `1.0.0`, as `package.json` already says.
 - The commit email stays as it is; history is not rewritten.
 
@@ -92,6 +93,21 @@ Decided so far:
     sizes and `StartupWMClass=daily` are in place. An AppImage has no launcher entry of its own.
   - The Windows installer cannot be built here (it needs Wine); the release workflow builds it (4.2).
 
+- [ ] **2.6 A macOS build: a `.dmg` for Apple silicon and one for Intel.**
+  - Added on 2026-09-21, after `v1.0.0`. Signed ad hoc (`identity: '-'`, hardened runtime off):
+    there is no Apple developer certificate, and Apple silicon does not start an app with no
+    signature at all. The icon is `build/icon-mac.png`, the plate on Apple's grid. The README has
+    the Gatekeeper steps.
+  - It does not update itself, like the `.deb` (3.3): Squirrel.Mac wants a real signature. No
+    code changed for that, because everything that is not Windows or an AppImage already only
+    checks. The check reads `latest-mac.yml`, which the `.dmg` build writes.
+  - The release workflow builds it on `macos-latest`, both chips on the one runner. The workflow
+    can now be started by hand on a branch: it builds everything and releases nothing.
+  - Open: nothing of this has run. It cannot be built on Linux, so the first build is a hand-started
+    run of the workflow, and the first start on a Mac needs someone with a Mac: that it opens after
+    "Open Anyway", that the todos land in `~/Library/Application Support/daily`, the icon in the
+    Dock, and the "Update available" toast (6.2).
+
 ## Phase 3 — Updates
 
 - [x] **3.1 Add `electron-updater` to the main process.**
@@ -158,7 +174,9 @@ Decided so far:
     This line is in the last commit that was merged. The tag `v1.0.0` stays where it is, on the
     branch's earlier commit, which `main` now contains.
 - [x] **5.4 README: an install section per platform, including the SmartScreen warning on Windows.**
-  - "Install", above "Scripts": a table of which file is for which system and how it updates, the
+  - The README is for someone using the app: the demo (`npm run demo`), what it does, install,
+    updates, the data. Scripts, structure and packaging moved to `development.md`.
+  - "Install": a table of which file is for which system and how it updates, the
     SmartScreen steps, and one command per Linux format. Done before 5.3 so that `main` has it.
   - Open: the `.rpm` file name (`daily-<version>.x86_64.rpm`) is electron-builder's default and has
     not been seen yet; its first build is the next tag (6.2). The FUSE hint is the general AppImage
@@ -172,5 +190,6 @@ Decided so far:
     on Windows.
 - [ ] **6.2 Release the next patch version and watch the installed app update itself.**
   - Why: the updater cannot be tested in dev. This is the only real test, and it has to pass once
-    on Linux and once on Windows.
+    on Linux and once on Windows. On a Mac, and on a `.deb` install, the test is the "Update
+    available" toast.
 - [ ] **6.3 Check that `architecture.md` and `features.md` have every decision made here, then delete this file.**

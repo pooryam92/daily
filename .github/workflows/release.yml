@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Started by hand on a branch, it builds every platform and releases nothing. The installers are
+  # kept as workflow artifacts for a day: the only way to try a build this machine cannot make.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,6 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: The tag is the package.json version
+        if: github.ref_type == 'tag'
         run: |
           version="v$(node -p "require('./package.json').version")"
           if [ "$version" != "$GITHUB_REF_NAME" ]; then
@@ -29,7 +33,8 @@ jobs:
     needs: [version, check]
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # macos-latest is Apple silicon; it builds the .dmg for both chips (electron-builder.yml).
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -42,7 +47,8 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm
       - run: npm run dist
-      # The installers, and the feeds the updater reads: latest-linux.yml and latest.yml.
+      # The installers, and the feeds the updater reads: latest-linux.yml, latest.yml and
+      # latest-mac.yml.
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.os }}
@@ -52,15 +58,17 @@ jobs:
             release/*.rpm
             release/*.exe
             release/*.exe.blockmap
+            release/*.dmg
             release/latest*.yml
           if-no-files-found: error
           retention-days: 1
 
-  # Only runs when both builds succeeded: a release with one platform missing gives the installed
-  # apps of the other a 404 on the update feed. `gh release create` keeps the release a draft until
-  # every file is uploaded.
+  # Only runs when every build succeeded: a release with one platform missing gives the installed
+  # apps of that platform a 404 on the update feed. `gh release create` keeps the release a draft
+  # until every file is uploaded.
   release:
     needs: build
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write

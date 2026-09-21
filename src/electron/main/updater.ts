@@ -9,7 +9,8 @@ const DOWNLOAD_PAGE = 'https://github.com/pooryam92/daily/releases/latest'
 
 /**
  * Only an AppImage and a Windows install can replace themselves. A `.deb` or `.rpm` is owned by the
- * package manager, so there the app only says that a newer version exists.
+ * package manager, and macOS only lets an app with an Apple developer signature update itself, which
+ * this one does not have. There the app only says that a newer version exists.
  */
 const canReplaceItself = (): boolean => process.platform === 'win32' || process.env.APPIMAGE !== undefined
 

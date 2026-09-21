@@ -86,8 +86,8 @@ window opens, so the app never starts in the wrong colours.
 ## Your data
 
 - **Where.** `todos.json` and `settings.json` in the app's data folder: `~/.config/daily/` on Linux,
-  `%APPDATA%\daily\` on Windows. Nothing leaves the machine; the app's only network request is the
-  check for a newer version.
+  `%APPDATA%\daily\` on Windows, `~/Library/Application Support/daily/` on macOS. Nothing leaves the
+  machine; the app's only network request is the check for a newer version.
 - **Saving.** Every change is saved at once, as the whole file, through a temporary file, so a crash
   in the middle of a write cannot damage it. If a save fails, a banner says so until the next one
   succeeds.
@@ -106,8 +106,9 @@ The installed app looks for a newer version when it starts and every four hours.
   the app quits. It is installed then either way.
 - **`.deb` and `.rpm`.** The package belongs to the package manager, so the app only says "Update available";
   Download opens the release page.
+- **macOS.** The same: macOS lets only an app signed by an Apple developer replace itself, and this
+  one is not.
 - The toast stays until it is answered. Being offline, or any other failure, shows nothing.
-- There is no macOS build.
 
 ## Accessibility
 

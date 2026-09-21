@@ -33,6 +33,27 @@ nsis:
   # file, while the update feed (latest.yml) says dashes, and the updater would get a 404.
   artifactName: ${productName}-Setup-${version}.${ext}
 
+mac:
+  # One .dmg per chip. Both are built on the same (Apple silicon) runner: the app has no native
+  # modules, so the other architecture is only a different Electron download.
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  category: public.app-category.productivity
+  # macOS icons sit on a grid with more air around the plate than build/icon.png has; drawn to
+  # the edge of it, the icon is a size bigger than its neighbours in the Dock.
+  icon: build/icon-mac.png
+  # There is no Apple developer certificate, so the app is signed ad hoc: Apple silicon does not
+  # start an app without any signature. Gatekeeper still stops the download (README, "macOS").
+  # The hardened runtime is only needed for notarization, and with an ad-hoc signature its library
+  # validation keeps the app from loading its own Electron framework.
+  identity: '-'
+  hardenedRuntime: false
+
+dmg:
+  # The default leaves the architecture out of the x64 name, and the two files sit side by side.
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
 # Where the installed app looks for updates (docs/release.md, Phase 3). Building never uploads:
 # `npm run dist` passes `--publish never`, and the release workflow publishes on a tag.
 publish:
