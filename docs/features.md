@@ -34,6 +34,8 @@ Keep it current: a change to what the user can do changes this file in the same 
 - The arrow keys move the cursor instead while there is text to move through: in a todo that is
   being edited, and in the add-todo input once something is typed. They also belong to a todo's
   grip while it is focused (see Reorder).
+- A swipe points at the day it goes to, like the arrow keys: to the right is the day after. A drag
+  is the other way round, because there the card follows the pointer.
 - A drag cannot start on a todo's text with a mouse, so the text stays selectable. A drag moves one
   day at most.
 - Every way of moving can interrupt every other one: they all move the same value.

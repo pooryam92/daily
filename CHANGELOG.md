@@ -6,6 +6,11 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+### Changed
+
+- A two-finger swipe goes the other way: to the right brings the day after, to the left the day
+  before.
+
 ## [1.0.0] - 2026-09-21
 
 The first release.

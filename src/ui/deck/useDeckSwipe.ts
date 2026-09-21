@@ -27,8 +27,9 @@ export function useDeckSwipe(stack: RefObject<HTMLElement | null>, onFlip: (amou
       if (flipped || isMomentum) return
       if (Math.abs(x) < SWIPE_DISTANCE_PX || Math.abs(x) < Math.abs(y) * SIDEWAYS_RATIO) return
       flipped = true
-      // The movement is that of the content, as in a drag: to the right brings the day before.
-      flip(x > 0 ? -1 : 1)
+      // The swipe points at the day it goes to, as the arrow keys do, and not the way a drag pulls
+      // the card: to the right brings the day after.
+      flip(x > 0 ? 1 : -1)
     })
     gestures.observe(element)
 
