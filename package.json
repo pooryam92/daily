@@ -2,6 +2,7 @@
   "name": "daily",
   "version": "1.0.0",
   "description": "A todo app with one card per day.",
+  "license": "MIT",
   "author": {
     "name": "Poorya",
     "email": "poorya922@gmail.com"

@@ -6,6 +6,50 @@ Click a todo's text to edit it. Enter or clicking away saves; Escape cancels.
 Drag its bullet/grip to reorder within the open or resolved part of the day.
 With the grip focused, Space/Enter picks up and drops, arrow keys move, and Escape cancels.
 
+## Install
+
+Download the file for your system from the
+[latest release](https://github.com/pooryam92/daily/releases/latest). There is no macOS build.
+
+| System           | File                        | Updates                                         |
+| ---------------- | --------------------------- | ----------------------------------------------- |
+| Windows          | `Daily-Setup-<version>.exe` | By itself                                       |
+| Any Linux        | `Daily-<version>.AppImage`  | By itself                                       |
+| Debian, Ubuntu   | the `.deb`                  | The app says when there is one; install by hand |
+| Fedora, openSUSE | the `.rpm`                  | The app says when there is one; install by hand |
+
+### Windows
+
+Run `Daily-Setup-<version>.exe`. It installs for your user only and asks for no administrator.
+
+The installer is not signed, because a certificate is a yearly cost that a personal app does not
+justify. Windows therefore stops it with a blue SmartScreen box, "Windows protected your PC". Click
+**More info**, then **Run anyway**. The browser may warn about the download first ("isn't commonly
+downloaded"); choose **Keep**.
+
+### Linux
+
+- **AppImage.** Make it executable and run it:
+
+  ```sh
+  chmod +x Daily-*.AppImage
+  ./Daily-*.AppImage
+  ```
+
+  It is one file that can live anywhere, and it replaces itself on an update. It has no launcher
+  entry of its own. If it stops with a message about FUSE, install `libfuse2` (`libfuse2t64` from
+  Ubuntu 24.04 on).
+
+- **`.deb`.** `sudo apt install ./daily_<version>_amd64.deb`
+- **`.rpm`.** `sudo dnf install ./daily-<version>.x86_64.rpm`, or `sudo zypper install` on openSUSE.
+  The package is not signed, which zypper asks about.
+
+The `.deb` and the `.rpm` add Daily to the launcher. They belong to the package manager, so the app
+does not replace them: it says "Update available" and opens the release page.
+
+The todos are in `~/.config/daily/` on Linux and `%APPDATA%\daily\` on Windows. Uninstalling leaves
+them there.
+
 ## Scripts
 
 | Command          | What it does                                                      |
@@ -105,3 +149,7 @@ the real todos. Only one instance runs per folder; a second launch focuses the f
 A file that can't be read is moved aside as `todos.json.corrupt-<timestamp>` rather than overwritten.
 The first start of each new version copies the file to `todos.before-v<version>.json`; the newest
 five are kept.
+
+## License
+
+[MIT](LICENSE).

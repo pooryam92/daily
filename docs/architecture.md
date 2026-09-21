@@ -182,8 +182,8 @@ The app loads no remote content, which makes the rules simple to hold.
   the other fails, and its installed apps get a 404 on the feed.
 - **The installer is `Daily-Setup-<version>.exe`,** not the default name with spaces. GitHub turns
   spaces in an uploaded file's name into dots, while the feed says dashes.
-- **Unsigned.** Windows shows a SmartScreen warning on install, which the README will explain
-  (`release.md`, 5.4). A certificate is a yearly cost that a personal app does not justify.
+- **Unsigned.** Windows shows a SmartScreen warning on install, which the README explains under
+  "Install". A certificate is a yearly cost that a personal app does not justify.
 
 ## 6. Updates
 

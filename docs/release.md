@@ -120,16 +120,21 @@ Decided so far:
 
 - [x] **4.1 Workflow that runs `npm run check` on every push and pull request.**
   - `.github/workflows/check.yml`. Checked: the push of the workflow itself ran it, green in 37 s.
-- [ ] **4.2 Release workflow on a `v*` tag: build on Linux and Windows into a draft release.**
+- [x] **4.2 Release workflow on a `v*` tag: build on Linux and Windows into a release.**
   - Uses the built-in `GITHUB_TOKEN`; there are no secrets to manage.
   - `.github/workflows/release.yml`. The builds run `npm run dist` and hand their files over as
-    workflow artifacts. Open: its first run is 6.1, which is also the first Windows build.
+    workflow artifacts.
   - The installer is now `Daily-Setup-<version>.exe`: GitHub turns spaces in an uploaded file's name
     into dots, while `latest.yml` says dashes, and the updater would get a 404.
-- [ ] **4.3 Publish the draft only after both builds succeeded.**
+  - Checked with the tag `v1.0.0`: the tag check, `npm run check` and both builds passed, 4m14s in
+    all. It was the first Windows build. The `.rpm` came after this run; its first build is the next tag.
+- [x] **4.3 Publish the release only after both builds succeeded.**
   - Why: a half-filled release gives installed apps a 404 on the update feed.
   - A last job that needs both builds runs `gh release create` with every file, which keeps the
-    release a draft until the last upload is done.
+    release a draft until the last upload is done and publishes it then.
+  - Checked with `v1.0.0`: the job ran after both builds, and the release came out published with
+    all six files: the AppImage, the `.deb`, the `.exe` and its blockmap, `latest-linux.yml` and
+    `latest.yml`. A failed build was not tried; `needs: build` is what skips the job then.
 - [x] **4.4 Fail the workflow when the tag differs from the `package.json` version.**
   - Why: the updater compares versions from the feed, which comes from `package.json`, not the tag.
   - The first job of the release workflow; nothing is built before it passes.
@@ -138,16 +143,30 @@ Decided so far:
 
 ## Phase 5 — Going public
 
-- [ ] **5.1 Read `docs/` once more as a stranger would.**
+- [x] **5.1 Read `docs/` once more as a stranger would.**
   - A scan of all eight commits found no secrets; this is only about what you want public.
-- [ ] **5.2 Apply 0.3: add the license file and the `license` field in `package.json`.**
+  - Read on 2026-09-21, all six files and the README: no path, address, account or machine detail
+    beyond the name and commit email already accepted in 0.4. Nothing was changed. What a stranger
+    does learn: the decisions name Poorya, `archive.md` says the sounds were never heard in "the
+    session that built them", and `research.md` marks many rows as unverified. All three were left
+    as they are, because they are true.
+- [x] **5.2 Apply 0.3: add the license file and the `license` field in `package.json`.**
+  - `LICENSE` (MIT, 2026, Poorya), `"license": "MIT"` in `package.json` and the lockfile, and a
+    "License" section in the README. `"private": true` stays: it only keeps the package off npm.
 - [ ] **5.3 Merge `feat/progress-day-cleared` into `main`.**
-- [ ] **5.4 README: an install section per platform, including the SmartScreen warning on Windows.**
+- [x] **5.4 README: an install section per platform, including the SmartScreen warning on Windows.**
+  - "Install", above "Scripts": a table of which file is for which system and how it updates, the
+    SmartScreen steps, and one command per Linux format. Done before 5.3 so that `main` has it.
+  - Open: the `.rpm` file name (`daily-<version>.x86_64.rpm`) is electron-builder's default and has
+    not been seen yet; its first build is the next tag (6.2). The FUSE hint is the general AppImage
+    one, not something met here.
 - [ ] **5.5 Make the repo public.**
 
 ## Phase 6 — First release, and proof that updating works
 
 - [ ] **6.1 Tag and release the first version; install it from the release page.**
+  - `v1.0.0` is tagged and released (4.2). Open: installing it from the release page, on Linux and
+    on Windows.
 - [ ] **6.2 Release the next patch version and watch the installed app update itself.**
   - Why: the updater cannot be tested in dev. This is the only real test, and it has to pass once
     on Linux and once on Windows.
