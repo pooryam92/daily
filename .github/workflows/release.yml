@@ -38,6 +38,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # electron-builder makes the .rpm with rpmbuild, which the Ubuntu runner does not have.
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
       - run: npm run dist
       # The installers, and the feeds the updater reads: latest-linux.yml and latest.yml.
       - uses: actions/upload-artifact@v7
@@ -46,6 +49,7 @@ jobs:
           path: |
             release/*.AppImage
             release/*.deb
+            release/*.rpm
             release/*.exe
             release/*.exe.blockmap
             release/latest*.yml

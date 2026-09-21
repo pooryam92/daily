@@ -77,7 +77,9 @@ Decided so far:
   - Checked: the packaged `app.asar` holds `out/` and `electron-updater` with what it needs, nothing
     else. `electron-updater` is the one real dependency, because `tsc` does not bundle the main process.
 - [x] **2.4 Add electron-builder and its config: `appId`, product name, files, and the targets.**
-  - Targets: Linux AppImage + `.deb`, Windows NSIS.
+  - Targets: Linux AppImage + `.deb` + `.rpm`, Windows NSIS.
+  - The `.rpm` came later, for Fedora and openSUSE. It needs `rpmbuild`, which this machine does not
+    have (`sudo apt install rpm`); the release workflow installs it. Open: its first build is 6.1.
   - In `electron-builder.yml`, output in `release/`. The NSIS installer keeps its defaults: one
     click, per user, so an update needs no administrator.
 - [ ] **2.5 Add `npm run dist`, build on this machine, install the result and use it.**
@@ -106,8 +108,8 @@ Decided so far:
     1.0.0 found and downloaded 1.0.1 and showed the toast; Restart replaced the file with
     `Daily-1.0.1.AppImage`, which came up on the same data folder and made its
     `todos.before-v1.0.1.json`. The toast was looked at in both themes. Windows is first seen in 6.2.
-- [x] **3.3 `.deb` installs: a toast that links to the release page instead of downloading.**
-  - Why: only the AppImage can replace itself; a `.deb` is owned by the package manager.
+- [x] **3.3 `.deb` and `.rpm` installs: a toast that links to the release page instead of downloading.**
+  - Why: only the AppImage can replace itself; a `.deb` or `.rpm` is owned by the package manager.
   - electron-updater 6 could install a `.deb` itself, through `pkexec dpkg -i`. Not used: it asks for
     the password when the app quits, and goes around apt.
   - Anything on Linux that is not an AppImage only checks: "Update available", with Download opening
@@ -116,8 +118,8 @@ Decided so far:
 
 ## Phase 4 — CI
 
-- [ ] **4.1 Workflow that runs `npm run check` on every push and pull request.**
-  - `.github/workflows/check.yml`. Open: its first run on GitHub, after the push.
+- [x] **4.1 Workflow that runs `npm run check` on every push and pull request.**
+  - `.github/workflows/check.yml`. Checked: the push of the workflow itself ran it, green in 37 s.
 - [ ] **4.2 Release workflow on a `v*` tag: build on Linux and Windows into a draft release.**
   - Uses the built-in `GITHUB_TOKEN`; there are no secrets to manage.
   - `.github/workflows/release.yml`. The builds run `npm run dist` and hand their files over as
@@ -128,9 +130,11 @@ Decided so far:
   - Why: a half-filled release gives installed apps a 404 on the update feed.
   - A last job that needs both builds runs `gh release create` with every file, which keeps the
     release a draft until the last upload is done.
-- [ ] **4.4 Fail the workflow when the tag differs from the `package.json` version.**
+- [x] **4.4 Fail the workflow when the tag differs from the `package.json` version.**
   - Why: the updater compares versions from the feed, which comes from `package.json`, not the tag.
   - The first job of the release workflow; nothing is built before it passes.
+  - Checked with a throwaway tag `v0.0.0-citest`: the run failed with "The tag is v0.0.0-citest,
+    package.json says v1.0.0", and the build and release jobs were skipped. The tag is deleted again.
 
 ## Phase 5 — Going public
 

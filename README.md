@@ -82,8 +82,9 @@ File names in `docs/` are lowercase.
 
 ## Packaging and updates
 
-`npm run dist` packages with electron-builder (`electron-builder.yml`): an AppImage and a `.deb` on
-Linux, an NSIS installer on Windows. It never uploads anything. The renderer's libraries are
+`npm run dist` packages with electron-builder (`electron-builder.yml`): an AppImage, a `.deb` and an
+`.rpm` on Linux, an NSIS installer on Windows. The `.rpm` needs `rpmbuild` (`sudo apt install rpm`).
+It never uploads anything. The renderer's libraries are
 `devDependencies` because Vite bundles them; only what the main process loads at runtime
 (`electron-updater`) is a `dependency`, and only that is copied into the app.
 
@@ -92,7 +93,7 @@ runs the check, builds on Linux and Windows, and publishes the GitHub release on
 
 The installed app looks for a newer GitHub release at launch and every four hours. An AppImage and a
 Windows install download it in the background, show "Update ready" with a Restart button, and
-install it when the app quits either way. A `.deb` belongs to the package manager, so there the app
+install it when the app quits either way. A `.deb` or `.rpm` belongs to the package manager, so there the app
 only says "Update available" and opens the release page. A build run from the repo never checks.
 
 ## Data

@@ -15,6 +15,7 @@ linux:
   target:
     - AppImage
     - deb
+    - rpm
   category: Office
   # Icon themes stop at 512px, so the 1024px build/icon.png alone would install an icon no desktop
   # looks up. The set is scaled down from it; Windows still makes its .ico from the big one.

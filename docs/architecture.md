@@ -156,9 +156,12 @@ The app loads no remote content, which makes the rules simple to hold.
 
 - **electron-builder, configured in `electron-builder.yml`.** Not Electron Forge, because
   `electron-updater` comes with electron-builder and reads the same config. `npm run dist` never uploads.
-- **Targets: AppImage and `.deb` on Linux, NSIS on Windows.** No macOS build: nobody here runs it,
-  and an unsigned macOS app cannot update itself. The NSIS installer keeps its defaults, one click
-  and per user, so an update needs no administrator.
+- **Targets: AppImage, `.deb` and `.rpm` on Linux, NSIS on Windows.** The AppImage runs anywhere and
+  updates itself; the two packages are for people who want the app installed by their package
+  manager, on Debian/Ubuntu and on Fedora/openSUSE. No Flatpak, Snap or apt repository: none of
+  them would update itself either, and each is infrastructure to keep up. No macOS build: nobody
+  here runs it, and an unsigned macOS app cannot update itself. The NSIS installer keeps its
+  defaults, one click and per user, so an update needs no administrator.
 - **Only `out/` goes into the app.** The renderer's libraries are `devDependencies` because Vite has
   already bundled them; left in `dependencies`, all of `node_modules` was copied in as well.
   `electron-updater` is the one real `dependency`.

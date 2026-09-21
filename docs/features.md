@@ -104,7 +104,7 @@ The installed app looks for a newer version when it starts and every four hours.
 - **AppImage and Windows.** The new version is downloaded in the background. A toast then says
   "Update ready": Restart installs it now and brings the app back; Later leaves it for the next time
   the app quits. It is installed then either way.
-- **`.deb`.** The package belongs to the package manager, so the app only says "Update available";
+- **`.deb` and `.rpm`.** The package belongs to the package manager, so the app only says "Update available";
   Download opens the release page.
 - The toast stays until it is answered. Being offline, or any other failure, shows nothing.
 - There is no macOS build.

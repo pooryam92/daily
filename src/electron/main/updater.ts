@@ -8,8 +8,8 @@ const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000
 const DOWNLOAD_PAGE = 'https://github.com/pooryam92/daily/releases/latest'
 
 /**
- * Only an AppImage and a Windows install can replace themselves. A `.deb` is owned by the package
- * manager, so there the app only says that a newer version exists.
+ * Only an AppImage and a Windows install can replace themselves. A `.deb` or `.rpm` is owned by the
+ * package manager, so there the app only says that a newer version exists.
  */
 const canReplaceItself = (): boolean => process.platform === 'win32' || process.env.APPIMAGE !== undefined
 
