@@ -12,5 +12,5 @@
     "tsBuildInfoFile": "out/.tsbuildinfo.web",
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src/ui", "src/electron/renderer", "src/application", "src/domain"]
+  "include": ["src/ui", "src/electron/renderer", "src/ports.ts", "src/domain"]
 }

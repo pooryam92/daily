@@ -1,13 +1,14 @@
 import { MotionConfig } from 'motion/react'
 import { Toaster } from 'sonner'
 import styles from './App.module.css'
-import { DayStack } from './components/DayStack'
-import { SettingsMenu } from './components/SettingsMenu'
-import { useAppVersion } from './hooks/useAppVersion'
-import { useDayNavigation } from './hooks/useDayNavigation'
-import { useSettings } from './hooks/useSettings'
-import { useTodoStore } from './hooks/useTodoStore'
-import { useToday } from './hooks/useToday'
+import { DayStack } from './deck/DayStack'
+import { SettingsMenu } from './settings/SettingsMenu'
+import { useAppVersion } from './updates/useAppVersion'
+import { useDayNavigation } from './deck/useDayNavigation'
+import { useSettings } from './settings/useSettings'
+import { useTodoStore } from './todos/useTodoStore'
+import { useUpdateNotice } from './updates/useUpdateNotice'
+import { useToday } from './day/useToday'
 
 export function App() {
   const today = useToday()
@@ -15,6 +16,7 @@ export function App() {
   const store = useTodoStore()
   const settings = useSettings()
   const version = useAppVersion()
+  useUpdateNotice()
 
   if (store.phase === 'loading') return null
 

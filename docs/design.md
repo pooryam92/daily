@@ -453,14 +453,14 @@ Each would undercut the fresh-start premise of the app:
   sits where the first todo will go; the input below it is the way forward (NN/g on empty states)
   **[verified]**. A cleared day adds one word, "Cleared". An unfinished day, past or present, gets
   no words at all: no guilt copy (fresh start effect) **[strong]**.
-- **Sound is off until switched on** (Settings; decision D1 in `ARCHIVE.md`). The more often an
+- **Sound is off until switched on** (Settings; decision D1 in `archive.md`). The more often an
   action happens, the quieter its sound has to be (Material) **[verified]**. Three sounds: a soft
   tick for a check,
   climbing a major pentatonic scale from E5 over consecutive checks within 4s and staying at E6
   (after Clear's rising scale **[verified]**); a lower, softer note that slides down for ✗, which
   is a release and never an error tone; a C major arpeggio that lingers for the cleared day, played
   instead of the tick. Reopening and deleting are silent. They are synthesised with Web Audio
-  (`lib/sound.ts`), not samples: pitch, length and level are then plain numbers that can be tuned,
+  (`sound/sound.ts`), not samples: pitch, length and level are then plain numbers that can be tuned,
   and there is no asset or licence to carry. Every value is **[unverified]** until tuned by ear.
 
 ## References

@@ -8,9 +8,9 @@ import { motion } from 'motion/react'
 import { useId } from 'react'
 import { isThemeMode } from '@/domain/settings-schema'
 import type { ThemeMode } from '@/domain/settings'
-import type { SettingsState } from '../hooks/useSettings'
+import type { SettingsState } from './useSettings'
 import { SEGMENT } from '../lib/motion'
-import { play } from '../lib/sound'
+import { play } from '../sound/sound'
 import styles from './SettingsMenu.module.css'
 
 const THEMES = [

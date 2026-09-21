@@ -2,7 +2,7 @@ import type { ResolvedStatus, Todo } from '@/domain/todo'
 
 /*
  * The app's three sounds, synthesised with Web Audio: no samples, no library. They are off unless
- * switched on in the settings. The reasoning is in docs/DESIGN.md §10; every value here is a
+ * switched on in the settings. The reasoning is in docs/design.md §10; every value here is a
  * starting point to tune by ear.
  */
 

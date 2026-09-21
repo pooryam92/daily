@@ -2,7 +2,8 @@
 
 Everything between the current state and a first release that updates itself, in the order we go
 through it. Written on 2026-09-20. Cross a task off when it is done and checked; when the list is
-empty, the decisions go into `ARCHIVE.md` and this file is deleted.
+empty this file is deleted. The decisions are kept in `architecture.md` (sections 4 to 6) as they
+are made, and what the user sees in `features.md`.
 
 Decided so far:
 
@@ -28,7 +29,7 @@ Decided so far:
   - Why: every commit carries it and it becomes public with the repo.
 - [x] **0.5 The icon: who makes it, and what it shows.** A sun on the horizon, paper on blue.
   - Why: there is no icon in the repo. Without one every platform shows the default Electron icon.
-  - A new day is the fresh-start effect the app is built on. The colours follow `DESIGN.md`: paper,
+  - A new day is the fresh-start effect the app is built on. The colours follow `design.md`: paper,
     and the one blue that marks "Today". No green and no check, because green means done.
 
 ## Phase 1 — The app, before it is installed anywhere
@@ -59,27 +60,59 @@ Decided so far:
 ## Phase 2 — Packaging
 
 - [x] **2.1 Add the icon (one 1024px PNG under `build/`).**
-  - `build/icon.svg` is the source and `build/icon.png` its 1024px export. The `.ico` and the Linux
-    size set are generated from the PNG by electron-builder.
-- [ ] **2.2 Fill in `package.json`: `author` with an email, `description`, `homepage`, and the version from 0.2.**
+  - `build/icon.svg` is the source and `build/icon.png` its 1024px export, which the Windows `.ico`
+    is generated from.
+  - Linux needs the size set in `build/icons/` (16 to 512px, scaled down from the PNG with
+    ImageMagick). electron-builder 26 does not generate it: with the big PNG alone the `.deb`
+    installed only `hicolor/1024x1024`, a size the icon theme does not list, so no desktop finds it.
+- [x] **2.2 Fill in `package.json`: `author` with an email, `description`, `homepage`, and the version from 0.2.**
   - Why: the `.deb` build fails without an author email; the rest shows up in installers and
     About dialogs.
-- [ ] **2.3 Move the renderer libraries to `devDependencies`.**
+  - Also `repository`, and `desktopName`: Electron uses it as the window's app_id, and with
+    `linux.syncDesktopName` the `.desktop` file gets the same name, which is what ties the running
+    window to its launcher icon.
+- [x] **2.3 Move the renderer libraries to `devDependencies`.**
   - Why: Vite already bundles them. Left in `dependencies`, the packager copies all of
     `node_modules` into the app as well.
-- [ ] **2.4 Add electron-builder and its config: `appId`, product name, files, and the targets.**
+  - Checked: the packaged `app.asar` holds `out/` and `electron-updater` with what it needs, nothing
+    else. `electron-updater` is the one real dependency, because `tsc` does not bundle the main process.
+- [x] **2.4 Add electron-builder and its config: `appId`, product name, files, and the targets.**
   - Targets: Linux AppImage + `.deb`, Windows NSIS.
+  - In `electron-builder.yml`, output in `release/`. The NSIS installer keeps its defaults: one
+    click, per user, so an update needs no administrator.
 - [ ] **2.5 Add `npm run dist`, build on this machine, install the result and use it.**
   - Check: it starts, the todos are the existing ones (1.2), the CSP raises no errors, the icon shows.
+  - Checked on the AppImage: it starts, reads `~/.config/daily` (what it loaded equals `todos.json`,
+    which stayed byte for byte the same, and `todos.before-v1.0.0.json` appeared), the console has
+    no CSP error, and the 404 of the still private repo stays in the log.
+  - Open: `sudo apt install ./release/daily_1.0.0_amd64.deb`, then look at the icon in the launcher
+    and on the running window. The package was only unpacked and read: `.desktop` entry, the icon
+    sizes and `StartupWMClass=daily` are in place. An AppImage has no launcher entry of its own.
+  - The Windows installer cannot be built here (it needs Wine); the release workflow builds it (4.2).
 
 ## Phase 3 — Updates
 
-- [ ] **3.1 Add `electron-updater` to the main process.**
+- [x] **3.1 Add `electron-updater` to the main process.**
   - Checks at launch and every few hours, because the app stays open for days. Downloads in the
     background, installs on quit. Off in dev. Errors such as being offline stay silent.
-- [ ] **3.2 Toast "Update ready" with a Restart button, over a new IPC channel.**
-- [ ] **3.3 `.deb` installs: a toast that links to the release page instead of downloading.**
+  - `src/electron/main/updater.ts`, every four hours. The UI reaches it through a new
+    `updates` part of the gateway.
+- [x] **3.2 Toast "Update ready" with a Restart button, over a new IPC channel.**
+  - The toast stays until it is answered ("Later" or "Restart"): nobody may be looking when the
+    update arrives. The main process also keeps the update it found, for a window that opens later.
+  - Restart gives up the single-instance lock first (1.1): the updater starts the new AppImage
+    before the old app is gone, and the new one would otherwise exit at the lock.
+  - Checked without GitHub: a 1.0.0 and a 1.0.1 AppImage built with a `generic` feed on localhost.
+    1.0.0 found and downloaded 1.0.1 and showed the toast; Restart replaced the file with
+    `Daily-1.0.1.AppImage`, which came up on the same data folder and made its
+    `todos.before-v1.0.1.json`. The toast was looked at in both themes. Windows is first seen in 6.2.
+- [x] **3.3 `.deb` installs: a toast that links to the release page instead of downloading.**
   - Why: only the AppImage can replace itself; a `.deb` is owned by the package manager.
+  - electron-updater 6 could install a `.deb` itself, through `pkexec dpkg -i`. Not used: it asks for
+    the password when the app quits, and goes around apt.
+  - Anything on Linux that is not an AppImage only checks: "Update available", with Download opening
+    the latest release. Checked with the unpacked build marked as a `.deb` install: the toast came,
+    nothing was downloaded.
 
 ## Phase 4 — CI
 
@@ -106,4 +139,4 @@ Decided so far:
 - [ ] **6.2 Release the next patch version and watch the installed app update itself.**
   - Why: the updater cannot be tested in dev. This is the only real test, and it has to pass once
     on Linux and once on Windows.
-- [ ] **6.3 Move the decisions into `ARCHIVE.md` and delete this file.**
+- [ ] **6.3 Check that `architecture.md` and `features.md` have every decision made here, then delete this file.**

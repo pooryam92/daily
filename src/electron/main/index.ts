@@ -1,8 +1,9 @@
 import path from 'node:path'
 import { app, BrowserWindow, nativeTheme } from 'electron'
-import { registerIpcHandlers } from './ipc'
+import { broadcast, registerIpcHandlers } from './ipc'
 import { SettingsStore } from './settings-store'
 import { TodoStore } from './todo-store'
+import { Updater } from './updater'
 import { createMainWindow } from './window'
 
 async function main(): Promise<void> {
@@ -19,8 +20,12 @@ async function main(): Promise<void> {
     console.error('Could not back up the todos:', error)
   })
 
-  registerIpcHandlers(todos, settings)
+  const updater = new Updater((update) => {
+    broadcast('update:found', update)
+  })
+  registerIpcHandlers(todos, settings, updater)
   createMainWindow()
+  updater.start()
 
   // macOS: re-create the window when the dock icon is clicked and none are open.
   app.on('activate', () => {

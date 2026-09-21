@@ -1,6 +1,6 @@
 import { createContext, use } from 'react'
 import type { ReactNode } from 'react'
-import type { DailyGateway } from '@/application/ports'
+import type { DailyGateway } from '@/ports'
 
 const GatewayContext = createContext<DailyGateway | null>(null)
 

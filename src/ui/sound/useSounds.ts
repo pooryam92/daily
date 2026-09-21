@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { ResolvedStatus, Todo } from '@/domain/todo'
-import { cueFor, play } from '../lib/sound'
+import { cueFor, play } from './sound'
 
 /**
  * Plays the sound of a click on a todo's mark, if sound is switched on. It is called with the day's

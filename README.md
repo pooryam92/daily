@@ -13,6 +13,7 @@ With the grip focused, Space/Enter picks up and drops, arrow keys move, and Esca
 | `npm run dev`    | Run the app against the Vite dev server (hot reload)              |
 | `npm start`      | Build everything and run the built app                            |
 | `npm run build`  | Compile main + preload with `tsc`, bundle the renderer            |
+| `npm run dist`   | Build, then package for this platform into `release/`             |
 | `npm run check`  | Type-check, lint, test and check formatting — run before a commit |
 | `npm test`       | Unit tests (Vitest)                                               |
 | `npm run lint`   | ESLint (type-aware)                                               |
@@ -22,10 +23,10 @@ Changes to `src/electron/main` or `src/electron/preload` need a restart of `npm 
 
 ## Structure
 
-The layers point inwards: `domain` knows nothing about anything else, `ui` knows the domain and the
-gateway interface, and only `electron/` knows it is Electron. A web build would add `src/web/` next
-to `src/electron/` with its own entry and gateway, and reuse `domain/`, `application/` and `ui/`
-unchanged.
+Three parts, joined by one interface. `domain/` is the pure core and imports nothing, `ui/` is the
+React app and knows the domain and the gateway interface in `ports.ts`, and only `electron/` knows
+it is Electron. A web build would add `src/web/` next to `src/electron/` with its own entry and
+gateway, and reuse `domain/`, `ports.ts` and `ui/` unchanged.
 
 ```
 src/
@@ -37,17 +38,21 @@ src/
     store-schema.ts    runtime validation of persisted / received data
     settings.ts        Settings, ThemeMode
     settings-schema.ts runtime validation of the settings file
-  application/
-    ports.ts           DailyGateway: everything the UI needs from its platform
-  ui/          The React app. Platform-agnostic: it only ever talks to the gateway.
+  ports.ts     DailyGateway: everything the UI needs from its platform.
+  ui/          The React app, grouped by feature. It only ever talks to the gateway.
+    App.tsx            wires the features together
     gateway.tsx        the context the gateway is handed in through
-    lib/               browser-side helpers: deck geometry, sound synthesis, wording
-    hooks/             state: today, day navigation, the todo store, settings, sounds
-    components/        DayStack > DayCard > TodoItem / AddTodoForm, each with its CSS module
+    deck/              the stack of days and moving through it: DayStack, drag, swipe, geometry
+    day/               one day's card: DayCard, ProgressRing, today's date, wording
+    todos/             TodoItem, TodoEditor, AddTodoForm, DoneCheckbox, the todo store, undo
+    settings/          SettingsMenu and the settings state
+    sound/             sound synthesis and when it plays
+    updates/           the update notice and the app's version
+    lib/               shared by every feature: motion tokens, error messages
     styles/            design tokens and global styles
   electron/    This platform: the gateway implemented over IPC.
     ipc-contract.ts    the channels between renderer and main
-    main/              app lifecycle, the window, IPC handlers, the JSON files
+    main/              app lifecycle, the window, IPC handlers, the JSON files, the updater
     preload/           exposes the gateway to the renderer as `window.api`
     renderer/          index.html and the entry that mounts `ui/` with that gateway
 ```
@@ -56,9 +61,36 @@ Rules of thumb:
 
 - Logic that doesn't need React or a platform goes in `domain/` as pure functions, with tests.
 - Hooks own state and side effects; components only render and call actions.
+- In `ui/`, a file lives in the folder of its feature, next to its CSS module and its test. Only
+  what every feature uses goes in `ui/lib/`.
 - The UI never touches Node, the file system or `window.api`. It calls the gateway it was given,
   and the main process validates everything it receives.
 - The preload script is sandboxed, so every import but `electron` must be _type-only_.
+
+## Docs
+
+| File                                         | What is in it                                                        |
+| -------------------------------------------- | -------------------------------------------------------------------- |
+| [docs/features.md](docs/features.md)         | What the app does, feature by feature                                |
+| [docs/architecture.md](docs/architecture.md) | How it is built: structure, IPC, security, data, packaging, updates  |
+| [docs/design.md](docs/design.md)             | Colour, type, space and motion, with the evidence behind each choice |
+| [docs/archive.md](docs/archive.md)           | What was built and decided, one short entry per feature              |
+| [docs/research.md](docs/research.md)         | Facts and their sources; no conclusions                              |
+| [docs/release.md](docs/release.md)           | The checklist to the first release; deleted when it is done          |
+
+File names in `docs/` are lowercase.
+
+## Packaging and updates
+
+`npm run dist` packages with electron-builder (`electron-builder.yml`): an AppImage and a `.deb` on
+Linux, an NSIS installer on Windows. It never uploads anything. The renderer's libraries are
+`devDependencies` because Vite bundles them; only what the main process loads at runtime
+(`electron-updater`) is a `dependency`, and only that is copied into the app.
+
+The installed app looks for a newer GitHub release at launch and every four hours. An AppImage and a
+Windows install download it in the background, show "Update ready" with a Restart button, and
+install it when the app quits either way. A `.deb` belongs to the package manager, so there the app
+only says "Update available" and opens the release page. A build run from the repo never checks.
 
 ## Data
 

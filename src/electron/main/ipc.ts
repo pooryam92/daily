@@ -1,9 +1,10 @@
-import { app, ipcMain, nativeTheme } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { isThemeMode } from '../../domain/settings-schema'
 import { parseStoreData } from '../../domain/store-schema'
-import type { IpcChannel, IpcContract } from '../ipc-contract'
+import type { IpcChannel, IpcContract, IpcEventChannel, IpcEvents } from '../ipc-contract'
 import type { SettingsStore } from './settings-store'
 import type { TodoStore } from './todo-store'
+import type { Updater } from './updater'
 
 type Result<C extends IpcChannel> = IpcContract[C]['result']
 
@@ -18,7 +19,12 @@ function handle<C extends IpcChannel>(
   ipcMain.handle(channel, (_event, ...args: unknown[]) => handler(...args))
 }
 
-export function registerIpcHandlers(store: TodoStore, settings: SettingsStore): void {
+/** Sends an event of the IPC contract to every open window. */
+export function broadcast<C extends IpcEventChannel>(channel: C, payload: IpcEvents[C]): void {
+  for (const win of BrowserWindow.getAllWindows()) win.webContents.send(channel, payload)
+}
+
+export function registerIpcHandlers(store: TodoStore, settings: SettingsStore, updater: Updater): void {
   handle('todos:load', () => store.load())
   handle('todos:save', async (data) => {
     await store.save(parseStoreData(data))
@@ -41,4 +47,14 @@ export function registerIpcHandlers(store: TodoStore, settings: SettingsStore): 
   })
 
   handle('app:version', () => app.getVersion())
+
+  handle('update:current', () => updater.found)
+  handle('update:restart', () => {
+    updater.restart()
+    return undefined
+  })
+  handle('update:openDownloadPage', async () => {
+    await updater.openDownloadPage()
+    return undefined
+  })
 }

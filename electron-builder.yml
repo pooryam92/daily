@@ -1,0 +1,35 @@
+appId: io.github.pooryam92.daily
+productName: Daily
+
+directories:
+  output: release
+
+# Only the build output: the renderer is already bundled by Vite, and the main process needs
+# nothing from node_modules but its `dependencies`, which electron-builder adds by itself.
+files:
+  - out/**
+  - '!out/**/*.d.ts'
+  - '!out/**/.tsbuildinfo*'
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Office
+  # Icon themes stop at 512px, so the 1024px build/icon.png alone would install an icon no desktop
+  # looks up. The set is scaled down from it; Windows still makes its .ico from the big one.
+  icon: build/icons
+  # The .desktop file is named after `desktopName` in package.json, which is also the window's
+  # app_id: that match is what puts the icon on the running window in the dock.
+  syncDesktopName: true
+  synopsis: A todo app with one card per day
+
+win:
+  target: nsis
+
+# Where the installed app looks for updates (docs/release.md, Phase 3). Building never uploads:
+# `npm run dist` passes `--publish never`, and the release workflow publishes on a tag.
+publish:
+  provider: github
+  owner: pooryam92
+  repo: daily

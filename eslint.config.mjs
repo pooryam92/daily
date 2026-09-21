@@ -4,7 +4,7 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['out', 'node_modules'] },
+  { ignores: ['out', 'release', 'node_modules'] },
   {
     files: ['src/**/*.{ts,tsx}'],
     extends: [
@@ -28,19 +28,19 @@ export default tseslint.config(
         'error',
         {
           patterns: [
-            { regex: '(^@/|/)(application|ui|electron)(/|$)', message: 'domain/ imports nothing but itself.' }
+            { regex: '(^@/|/)((ui|electron)(/|$)|ports$)', message: 'domain/ imports nothing but itself.' }
           ]
         }
       ]
     }
   },
   {
-    files: ['src/application/**'],
+    files: ['src/ports.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          patterns: [{ regex: '(^@/|/)(ui|electron)(/|$)', message: 'application/ may only import domain/.' }]
+          patterns: [{ regex: '(^@/|/)(ui|electron)(/|$)', message: 'ports.ts may only import domain/.' }]
         }
       ]
     }
@@ -54,7 +54,7 @@ export default tseslint.config(
           patterns: [
             {
               regex: '(^@/|/)electron(/|$)|^electron$',
-              message: 'ui/ is platform-agnostic: it may only import domain/ and application/.'
+              message: 'ui/ is platform-agnostic: it may only import domain/ and ports.'
             }
           ]
         }

@@ -13,7 +13,7 @@
     "src/electron/main",
     "src/electron/preload",
     "src/electron/ipc-contract.ts",
-    "src/application",
+    "src/ports.ts",
     "src/domain"
   ],
   "exclude": ["**/*.test.ts"]

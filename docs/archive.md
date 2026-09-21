@@ -68,7 +68,7 @@ It replaces `TASKS.md`, the phased task list of 2026-09-19. The last committed v
 ## The day deck (2026-09-19 and 2026-09-20)
 
 - **One value moves the deck.** `useDeckView` holds `view`, a continuous day number. Every card
-  derives its transform, opacity, tint and layout from its distance to `view` (`lib/deck.ts`). A
+  derives its transform, opacity, tint and layout from its distance to `view` (`deck/deck.ts`). A
   key, a click, a drag and a swipe all just move `view`, so any of them can interrupt any other.
   CSS no longer positions the cards.
 - **Motion budget by frequency.** A held arrow key is instant, a tapped one is a 0.15s spring, and
@@ -106,9 +106,9 @@ It replaces `TASKS.md`, the phased task list of 2026-09-19. The last committed v
   region. This happens once per clearing: a cleared day that comes into view gets no flourish.
   Deleting the last open todo clears the day quietly. The timings are `CLEARED` in
   `lib/motion.ts`.
-- **Copy.** "Nothing planned for today / tomorrow / yesterday / this day" (`lib/copy.ts`). An
+- **Copy.** "Nothing planned for today / tomorrow / yesterday / this day" (`day/copy.ts`). An
   unfinished day gets no words: no guilt copy.
-- **The sounds are synthesised in `lib/sound.ts`, not samples.** They could not be chosen by ear in
+- **The sounds are synthesised in `sound/sound.ts`, not samples.** They could not be chosen by ear in
   the session that built them; numbers beat files picked blind, the rising scale is exact and
   there is no asset to license. Swapping in samples later only touches `play()`.
 

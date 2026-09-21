@@ -1,7 +1,7 @@
 /*
  * The deck. The card in front is a fixed object (capped in both directions); the day before and the
  * day after sit behind it, a step smaller and a step closer to the window background. Where a card
- * is, how big, how visible and above which other cards comes from Motion (DayCard.tsx, lib/deck.ts),
+ * is, how big, how visible and above which other cards comes from Motion (DayCard.tsx, deck/deck.ts),
  * because cards travel on a spring and follow a drag. How far a card behind sticks out (--peek)
  * depends on the window and is worked out in DayStack.module.css.
  */

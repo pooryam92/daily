@@ -77,6 +77,15 @@
     scale var(--duration-fast) var(--ease-out);
 }
 
+/*
+ * "Later" on the update toast: the way out is quieter than the way forward. `[data-sonner-toaster]`
+ * is there for the specificity: without it Sonner's dark-theme rule ties and, injected later, wins.
+ */
+.toaster[data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-button][data-cancel] {
+  color: var(--surface);
+  background: transparent;
+}
+
 /* --accent is only 2.8:1 (light) and 2.1:1 (dark) against the toast, so this ring is the surface colour. */
 .toaster [data-sonner-toast][data-styled='true'] [data-button]:focus-visible {
   box-shadow:

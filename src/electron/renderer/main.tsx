@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { DailyGateway } from '@/application/ports'
+import type { DailyGateway } from '@/ports'
 import { App } from '@/ui/App'
 import { GatewayProvider } from '@/ui/gateway'
 import '@/ui/styles/global.css'

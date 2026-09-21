@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { MouseEvent, PointerEvent } from 'react'
-import { SCALE_STEP, flipAfterDrag, resistDrag } from '../lib/deck'
+import { SCALE_STEP, flipAfterDrag, resistDrag } from './deck'
 import type { DeckView } from './useDeckView'
 
 /** How far the pointer moves before the gesture is taken for a drag or left to the list. */
