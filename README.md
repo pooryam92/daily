@@ -38,26 +38,26 @@ Every feature in detail: [docs/features.md](docs/features.md).
 
 ## Install
 
-[![Latest release](https://img.shields.io/badge/latest%20release-v1.0.0-2f5fd0)](https://github.com/pooryam92/daily/releases/latest)
+[![Latest release](https://img.shields.io/badge/latest%20release-v1.0.1-2f5fd0)](https://github.com/pooryam92/daily/releases/latest)
 
 Each file name downloads that file. Older versions are on the
 [releases page](https://github.com/pooryam92/daily/releases).
 
 | System            | Download                                                                                                     | Updates                           |
 | ----------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------- |
-| Windows           | [Daily-Setup-1.0.0.exe](https://github.com/pooryam92/daily/releases/download/v1.0.0/Daily-Setup-1.0.0.exe)   | By itself                         |
-| macOS, Apple chip | [Daily-1.0.0-arm64.dmg](https://github.com/pooryam92/daily/releases/download/v1.0.0/Daily-1.0.0-arm64.dmg)   | The app tells you; you install it |
-| macOS, Intel chip | [Daily-1.0.0-x64.dmg](https://github.com/pooryam92/daily/releases/download/v1.0.0/Daily-1.0.0-x64.dmg)       | The app tells you; you install it |
-| Any Linux         | [Daily-1.0.0.AppImage](https://github.com/pooryam92/daily/releases/download/v1.0.0/Daily-1.0.0.AppImage)     | By itself                         |
-| Debian, Ubuntu    | [daily_1.0.0_amd64.deb](https://github.com/pooryam92/daily/releases/download/v1.0.0/daily_1.0.0_amd64.deb)   | The app tells you; you install it |
-| Fedora, openSUSE  | [daily-1.0.0.x86_64.rpm](https://github.com/pooryam92/daily/releases/download/v1.0.0/daily-1.0.0.x86_64.rpm) | The app tells you; you install it |
+| Windows           | [Daily-Setup-1.0.1.exe](https://github.com/pooryam92/daily/releases/download/v1.0.1/Daily-Setup-1.0.1.exe)   | By itself                         |
+| macOS, Apple chip | [Daily-1.0.1-arm64.dmg](https://github.com/pooryam92/daily/releases/download/v1.0.1/Daily-1.0.1-arm64.dmg)   | The app tells you; you install it |
+| macOS, Intel chip | [Daily-1.0.1-x64.dmg](https://github.com/pooryam92/daily/releases/download/v1.0.1/Daily-1.0.1-x64.dmg)       | The app tells you; you install it |
+| Any Linux         | [Daily-1.0.1.AppImage](https://github.com/pooryam92/daily/releases/download/v1.0.1/Daily-1.0.1.AppImage)     | By itself                         |
+| Debian, Ubuntu    | [daily_1.0.1_amd64.deb](https://github.com/pooryam92/daily/releases/download/v1.0.1/daily_1.0.1_amd64.deb)   | The app tells you; you install it |
+| Fedora, openSUSE  | [daily-1.0.1.x86_64.rpm](https://github.com/pooryam92/daily/releases/download/v1.0.1/daily-1.0.1.x86_64.rpm) | The app tells you; you install it |
 
 Nothing here is signed, because a certificate is a yearly cost that a personal app does not justify.
 Windows and macOS therefore warn at the first start. The steps below get past that, once.
 
 ### Windows
 
-1. Run `Daily-Setup-1.0.0.exe`. The browser may warn about the download first ("isn't commonly
+1. Run `Daily-Setup-1.0.1.exe`. The browser may warn about the download first ("isn't commonly
    downloaded"); choose **Keep**.
 2. Windows stops it with a blue SmartScreen box, "Windows protected your PC". Click **More info**,
    then **Run anyway**.
@@ -66,7 +66,7 @@ It installs for your user only, asks for no administrator, and updates itself fr
 
 ### macOS
 
-1. Take `Daily-1.0.0-arm64.dmg` for a Mac with Apple silicon (M1 and later), `Daily-1.0.0-x64.dmg`
+1. Take `Daily-1.0.1-arm64.dmg` for a Mac with Apple silicon (M1 and later), `Daily-1.0.1-x64.dmg`
    for one with an Intel chip.
 2. Open it and drag Daily into Applications.
 3. macOS refuses the first start: "Apple could not verify Daily is free of malware". Close that box,
@@ -98,14 +98,14 @@ release page. Install the new `.dmg` over the old app; the todos are not in it a
 - **`.deb`.**
 
   ```sh
-  sudo apt install ./daily_1.0.0_amd64.deb
+  sudo apt install ./daily_1.0.1_amd64.deb
   ```
 
 - **`.rpm`.** The package is not signed, which zypper asks about.
 
   ```sh
-  sudo dnf install ./daily-1.0.0.x86_64.rpm      # Fedora
-  sudo zypper install ./daily-1.0.0.x86_64.rpm   # openSUSE
+  sudo dnf install ./daily-1.0.1.x86_64.rpm      # Fedora
+  sudo zypper install ./daily-1.0.1.x86_64.rpm   # openSUSE
   ```
 
 The `.deb` and the `.rpm` add Daily to the launcher. They belong to the package manager, so the app

@@ -6,6 +6,8 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-22
+
 ### Changed
 
 - A two-finger swipe goes the other way: to the right brings the day after, to the left the day
@@ -30,5 +32,6 @@ The first release.
 - Updates: the Windows install and the AppImage update themselves; the other installs say when a new
   version is out.
 
-[unreleased]: https://github.com/pooryam92/daily/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/pooryam92/daily/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/pooryam92/daily/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/pooryam92/daily/releases/tag/v1.0.0
