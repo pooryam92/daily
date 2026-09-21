@@ -25,6 +25,10 @@ jobs:
             echo "::error::The tag is $GITHUB_REF_NAME, package.json says $version."
             exit 1
           fi
+      # Its section in CHANGELOG.md is the text of the release; without one, nothing is built.
+      - name: The changelog has the version
+        if: github.ref_type == 'tag'
+        run: node scripts/changelog.mjs --notes "$GITHUB_REF_NAME"
 
   check:
     uses: ./.github/workflows/check.yml
@@ -73,11 +77,14 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Before the download: a checkout empties the folder it works in.
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: release
           merge-multiple: true
-      - run: gh release create "$GITHUB_REF_NAME" release/* --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+      - run: node scripts/changelog.mjs --notes "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
+      - run: gh release create "$GITHUB_REF_NAME" release/* --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

@@ -202,6 +202,13 @@ The app loads no remote content, which makes the rules simple to hold.
   The "latest release" badge is a static one that the same script rewrites: shields.io's live badge
   cannot read a private repo ("no releases or repo not found"), and on a public one it would show the
   new version minutes after the links do.
+- **`CHANGELOG.md` is a Keep a Changelog file, and the release notes come from it.** Changes are
+  written under "Unreleased" with the change, for the person using the app. `npm version` refuses
+  an empty "Unreleased" before it touches `package.json` (`preversion`), then
+  `scripts/changelog.mjs` gives the section its version and date in the release commit. The
+  release workflow fails before building when the tag has no section, and publishes the section as
+  the text of the release. Not GitHub's generated notes: they list commits and pull requests, which
+  say what a developer did, not what changed for the user.
 - **Unsigned.** Windows shows a SmartScreen warning on install and macOS a Gatekeeper one on the
   first start, which the README explains under "Install". A certificate is a yearly cost that a
   personal app does not justify.

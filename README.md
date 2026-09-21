@@ -118,6 +118,8 @@ and the AppImage download it in the background and show "Update ready" with a Re
 installed when the app quits either way. The macOS app, the `.deb` and the `.rpm` only say "Update
 available" and open the release page. Being offline shows nothing.
 
+What each version changed is in the [changelog](CHANGELOG.md).
+
 ## Your data
 
 `todos.json` and `settings.json`, in `~/.config/daily/` on Linux, `%APPDATA%\daily\` on Windows and
@@ -151,7 +153,7 @@ The rest is in [docs/development.md](docs/development.md).
 | [docs/design.md](docs/design.md)             | Colour, type, space and motion, with the evidence behind each choice |
 | [docs/archive.md](docs/archive.md)           | What was built and decided, one short entry per feature              |
 | [docs/research.md](docs/research.md)         | Facts and their sources; no conclusions                              |
-| [docs/release.md](docs/release.md)           | The checklist to the first release; deleted when it is done          |
+| [docs/backlog.md](docs/backlog.md)           | Features that are wanted and not built yet, one line each            |
 
 ## License
 

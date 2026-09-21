@@ -81,7 +81,7 @@ Rules of thumb:
 
 ESLint enforces the import direction, so a wrong import fails `npm run check`.
 
-Outside `src/`: `build/` holds the icons, `scripts/` the demo recorder and the README's version, `electron-builder.yml` the
+Outside `src/`: `build/` holds the icons, `scripts/` the demo recorder and what `npm version` runs, `electron-builder.yml` the
 packaging, and `.github/workflows/` the check and the release.
 
 ## Checking a change
@@ -117,8 +117,10 @@ npm version patch        # or minor, major
 git push --follow-tags
 ```
 
-`npm version` sets the version in `package.json`, puts the README's download links on it
-(`scripts/readme-version.mjs`), and makes one commit, "chore: release v<version>" (`.npmrc`), with
+`npm version` first fails when `CHANGELOG.md` has nothing under "Unreleased". Then it sets the
+version in `package.json`, gives "Unreleased" that version and today's date
+(`scripts/changelog.mjs`), puts the README's download links on it (`scripts/readme-version.mjs`),
+and makes one commit, "chore: release v<version>" (`.npmrc`), with
 the tag `v<version>` on it. The installers carry their version in the file name, so the README has
 to name the release; `npm run check` fails when it names another version than `package.json`, which
 is what catches a version set by hand. For the minutes the workflow takes, the links on `main` point
@@ -126,7 +128,8 @@ at a release that is not there yet.
 
 The release workflow (`.github/workflows/release.yml`) does the rest. It fails at once when the tag
 is not the `package.json` version. Then it runs the check, builds on Linux, Windows and macOS, and
-publishes the GitHub release once all three builds are done.
+publishes the GitHub release once all three builds are done. The text of the release is the
+version's section of `CHANGELOG.md`.
 
 The same workflow can be started by hand on any branch (Actions → Release → Run workflow, or
 `gh workflow run release.yml --ref <branch>`). It then builds all three platforms, releases nothing
@@ -141,6 +144,11 @@ A build run from the repo never looks for updates. How the installed app does is
 File names in `docs/` are lowercase, and diagrams are Mermaid. A change to what the user can do
 changes `features.md` in the same commit, and a technical decision goes into `architecture.md`. A new
 file gets a row in the README's "Docs" table.
+
+`CHANGELOG.md` in the root is a [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) file. A
+change that someone using the app would notice gets a line under "Unreleased" in the same commit,
+under "Added", "Changed", "Deprecated", "Removed", "Fixed" or "Security", written for that person
+and not for a developer. A refactor, a doc or a CI change gets none.
 
 ## The demo
 

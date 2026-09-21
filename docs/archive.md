@@ -5,8 +5,9 @@ says what the outcome is and why, and points at code, never at another doc.
 
 When a feature ships, add an entry: what it is, the decisions made, why. Three lines at most.
 
-It replaces `TASKS.md`, the phased task list of 2026-09-19. The last committed version is
-`git show 8def090:docs/TASKS.md`.
+It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the phased list of
+2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
+(`git show 8bd337f:docs/release.md`).
 
 ## Foundations (2026-09-19)
 
@@ -124,6 +125,38 @@ It replaces `TASKS.md`, the phased task list of 2026-09-19. The last committed v
   depends on the fallback font. The check stays a hand-made SVG path for its fill-then-draw
   animation.
 
+## Packaging, the first release and updates (2026-09-20 and 2026-09-21)
+
+- **The icon** is a sun on the horizon, paper on the one blue of "Today": a new day is the fresh
+  start the app is built on. No green and no check, because green means done. `build/icon.svg` is
+  the source; Linux gets a size set (`build/icons/`), macOS its own PNG on Apple's grid.
+- **One running app, one data folder.** A second launch focuses the open window and exits: every
+  instance rewrites the whole file. The folder is pinned to `daily` (`daily-dev` from the repo),
+  so the packaged name "Daily" cannot move it. Each new version first copies `todos.json` aside.
+- **The app's version** is at the bottom of the settings popover: the only way to tell which build
+  runs, and whether an update went through.
+- **Packaged with electron-builder** (`electron-builder.yml`): AppImage, `.deb` and `.rpm`, an NSIS
+  installer, a `.dmg` per Mac chip. Only `out/` goes into the app. Nothing is signed, because a
+  certificate is a yearly cost; macOS is signed ad hoc, which Apple silicon needs to start it at all.
+- **Updates come from GitHub Releases** (`electron/main/updater.ts`): at launch and every four
+  hours. Windows and the AppImage replace themselves and say "Update ready"; the `.deb`, the `.rpm`
+  and macOS only say "Update available" and open the release page. The toast stays until answered.
+- **A `v*` tag makes the release** (`.github/workflows/release.yml`): it fails when the tag is not
+  the `package.json` version, runs the check, builds on three systems, and one last job publishes,
+  so a release never lacks a platform. Started by hand, it builds and releases nothing.
+- **A release is `npm version patch` and `git push --follow-tags`.** The installers carry their
+  version in the file name, so `scripts/readme-version.mjs` puts the README's download links and
+  badge on the new version in the same commit, and `npm run check` fails when they differ.
+- **`CHANGELOG.md` follows Keep a Changelog.** "Unreleased" is filled with each change, stamped
+  with version and date by `scripts/changelog.mjs` in the release commit, and its section is the
+  text of the GitHub release. An empty "Unreleased" stops `npm version`.
+- **MIT, and the first version is `1.0.0`:** the updater only moves upward. `v1.0.0` was released
+  three times before anyone had installed it, each time deleted with its tag and tagged again: the
+  first lacked the `.rpm` and the macOS build, the second the changelog as the text of the release.
+- **Checked:** the AppImage and the `.deb` on this machine (todos kept, icon in the launcher, no
+  CSP error); self-update from 1.0.0 to 1.0.1 with two AppImages and a feed on localhost; the
+  "Update available" path with a build marked as a `.deb`; the tag check with a throwaway tag.
+
 ## Left open
 
 - A hidden title bar (`titleBarStyle: 'hidden'`). A taste call, and the riskiest window change:
@@ -134,6 +167,12 @@ It replaces `TASKS.md`, the phased task list of 2026-09-19. The last committed v
   with Inter in both themes.
 - A right-click menu and tooltips (`@base-ui/react`), keyboard shortcuts (`tinykeys`) and a command
   palette (`cmdk`).
+- Never checked, of the release: an update from one GitHub release to the next, on the AppImage
+  and on Windows (the only real test of the updater; first chance is `v1.0.1`); installing from
+  the release page on Windows; the first start on a Mac (that "Open Anyway" is enough, the data
+  folder, the icon in the Dock, the toast). The FUSE hint in the README is the general AppImage
+  one, not something met here. The repo was private when this was written: the README's download
+  links and the update feed answer only once it is public.
 - Never checked: how the sounds sound, and a real trackpad (the swipe was driven with synthetic
   wheel events, which have no momentum tail). To tune by eye: the 0.35s spring, the drag threshold
   in a narrow window (~42px), the 6s undo window and the `CLEARED` timings.

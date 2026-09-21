@@ -54,7 +54,7 @@ dmg:
   # The default leaves the architecture out of the x64 name, and the two files sit side by side.
   artifactName: ${productName}-${version}-${arch}.${ext}
 
-# Where the installed app looks for updates (docs/release.md, Phase 3). Building never uploads:
+# Where the installed app looks for updates (docs/architecture.md, section 6). Building never uploads:
 # `npm run dist` passes `--publish never`, and the release workflow publishes on a tag.
 publish:
   provider: github
