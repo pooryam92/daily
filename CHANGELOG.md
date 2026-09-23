@@ -6,6 +6,8 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-23
+
 ### Added
 
 - A todo can be moved by hand: "→ tomorrow" on an open todo of today, "→ today" on one of any
@@ -50,6 +52,7 @@ The first release.
 - Updates: the Windows install and the AppImage update themselves; the other installs say when a new
   version is out.
 
-[unreleased]: https://github.com/pooryam92/daily/compare/v1.0.1...HEAD
+[unreleased]: https://github.com/pooryam92/daily/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/pooryam92/daily/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/pooryam92/daily/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/pooryam92/daily/releases/tag/v1.0.0
