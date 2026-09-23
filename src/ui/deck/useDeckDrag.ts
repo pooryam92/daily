@@ -6,8 +6,8 @@ import type { DeckView } from './useDeckView'
 /** How far the pointer moves before the gesture is taken for a drag or left to the list. */
 const HYSTERESIS_PX = 10
 
-/** Controls keep their own pointer behaviour. With a mouse, so does text that can be selected. */
-const CONTROLS = 'input, textarea, select, button, a, label'
+/** Controls keep their own pointer behaviour, and a todo's row is dragged on its own. */
+const CONTROLS = 'input, textarea, select, button, a, label, [data-todo]'
 const SELECTABLE = '[data-selectable]'
 
 interface Gesture {

@@ -18,7 +18,8 @@ const INSTANT: Transition = { duration: 0 }
 /**
  * How close the day is to cleared, without saying how much was done: a ring and no count. When the
  * last open todo is resolved the ring closes and turns into a check, once, while it is watched; a
- * day that is already cleared when its card appears just shows the check.
+ * day that is already cleared when its card appears just shows the check, and so does one whose
+ * last open todo was taken away.
  */
 export function ProgressRing({ progress, size = 'md' }: ProgressRingProps) {
   const { resolved, total, cleared } = progress
@@ -26,13 +27,20 @@ export function ProgressRing({ progress, size = 'md' }: ProgressRingProps) {
   // Under reduced motion only opacity changes: the arc and the check are simply there.
   const still = useReducedMotion() === true
 
-  // Counts the times the day was cleared while the ring was mounted: each one sends out one halo.
-  const [wasCleared, setWasCleared] = useState(cleared)
+  // Each clearing while the ring is watched sends out one halo, unless the last open todo was taken
+  // away rather than resolved: then the day is cleared quietly.
+  const [was, setWas] = useState({ cleared, total })
   const [bursts, setBursts] = useState(0)
-  if (cleared !== wasCleared) {
-    setWasCleared(cleared)
-    if (cleared) setBursts(bursts + 1)
+  const [quiet, setQuiet] = useState(false)
+  if (cleared !== was.cleared || total !== was.total) {
+    setWas({ cleared, total })
+    if (cleared && !was.cleared) {
+      const removed = total < was.total
+      setQuiet(removed)
+      if (!removed) setBursts(bursts + 1)
+    }
   }
+  const flourish = cleared && !quiet && !still
 
   const draw: Transition = still ? INSTANT : CLEARED.draw[phase]
   // A round line cap leaves a dot at `pathLength: 0`, so the tick is hidden whenever it is not drawn.
@@ -54,10 +62,10 @@ export function ProgressRing({ progress, size = 'md' }: ProgressRingProps) {
         viewBox="0 0 16 16"
         aria-hidden="true"
         initial={false}
-        animate={{ scale: cleared ? POP : 1 }}
-        transition={cleared ? CLEARED.pop : CLEARED.fill.off}
+        animate={{ scale: flourish ? POP : 1 }}
+        transition={flourish ? CLEARED.pop : CLEARED.fill.off}
       >
-        {bursts > 0 && cleared && !still && (
+        {bursts > 0 && flourish && (
           <motion.circle
             key={bursts}
             className={styles.halo}

@@ -9,6 +9,7 @@
   gap: var(--space-1);
   padding: var(--space-1);
   border-radius: var(--radius-md);
+  cursor: grab;
 }
 
 .todo:hover {
@@ -94,7 +95,7 @@
   }
 }
 
-/* The text is a button (click it to edit it) that looks and selects like the text it is. */
+/* The text is a button (click it to edit it) that looks like the text it is. */
 .text {
   flex: 1;
   min-width: 0;
@@ -103,8 +104,7 @@
   text-align: start;
   overflow-wrap: anywhere;
   text-wrap: pretty;
-  user-select: text;
-  cursor: text;
+  cursor: inherit;
   transition: color var(--duration-base) var(--ease-out);
 }
 

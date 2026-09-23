@@ -1,3 +1,5 @@
+import { KeyboardSensor, PointerActivationConstraints, PointerSensor } from '@dnd-kit/dom'
+import type { Sensors } from '@dnd-kit/dom'
 import { useSortable } from '@dnd-kit/react/sortable'
 import { GripVertical, X } from 'lucide-react'
 import { motion } from 'motion/react'
@@ -11,6 +13,32 @@ import { TodoEditor } from './TodoEditor'
 
 /** Open rows are sorted among themselves, and so are settled ones: see `TodoItemProps.group`. */
 export type TodoGroup = 'open' | 'settled'
+
+/** A press on one of these is not a drag. The text is a button too, but it drags. */
+const ROW_CONTROLS = 'input, textarea, select, button:not([data-todo-text]), a'
+
+/**
+ * A row is picked up anywhere on it: at once on the grip, after 5px elsewhere so a click on the text
+ * still edits it, and after a short hold on touch so the list still scrolls. The keyboard uses the grip.
+ */
+export const TODO_SENSORS: Sensors = [
+  PointerSensor.configure({
+    activatorElements: (source) => [source.element],
+    activationConstraints: (event, source) => {
+      if (event.pointerType === 'touch') {
+        return [new PointerActivationConstraints.Delay({ value: 250, tolerance: 5 })]
+      }
+      if (event.target instanceof Element && source.handle?.contains(event.target) === true) return undefined
+      return [new PointerActivationConstraints.Distance({ value: 5 })]
+    },
+    preventActivation: (event, source) => {
+      if (!(event.target instanceof Element)) return false
+      if (source.handle?.contains(event.target) === true) return false
+      return event.target.closest(ROW_CONTROLS) !== null
+    }
+  }),
+  KeyboardSensor
+]
 
 interface TodoItemProps {
   readonly todo: Todo
@@ -90,6 +118,7 @@ export function TodoItem({
     <motion.li
       ref={setRow}
       className={styles.todo}
+      data-todo
       data-status={todo.status}
       data-editing={editing || undefined}
       data-dragging={isDragging || undefined}
@@ -100,8 +129,8 @@ export function TodoItem({
       exit={{ opacity: 0, transition: ROW_EXIT }}
       transition={{ ...ROW_ENTER, layout: ROW_LAYOUT }}
     >
-      {/* The bullet is the handle: it turns into a grip when the row is hovered. Space or Enter picks
-          the row up from the keyboard, the arrow keys move it, Escape puts it back. */}
+      {/* The bullet turns into a grip on hover. It is the keyboard's handle: Space or Enter picks the
+          row up, the arrow keys move it, Escape puts it back. */}
       <button
         ref={handleRef}
         type="button"
@@ -125,16 +154,14 @@ export function TodoItem({
           }}
         />
       ) : (
-        // A button, so the text can be reached and edited from the keyboard. Its text can still be
-        // selected with the mouse: the deck leaves drags that start on a control alone.
+        // A button, so the text can be edited from the keyboard. A press that moves drags the row.
         <button
           ref={text}
           type="button"
           className={styles.text}
+          data-todo-text
           aria-label={`Edit ${todo.text}`}
           onClick={() => {
-            // A drag across the text selects it, and ends in a click too; only a plain click edits.
-            if (window.getSelection()?.isCollapsed === false) return
             setEditing(true)
           }}
         >

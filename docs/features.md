@@ -36,8 +36,8 @@ Keep it current: a change to what the user can do changes this file in the same 
   grip while it is focused (see Reorder).
 - A swipe points at the day it goes to, like the arrow keys: to the right is the day after. A drag
   is the other way round, because there the card follows the pointer.
-- A drag cannot start on a todo's text with a mouse, so the text stays selectable. A drag moves one
-  day at most.
+- A drag of the deck cannot start on a todo's row, which is dragged on its own (see Reorder). A drag
+  moves one day at most.
 - Every way of moving can interrupt every other one: they all move the same value.
 
 ## Todos
@@ -52,9 +52,11 @@ Keep it current: a change to what the user can do changes this file in the same 
   changes; the stored order does not.
 - **Edit.** Click a todo's text, or activate it from the keyboard. Enter or clicking away saves,
   Escape cancels. A blank edit keeps the original text. The state is kept.
-- **Reorder.** Drag a todo by its grip, within the open part or the resolved part of the day. From
-  the keyboard: focus the grip, Space or Enter picks the todo up, the arrow keys move it, Space or
-  Enter drops it, Escape cancels. The order is saved.
+- **Reorder.** Drag a todo by any part of its row, within the open part or the resolved part of
+  the day: the grip lifts it at once, the rest of the row after a few pixels of movement, so a
+  click on the text still edits it. On touch, hold the row for a moment first. The checkbox, the ✗
+  and `delete` keep their presses. From the keyboard: focus the grip, Space or Enter picks the
+  todo up, the arrow keys move it, Space or Enter drops it, Escape cancels. The order is saved.
 - **Delete.** The `delete` button on a row (shown on hover where there is a mouse, always
   otherwise). It never asks: the todo is gone and saved as gone at once, and a toast offers Undo
   for six seconds. Undo puts it back where it was.

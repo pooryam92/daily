@@ -6,6 +6,15 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+### Changed
+
+- A todo is dragged by any part of its row, not only its grip. A click on the text still edits it,
+  but the text can no longer be selected with the mouse.
+
+### Fixed
+
+- Deleting the last open todo of a day clears it quietly again, without the ring's celebration.
+
 ## [1.0.1] - 2026-09-22
 
 ### Changed

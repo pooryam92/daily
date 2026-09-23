@@ -16,7 +16,7 @@ import { dayProgress } from '@/domain/todo-rules'
 import { AddTodoForm } from '../todos/AddTodoForm'
 import styles from './DayCard.module.css'
 import { ProgressRing } from './ProgressRing'
-import { TodoItem } from '../todos/TodoItem'
+import { TODO_SENSORS, TodoItem } from '../todos/TodoItem'
 
 /**
  * The card's place in the deck once it is at rest: 0 is in front, ±1 sit behind it, the rest are
@@ -206,6 +206,7 @@ export function DayCard({
               says where in the stored order that is. */}
           <DragDropProvider
             plugins={(defaults) => [...defaults, ...DRAG_PLUGINS]}
+            sensors={TODO_SENSORS}
             modifiers={modifiers}
             onDragStart={() => {
               setDragging(true)
