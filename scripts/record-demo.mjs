@@ -61,7 +61,8 @@ function pageSetup(version) {
         todo('Book the train to Hamburg', 'done'),
         todo('Reply to Jonas', 'done'),
         todo('Fix the bike light', 'dropped'),
-        todo('Read chapter four', 'done')
+        todo('Read chapter four', 'done'),
+        todo('Return the library book')
       ],
       [key(0)]: [todo('Write the release notes'), todo('Water the plants'), todo('Renew the library card')],
       [key(1)]: [todo('Dentist, 9:30')]
@@ -170,13 +171,22 @@ async function story(page) {
 
   await click(row('Water the plants').getByLabel('Done'))
   await pause(450)
-  await click(row('Renew the library card').getByLabel('Dropped'))
+  await click(row('Renew the library card').getByRole('button', { name: 'drop' }))
   await pause(500)
   await click(row('Write the release notes').getByLabel('Done'))
   await pause(400)
   // The last open todo: the ring closes into a check.
   await click(row('Call the landlord').getByLabel('Done'))
   await pause(1100)
+
+  await click(page.getByLabel('Settings'))
+  await pause(600)
+  await click(page.getByRole('radio', { name: 'Light' }))
+  await pause(1400)
+  await click(page.getByRole('radio', { name: 'Dark' }))
+  await pause(700)
+  await page.keyboard.press('Escape')
+  await pause(900)
 
   await click(page.getByLabel('Next day'))
   await pause(900)
@@ -186,18 +196,12 @@ async function story(page) {
   await click(page.getByLabel('Previous day'))
   await pause(500)
   await click(page.getByLabel('Previous day'))
-  await pause(1300)
+  await pause(900)
+  // The last scene: yesterday's leftover gets a day, and the toast closes the GIF.
+  await click(page.getByRole('button', { name: 'Move Return the library book to today' }))
+  await pause(1100)
   await click(page.getByRole('button', { name: 'Back to today' }))
-  await pause(1000)
-
-  await click(page.getByLabel('Settings'))
-  await pause(600)
-  await click(page.getByRole('radio', { name: 'Light' }))
-  await pause(1400)
-  await click(page.getByRole('radio', { name: 'Dark' }))
-  await pause(700)
-  await page.keyboard.press('Escape')
-  await pause(1600)
+  await pause(2000)
 }
 
 /** Films the page through the DevTools screencast: whole frames, each with the time it was drawn. */
