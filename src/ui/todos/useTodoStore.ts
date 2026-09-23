@@ -15,6 +15,8 @@ export interface TodoActions {
   /** Moves a todo to the place the todo it was dropped on has now. */
   readonly reorder: (day: DayKey, id: string, targetId: string) => void
   readonly edit: (day: DayKey, id: string, text: string) => void
+  /** Moves a todo to another day: to `index` there, or to the end when none is given. */
+  readonly move: (from: DayKey, to: DayKey, id: string, index?: number) => void
 }
 
 type State =
@@ -102,6 +104,9 @@ export function useTodoStore(): TodoStore {
       },
       edit: (day, id, text) => {
         dispatch({ type: 'edited', day, id, text })
+      },
+      move: (from, to, id, index) => {
+        dispatch({ type: 'moved', from, to, id, index })
       }
     }),
     []

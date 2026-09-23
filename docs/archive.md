@@ -10,6 +10,46 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Move a todo by hand, and the row read left to right (2026-09-23)
+
+- **The row carries what became of the todo; the todo itself changes through its text.** A row
+  reads `☐ Buy milk ········ → tomorrow  drop`. To edit or delete, click the text: the field ends
+  with `delete` (`todos/TodoEditor.tsx`). The grip sits left of the checkbox in a slot that is
+  always there, so the list never jumps.
+- **The checkbox went left.** The left of a page gets 80% of the viewing time
+  ([NN/g](https://www.nngroup.com/articles/horizontal-attention-leans-left/)), and a control beside
+  its label costs the eye 170–240 ms against about 500 ms at a distance
+  ([Penzo 2006](https://www.uxmatters.com/mt/archives/2006/07/label-placement-in-forms.php)). Things
+  and TickTick do the same and show a cancelled task as an X in the box. Measured on pages and
+  forms, not todo rows. The box stays 28px: a target's size matters more than its distance.
+- **Words, not an ✗.** An X means cancel, close or dismiss elsewhere
+  ([NN/g](https://www.nngroup.com/articles/cancel-vs-close/)), and labels get used where icons do
+  not ([Jensen Harris](https://learn.microsoft.com/en-us/archive/blogs/jensenh/the-importance-of-labels)).
+  `drop` is always there because letting go is meant to be used, and a hidden control is used half
+  as much ([NN/g](https://www.nngroup.com/articles/hamburger-menus/)). A dropped todo shows its X
+  inside the checkbox, in `--dropped`, never red (`todos/DoneCheckbox.tsx`).
+- **Delete went into the editor.** On the row it sat on hover beside the most-used control in the
+  app, against "avoid placing highly consequential actions directly next to options that are
+  benign" ([NN/g](https://www.nngroup.com/articles/proximity-consequential-options/)). It is rare
+  and comes back from the toast, so it is a click on the text away; Tab reaches it, and the draft
+  is not saved.
+- **Move.** `→ tomorrow` on an open todo of today, `→ today` on one of any other day. Giving a
+  todo a day is the smallest plan that stops an unfinished task coming to mind
+  ([Masicampo & Baumeister 2011](https://users.wfu.edu/masicaej/MasicampoBaumeister2011JPSP.pdf)),
+  and nothing moves by itself: a todo that rolls over is a plan nobody made. The todo keeps id, text
+  and state, is appended to the target day, and Undo moves it back to the index it had (`moved` in
+  `domain/todo-rules.ts`, `todos/useMoveWithUndo.ts`). The deck does not flip.
+- **No trace and no count.** "Moved three times" is the overdue badge in another form: a count that
+  can only get worse works through loss aversion. A moved todo is a todo of its new day.
+- **The word rests on past days only,** where the decision is due; on today and later it appears
+  on hover, so today's card stays quiet. Its width is always kept (`data-past`, `DayCard.tsx`).
+- **The arrow leads the word and follows the deck,** like the "Back to today" pill: right for
+  tomorrow and for today from a past day, left for today from a future one. A moved row slides 24px
+  that way as it fades; a deleted one only fades (`ROW_MOVE_X` in `lib/motion.ts`, `LeavingRows` in
+  `todos/TodoItem.tsx`).
+- **A dropped todo's box** is described as "Dropped" rather than marked partly checked, since a
+  dropped todo is not partly done.
+
 ## Packaging, the first release and updates (2026-09-20 and 2026-09-21)
 
 - **The icon** is a sun on the horizon, paper on the one blue of "Today": a new day is the fresh

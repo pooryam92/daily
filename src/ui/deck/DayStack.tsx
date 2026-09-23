@@ -6,10 +6,12 @@ import type { DayNavigation } from './useDayNavigation'
 import { useDeckDrag } from './useDeckDrag'
 import { useDeckSwipe } from './useDeckSwipe'
 import { useDeckView } from './useDeckView'
+import { useMoveWithUndo } from '../todos/useMoveWithUndo'
 import { useRemoveWithUndo } from '../todos/useRemoveWithUndo'
 import { useSounds } from '../sound/useSounds'
 import type { TodoActions } from '../todos/useTodoStore'
 import { addDays, dayIndex } from '@/domain/dates'
+import { moveTarget } from '../day/copy'
 import { ROW_ENTER, ROW_EXIT } from '../lib/motion'
 import { DayCard } from '../day/DayCard'
 import type { StackOffset } from '../day/DayCard'
@@ -33,6 +35,7 @@ interface DayStackProps {
 export function DayStack({ today, days, actions, navigation, sound }: DayStackProps) {
   const { current, source, goTo, goBy } = navigation
   const removeWithUndo = useRemoveWithUndo(days, actions)
+  const moveWithUndo = useMoveWithUndo(days, actions)
   const playMark = useSounds(sound)
 
   const stack = useRef<HTMLDivElement>(null)
@@ -102,6 +105,9 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
             }}
             onEdit={(id, text) => {
               actions.edit(day, id, text)
+            }}
+            onMove={(id) => {
+              moveWithUndo(day, moveTarget(day, today), id)
             }}
             onReorder={(id, targetId) => {
               actions.reorder(day, id, targetId)

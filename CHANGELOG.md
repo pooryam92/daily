@@ -6,8 +6,17 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+### Added
+
+- A todo can be moved by hand: "→ tomorrow" on an open todo of today, "→ today" on one of any
+  other day. It lands at the end of that day's list, and a toast offers Undo for six seconds.
+
 ### Changed
 
+- The row reads checkbox first, then the text, then `drop` at the end. A dropped todo shows an X
+  inside its checkbox instead of a separate ✗ button.
+- `delete` moved from the row into the editor: click a todo's text, then `delete` after the field.
+- The grip for reordering appears to the left of the checkbox while the row is hovered.
 - A todo is dragged by any part of its row, not only its grip. A click on the text still edits it,
   but the text can no longer be selected with the mouse.
 

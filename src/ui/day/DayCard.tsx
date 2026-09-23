@@ -5,11 +5,12 @@ import { DragDropProvider } from '@dnd-kit/react'
 import { isSortable } from '@dnd-kit/react/sortable'
 import { AnimatePresence, motion, useTransform } from 'motion/react'
 import type { MotionValue } from 'motion/react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DayKey, ResolvedStatus, Todo } from '@/domain/todo'
 import { useSettledTodos } from '../todos/useSettledTodos'
-import { CLEARED_LABEL, dayDetail, dayTitle, emptyDayLine } from './copy'
-import { dayIndex, formatWeekday, fromDayKey } from '@/domain/dates'
+import { CLEARED_LABEL, dayDetail, dayTitle, emptyDayLine, moveTarget } from './copy'
+import type { MoveDirection } from './copy'
+import { compareDays, dayIndex, formatWeekday, fromDayKey } from '@/domain/dates'
 import { deckTransform, deckZIndex } from '../deck/deck'
 import { CLEARED, EMPTY_ENTER, QUICK_ADD_MS, ROW_ENTER, ROW_EXIT } from '../lib/motion'
 import { dayProgress } from '@/domain/todo-rules'
@@ -35,6 +36,8 @@ interface DayCardProps {
   readonly onToggleStatus: (id: string, status: ResolvedStatus) => void
   readonly onRemove: (id: string) => void
   readonly onEdit: (id: string, text: string) => void
+  /** Move a todo to the day the card's move word names. */
+  readonly onMove: (id: string) => void
   /** Move a todo to the place the todo `targetId` has now. */
   readonly onReorder: (id: string, targetId: string) => void
   /** Bring this card to the front. */
@@ -61,10 +64,13 @@ export function DayCard({
   onToggleStatus,
   onRemove,
   onEdit,
+  onMove,
   onReorder,
   onSelect
 }: DayCardProps) {
   const inFront = offset === 0
+  const past = compareDays(day, today) < 0
+  const target = moveTarget(day, today)
 
   // From frame to frame only transform and opacity change, which need neither layout nor paint
   // (z-index changes once per flip, where two cards swap).
@@ -109,6 +115,16 @@ export function DayCard({
     onAdd(text)
   }
 
+  // Which way a moved row leaves (`LeavingRows`). Cleared once the todo is back, so a later delete only fades.
+  const [leaving] = useState(() => new Map<string, MoveDirection>())
+  const move = (id: string): void => {
+    leaving.set(id, target.direction)
+    onMove(id)
+  }
+  useEffect(() => {
+    for (const id of leaving.keys()) if (todos.some((todo) => todo.id === id)) leaving.delete(id)
+  }, [leaving, todos])
+
   return (
     // A card in the background is one big click target. That is a shortcut for mouse users only:
     // the arrow buttons and arrow keys do the same, so it needs no keyboard handling of its own.
@@ -118,6 +134,7 @@ export function DayCard({
       data-offset={offset}
       data-side={side}
       data-today={day === today}
+      data-past={past || undefined}
       aria-hidden={!inFront}
       onClick={inFront ? undefined : onSelect}
     >
@@ -224,7 +241,7 @@ export function DayCard({
             <motion.ul ref={setList} className={styles.todos} layoutScroll>
               {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
                   while it fades instead of jumping up afterwards. */}
-              <AnimatePresence mode="popLayout" initial={false}>
+              <AnimatePresence mode="popLayout" initial={false} custom={leaving}>
                 {ordered.map((todo, index) => (
                   <TodoItem
                     key={todo.id}
@@ -235,9 +252,11 @@ export function DayCard({
                     order={order}
                     isNew={!initialIds.has(todo.id)}
                     animateEnter={animateEnter}
+                    moveTarget={target}
                     onToggleStatus={onToggleStatus}
                     onRemove={onRemove}
                     onEdit={onEdit}
+                    onMove={move}
                   />
                 ))}
               </AnimatePresence>

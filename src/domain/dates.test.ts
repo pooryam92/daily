@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDays,
+  compareDays,
   dayIndex,
   formatDate,
   formatDay,
@@ -31,6 +32,18 @@ describe('dayIndex', () => {
   it('is not thrown off by daylight-saving changes', () => {
     expect(dayIndex('2026-03-30') - dayIndex('2026-03-28')).toBe(2)
     expect(dayIndex('2026-10-26') - dayIndex('2026-10-24')).toBe(2)
+  })
+})
+
+describe('compareDays', () => {
+  it('is negative before, positive after and 0 on the same day', () => {
+    expect(compareDays('2026-09-19', '2026-09-20')).toBeLessThan(0)
+    expect(compareDays('2026-09-21', '2026-09-20')).toBeGreaterThan(0)
+    expect(compareDays('2026-09-20', '2026-09-20')).toBe(0)
+  })
+
+  it('compares across a year boundary', () => {
+    expect(compareDays('2027-01-01', '2026-12-31')).toBe(1)
   })
 })
 

@@ -1,4 +1,4 @@
-/* Same 28px target as the ✗ next to it (WCAG 2.5.8 asks for 24px). */
+/* The most-used control in the app stays at 28px (WCAG 2.5.8 asks for 24px). */
 .check {
   /* 0.97 of 28px is under a pixel; a control this small needs more for the press to be seen. */
   --press-scale: 0.92;
@@ -19,6 +19,16 @@
 .check:hover {
   color: var(--text);
   background: var(--hover-strong);
+}
+
+/* "Dropped", for assistive technology only: the description of the box of a dropped todo. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Still there for the keyboard and for assistive technology, but the SVG is what is seen. */
@@ -58,6 +68,17 @@
   stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* A dropped todo: an X in the box, and the box in the same neutral colour. Never red. */
+.cross {
+  stroke: var(--dropped);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+}
+
+.check[data-dropped] .outline {
+  stroke: var(--dropped);
 }
 
 /* Forced colours drop the fill, so the tick has to carry the state by itself. */

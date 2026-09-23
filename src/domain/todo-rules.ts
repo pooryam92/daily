@@ -9,6 +9,8 @@ export type TodoAction =
   /** Moves the todo to the place `targetId` has now, like dragging it there. */
   | { type: 'reordered'; day: DayKey; id: string; targetId: string }
   | { type: 'edited'; day: DayKey; id: string; text: string }
+  /** Moves the todo to another day, at `index` there or at the end. Undo is a move back with the old index. */
+  | { type: 'moved'; from: DayKey; to: DayKey; id: string; index?: number }
 
 export function createTodo(text: string): Todo {
   return { id: crypto.randomUUID(), text, status: 'open' }
@@ -21,7 +23,26 @@ function withDay(days: DaysMap, day: DayKey, todos: readonly Todo[]): DaysMap {
   return rest
 }
 
+function moveTodo(days: DaysMap, { from, to, id, index }: Extract<TodoAction, { type: 'moved' }>): DaysMap {
+  const source = days[from] ?? []
+  const target = days[to] ?? []
+  const todo = source.find((entry) => entry.id === id)
+  // A second click on the same undo must not duplicate the todo.
+  if (todo === undefined || from === to || target.some((entry) => entry.id === id)) return days
+  const at = index === undefined ? target.length : Math.min(index, target.length)
+  return withDay(
+    withDay(
+      days,
+      from,
+      source.filter((entry) => entry.id !== id)
+    ),
+    to,
+    target.toSpliced(at, 0, todo)
+  )
+}
+
 export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
+  if (action.type === 'moved') return moveTodo(days, action)
   const todos = days[action.day] ?? []
 
   switch (action.type) {

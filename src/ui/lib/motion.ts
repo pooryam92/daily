@@ -25,8 +25,10 @@ export const CHECK = {
   draw: {
     on: { duration: 0.18, ease: EASE_OUT, delay: 0.1 },
     off: { duration: 0.1, ease: EASE_OUT }
-  }
-} as const satisfies Record<string, Record<'on' | 'off', Transition>>
+  },
+  /** The X of a dropped todo only cross-fades: a release, not an achievement. */
+  cross: { duration: 0.15, ease: EASE_OUT }
+} as const satisfies Record<string, Transition | Record<'on' | 'off', Transition>>
 
 /** The arc of the progress ring following the day's todos. */
 export const RING: Transition = { type: 'spring', duration: 0.5, bounce: 0 }
@@ -64,6 +66,8 @@ export const ROW_LAYOUT: Transition = { type: 'spring', duration: 0.4, bounce: 0
 
 export const ROW_ENTER: Transition = { duration: BASE, ease: EASE_OUT }
 export const ROW_EXIT: Transition = { duration: FAST, ease: EASE_OUT }
+/** How far a moved row slides towards its new day while it fades out. */
+export const ROW_MOVE_X = 24
 
 /** The pill of a segmented control sliding to the chosen segment. */
 export const SEGMENT: Transition = { type: 'spring', duration: 0.3, bounce: 0 }

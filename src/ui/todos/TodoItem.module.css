@@ -33,15 +33,14 @@
 }
 
 /*
- * The bullet is also where the row is picked up to reorder it: a drawn dot, so it looks the same
- * whatever font is installed, that turns into a grip once there is a pointer to use it with.
- * 24 by 28px, the size of a target (WCAG 2.5.8).
+ * The handle for reordering, by pointer and keyboard. Its slot is always there, so the list does
+ * not shift when the grip appears. 20 by 28px beside the 28px checkbox (WCAG 2.5.8 counts spacing).
  */
 .handle {
   display: grid;
   place-items: center;
   flex: none;
-  width: 24px;
+  width: 20px;
   height: 28px;
   border-radius: var(--radius-sm);
   color: var(--text-faint);
@@ -60,32 +59,13 @@
   color: var(--text);
 }
 
-.bullet,
 .grip {
-  grid-area: 1 / 1;
   transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-.bullet {
-  width: 5px;
-  height: 5px;
-  border-radius: var(--radius-full);
-  background: currentColor;
-  opacity: 0;
 }
 
 /* The grip waits for the row to be hovered, but only where hovering exists: on touch it stays. */
 @media (hover: hover) and (pointer: fine) {
-  .bullet {
-    opacity: 1;
-  }
-
   .grip {
-    opacity: 0;
-  }
-
-  :is(.todo:hover, .todo[data-dragging]) .bullet,
-  .handle:focus-visible .bullet {
     opacity: 0;
   }
 
@@ -93,6 +73,15 @@
   .handle:focus-visible .grip {
     opacity: 1;
   }
+}
+
+/* While the text is edited the row is a field with `delete` after it: nothing else is offered. */
+.todo[data-editing] .handle {
+  visibility: hidden;
+}
+
+.todo[data-editing] :is(.move, .drop) {
+  display: none;
 }
 
 /* The text is a button (click it to edit it) that looks like the text it is. */
@@ -142,10 +131,15 @@
   color: var(--text-faint);
 }
 
-.remove,
+/* The two words at the end of the row: labels, not icons, and neither dressed up as dangerous. */
+.move,
 .drop {
+  flex: none;
   height: 28px;
+  padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  white-space: nowrap;
   transition:
     color var(--duration-fast) var(--ease-out),
     background-color var(--duration-fast) var(--ease-out),
@@ -153,65 +147,42 @@
     scale var(--duration-fast) var(--ease-out);
 }
 
-/* Not dressed up as dangerous: a deleted todo can be brought back from the toast. */
-.remove {
-  padding: 0 var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-/* Hidden until the row is hovered, but only where hovering exists: on touch it stays visible. */
-@media (hover: hover) and (pointer: fine) {
-  .remove {
-    opacity: 0;
-  }
-
-  .todo:hover .remove,
-  .remove:focus-visible {
-    opacity: 1;
-  }
-}
-
-.remove:hover {
-  color: var(--text);
-  background: var(--hover-strong);
-}
-
-/*
- * Dropping is a release, not an achievement: the ✗ only cross-fades to its pressed form. No drawing,
- * no scale, no reward. The most-used controls in the app stay at 28px or larger (WCAG 2.5.8: 24px).
- */
-.drop {
-  /* 0.97 of 28px is under a pixel; a control this small needs more for the press to be seen. */
-  --press-scale: 0.92;
-
-  display: grid;
-  place-items: center;
-  width: 28px;
-  color: var(--text-faint);
-}
-
+.move:hover,
 .drop:hover {
   color: var(--text);
   background: var(--hover-strong);
 }
 
-/* Both are the same icon; the pressed one has the heavier stroke (TodoItem.tsx). */
-.idle,
-.pressed {
-  grid-area: 1 / 1;
-  transition: opacity var(--duration-calm) var(--ease-out);
+/* "→ tomorrow" or "→ today": the arrow points the way the deck flips to reach that day. */
+.move {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
 }
 
-.pressed {
+/*
+ * Where there is a mouse, the word rests only on a day that has passed (`data-past`, DayCard.tsx),
+ * where the decision is due; elsewhere it waits for a hover, so today's card stays quiet. Its width
+ * is always kept, so nothing shifts.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .move {
+    opacity: 0;
+  }
+
+  [data-past] .move,
+  .todo:hover .move,
+  .move:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* Always there: letting go is meant to be used. Pressed, it takes the neutral dropped colour. */
+.drop {
+  color: var(--text-faint);
+}
+
+.drop[aria-pressed='true'] {
   color: var(--dropped);
-  opacity: 0;
-}
-
-.drop[aria-pressed='true'] .idle {
-  opacity: 0;
-}
-
-.drop[aria-pressed='true'] .pressed {
-  opacity: 1;
 }

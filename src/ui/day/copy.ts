@@ -1,5 +1,13 @@
 import type { DayKey } from '@/domain/todo'
-import { formatDate, formatDay, formatDistance, formatLongWeekday, relativeLabel } from '@/domain/dates'
+import {
+  addDays,
+  compareDays,
+  formatDate,
+  formatDay,
+  formatDistance,
+  formatLongWeekday,
+  relativeLabel
+} from '@/domain/dates'
 
 /*
  * The words on a card. They say where the day stands and nothing about how it went: an empty day or
@@ -29,3 +37,19 @@ export function emptyDayLine(day: DayKey, today: DayKey): string {
 
 /** Added to the header line once nothing on the day is left open. */
 export const CLEARED_LABEL = 'Cleared'
+
+/** Which way the deck flips to reach a day: `next` is the day after, like the right arrow. */
+export type MoveDirection = 'next' | 'previous'
+
+export interface MoveTarget {
+  readonly day: DayKey
+  /** What the day is called on the move word. */
+  readonly name: 'tomorrow' | 'today'
+  readonly direction: MoveDirection
+}
+
+/** Where a moved todo goes: tomorrow from today, today from any other day. The arrow on the word follows the direction. */
+export function moveTarget(day: DayKey, today: DayKey): MoveTarget {
+  if (day === today) return { day: addDays(today, 1), name: 'tomorrow', direction: 'next' }
+  return { day: today, name: 'today', direction: compareDays(day, today) < 0 ? 'next' : 'previous' }
+}

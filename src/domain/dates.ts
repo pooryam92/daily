@@ -23,6 +23,11 @@ export function dayIndex(key: DayKey): number {
   return Math.round(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000)
 }
 
+/** Days from `b` to `a`: negative when `a` is the earlier day. */
+export function compareDays(a: DayKey, b: DayKey): number {
+  return dayIndex(a) - dayIndex(b)
+}
+
 /** The year is only said where it is not today's: the deck can travel past New Year. */
 const yearOf = (key: DayKey, today: DayKey): 'numeric' | undefined =>
   key.slice(0, 4) === today.slice(0, 4) ? undefined : 'numeric'

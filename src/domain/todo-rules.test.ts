@@ -5,6 +5,7 @@ import { createTodo, dayProgress, daysReducer, displayOrder, resolvedIds } from 
 const DAY = '2026-09-19'
 const milk: Todo = { id: 'milk', text: 'Buy milk', status: 'open' }
 const taxes: Todo = { id: 'taxes', text: 'Do taxes', status: 'open' }
+const plants: Todo = { id: 'plants', text: 'Water plants', status: 'open' }
 const days: DaysMap = { [DAY]: [milk, taxes] }
 
 describe('createTodo', () => {
@@ -18,7 +19,6 @@ describe('createTodo', () => {
 
 describe('daysReducer', () => {
   it('adds a todo to the end of a day', () => {
-    const plants: Todo = { id: 'plants', text: 'Water plants', status: 'open' }
     expect(daysReducer(days, { type: 'added', day: DAY, todo: plants })[DAY]).toEqual([milk, taxes, plants])
   })
 
@@ -73,7 +73,6 @@ describe('daysReducer', () => {
   })
 
   it('moves a todo to the place of the todo it was dropped on', () => {
-    const plants: Todo = { id: 'plants', text: 'Water plants', status: 'open' }
     const three = { [DAY]: [milk, taxes, plants] }
     expect(daysReducer(three, { type: 'reordered', day: DAY, id: 'milk', targetId: 'plants' })[DAY]).toEqual([
       taxes,
@@ -101,6 +100,38 @@ describe('daysReducer', () => {
   it('ignores an edit that changes nothing', () => {
     expect(daysReducer(days, { type: 'edited', day: DAY, id: 'milk', text: milk.text })).toBe(days)
     expect(daysReducer(days, { type: 'edited', day: DAY, id: 'gone', text: 'Whatever' })).toBe(days)
+  })
+
+  it('moves a todo to the end of another day, unchanged', () => {
+    const done: Todo = { ...milk, status: 'done' }
+    const two: DaysMap = { [DAY]: [done, taxes], '2026-09-20': [plants] }
+    const next = daysReducer(two, { type: 'moved', from: DAY, to: '2026-09-20', id: 'milk' })
+    expect(next).toEqual({ [DAY]: [taxes], '2026-09-20': [plants, done] })
+  })
+
+  it('moves a todo to a day that has none yet, and drops the entry of a day it empties', () => {
+    const next = daysReducer({ [DAY]: [milk] }, { type: 'moved', from: DAY, to: '2026-09-20', id: 'milk' })
+    expect(next).toEqual({ '2026-09-20': [milk] })
+  })
+
+  it('moves a todo back to the place it had, or to the end when the list got shorter', () => {
+    const moved = daysReducer(days, { type: 'moved', from: DAY, to: '2026-09-20', id: 'milk' })
+    expect(daysReducer(moved, { type: 'moved', from: '2026-09-20', to: DAY, id: 'milk', index: 0 })).toEqual(
+      days
+    )
+    expect(
+      daysReducer(moved, { type: 'moved', from: '2026-09-20', to: DAY, id: 'milk', index: 5 })[DAY]
+    ).toEqual([taxes, milk])
+  })
+
+  it('ignores a move of a todo that is not on the day it leaves, or already on the day it goes to', () => {
+    expect(daysReducer(days, { type: 'moved', from: DAY, to: '2026-09-20', id: 'gone' })).toBe(days)
+    expect(daysReducer(days, { type: 'moved', from: '2026-09-20', to: DAY, id: 'milk' })).toBe(days)
+    expect(daysReducer(days, { type: 'moved', from: DAY, to: DAY, id: 'milk' })).toBe(days)
+    // The second click on the same undo: the todo is back already.
+    const moved = daysReducer(days, { type: 'moved', from: DAY, to: '2026-09-20', id: 'milk' })
+    const back = daysReducer(moved, { type: 'moved', from: '2026-09-20', to: DAY, id: 'milk', index: 0 })
+    expect(daysReducer(back, { type: 'moved', from: '2026-09-20', to: DAY, id: 'milk', index: 0 })).toBe(back)
   })
 
   it('does not mutate its input', () => {

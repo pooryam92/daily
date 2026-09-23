@@ -1,12 +1,13 @@
 import { KeyboardSensor, PointerActivationConstraints, PointerSensor } from '@dnd-kit/dom'
 import type { Sensors } from '@dnd-kit/dom'
 import { useSortable } from '@dnd-kit/react/sortable'
-import { GripVertical, X } from 'lucide-react'
-import { motion } from 'motion/react'
+import { ArrowLeft, ArrowRight, GripVertical } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Ref } from 'react'
 import type { ResolvedStatus, Todo } from '@/domain/todo'
-import { ROW_ENTER, ROW_EXIT, ROW_LAYOUT } from '../lib/motion'
+import type { MoveDirection, MoveTarget } from '../day/copy'
+import { ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
 import { DoneCheckbox } from './DoneCheckbox'
 import styles from './TodoItem.module.css'
 import { TodoEditor } from './TodoEditor'
@@ -40,6 +41,12 @@ export const TODO_SENSORS: Sensors = [
   KeyboardSensor
 ]
 
+/**
+ * Which way a moved row slides out, by id. `DayCard` fills it before a move and hands it to
+ * `AnimatePresence` as `custom`, so a row reads it as it leaves; a deleted row only fades.
+ */
+export type LeavingRows = ReadonlyMap<string, MoveDirection>
+
 interface TodoItemProps {
   readonly todo: Todo
   /** The row's place in the list as it is shown. */
@@ -56,13 +63,20 @@ interface TodoItemProps {
   readonly isNew: boolean
   /** Whether a new row animates in; false for todos added in quick succession. */
   readonly animateEnter: boolean
+  /** Where the move word sends the todo. */
+  readonly moveTarget: MoveTarget
   readonly onToggleStatus: (id: string, status: ResolvedStatus) => void
   readonly onRemove: (id: string) => void
   readonly onEdit: (id: string, text: string) => void
+  readonly onMove: (id: string) => void
   /** Set by `AnimatePresence`, which takes the row out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
 
+/*
+ * `☐ Buy milk ········ → tomorrow  drop`. What became of the todo is on the row; what the todo is
+ * changes through its text (edit, and delete in the editor).
+ */
 export function TodoItem({
   todo,
   index,
@@ -71,13 +85,17 @@ export function TodoItem({
   order,
   isNew,
   animateEnter,
+  moveTarget,
   onToggleStatus,
   onRemove,
   onEdit,
+  onMove,
   ref
 }: TodoItemProps) {
   const [editing, setEditing] = useState(false)
   const text = useRef<HTMLButtonElement>(null)
+  // Under reduced motion a moved row only fades, like a deleted one.
+  const still = useReducedMotion() === true
 
   const {
     ref: sortableRef,
@@ -113,6 +131,7 @@ export function TodoItem({
   }, [])
 
   const dropped = todo.status === 'dropped'
+  const Arrow = moveTarget.direction === 'next' ? ArrowRight : ArrowLeft
 
   return (
     <motion.li
@@ -126,11 +145,19 @@ export function TodoItem({
       layoutDependency={order}
       initial={isNew && animateEnter ? { opacity: 0, y: -8 } : false}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, transition: ROW_EXIT }}
+      variants={{
+        // Towards the day a moved todo went to (`LeavingRows`).
+        exit: (leaving: LeavingRows) => {
+          const direction = leaving.get(todo.id)
+          const x = direction === undefined || still ? 0 : direction === 'next' ? ROW_MOVE_X : -ROW_MOVE_X
+          return { opacity: 0, x, transition: ROW_EXIT }
+        }
+      }}
+      exit="exit"
       transition={{ ...ROW_ENTER, layout: ROW_LAYOUT }}
     >
-      {/* The bullet turns into a grip on hover. It is the keyboard's handle: Space or Enter picks the
-          row up, the arrow keys move it, Escape puts it back. */}
+      {/* The grip shows on hover. It is the keyboard's handle: Space or Enter picks the row up, the
+          arrow keys move it, Escape puts it back. */}
       <button
         ref={handleRef}
         type="button"
@@ -138,19 +165,29 @@ export function TodoItem({
         data-todo-handle
         aria-label={`Reorder ${todo.text}`}
       >
-        <span className={styles.bullet} aria-hidden="true" />
         <GripVertical className={styles.grip} size={14} aria-hidden="true" />
       </button>
+      <DoneCheckbox
+        checked={todo.status === 'done'}
+        dropped={dropped}
+        onChange={() => {
+          // The box of a dropped todo reopens it.
+          onToggleStatus(todo.id, dropped ? 'dropped' : 'done')
+        }}
+      />
       {editing ? (
         <TodoEditor
           text={todo.text}
           onCommit={(next) => {
             onEdit(todo.id, next)
           }}
+          onDelete={() => {
+            onRemove(todo.id)
+          }}
           onClose={(how) => {
             setEditing(false)
-            // Escape and Enter leave the keyboard where it was; after a click elsewhere, focus has moved on.
-            if (how !== 'blur') requestAnimationFrame(() => text.current?.focus())
+            // Escape and Enter leave the keyboard where it was; after a click elsewhere or a delete, it has moved on.
+            if (how === 'enter' || how === 'escape') requestAnimationFrame(() => text.current?.focus())
           }}
         />
       ) : (
@@ -168,33 +205,29 @@ export function TodoItem({
           <span className={styles.strike}>{todo.text}</span>
         </button>
       )}
-      <button
-        type="button"
-        className={styles.remove}
-        onClick={() => {
-          onRemove(todo.id)
-        }}
-      >
-        delete
-      </button>
-      <DoneCheckbox
-        checked={todo.status === 'done'}
-        onChange={() => {
-          onToggleStatus(todo.id, 'done')
-        }}
-      />
+      {/* Only an open todo has somewhere to go. The arrow points the way the deck flips. */}
+      {todo.status === 'open' && (
+        <button
+          type="button"
+          className={styles.move}
+          aria-label={`Move ${todo.text} to ${moveTarget.name}`}
+          onClick={() => {
+            onMove(todo.id)
+          }}
+        >
+          <Arrow size={12} aria-hidden="true" />
+          {moveTarget.name}
+        </button>
+      )}
       <button
         type="button"
         className={styles.drop}
-        aria-label="Dropped"
         aria-pressed={dropped}
         onClick={() => {
           onToggleStatus(todo.id, 'dropped')
         }}
       >
-        {/* Two icons cross-fading: a stroke width cannot fade, and it must not jump either. */}
-        <X className={styles.idle} size={16} aria-hidden="true" />
-        <X className={styles.pressed} size={16} strokeWidth={3} aria-hidden="true" />
+        drop
       </button>
     </motion.li>
   )
