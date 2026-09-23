@@ -1,9 +1,8 @@
 # Daily — features
 
 What the app does, as someone using it meets it. One section per feature: what it is, how it is
-used, and the behaviour that is easy to get wrong when changing it. Why a feature looks and moves
-the way it does is in `design.md`; why it was built this way is in `archive.md` and
-`architecture.md`.
+used, and the behaviour that is easy to get wrong when changing it. Why it was built this way is
+in `archive.md` and `architecture.md`.
 
 Keep it current: a change to what the user can do changes this file in the same commit.
 

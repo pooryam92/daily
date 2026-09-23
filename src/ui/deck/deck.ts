@@ -1,7 +1,7 @@
 /*
  * The geometry of the day deck. A card's position is how many days it is from the front: 0 is in
  * front, ±1 sit behind it, further out is off-stage. It is a continuous number, because cards
- * travel between the whole positions during a flip or a drag. The reasoning is in docs/design.md.
+ * travel between the whole positions during a flip or a drag.
  */
 
 /** How much smaller a card gets per step away from the front. */

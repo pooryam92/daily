@@ -1,7 +1,7 @@
 /* The opsz build carries the weight and optical-size axes; font-optical-sizing needs the latter. */
 @import '@fontsource-variable/inter/opsz.css';
 
-/* Design tokens. The reasoning behind each value is in docs/design.md. */
+/* Design tokens. */
 :root {
   /* The one theme switch: every colour below is a `light-dark()` pair that follows it. */
   color-scheme: light dark;

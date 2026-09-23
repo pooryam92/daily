@@ -1,8 +1,8 @@
 # Daily — architecture
 
 How the app is put together, and the decisions behind it. Each decision says what was chosen and why, and
-where there is an obvious alternative, why not that. `archive.md` has the same for the features on screen, `design.md` for
-how they look and move; the folder layout and the scripts are in `development.md`.
+where there is an obvious alternative, why not that. `archive.md` has the same for the features on
+screen; the folder layout and the scripts are in `development.md`.
 
 Add a decision when one is made, in the section it belongs to. When one is reversed, rewrite its
 entry: this file describes the app as it is, and `git log` has the history.

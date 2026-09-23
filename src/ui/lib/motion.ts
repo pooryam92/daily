@@ -2,7 +2,7 @@ import type { Transition } from 'motion/react'
 
 /*
  * Timings for the animations that run in Motion instead of CSS. The durations and the curve mirror
- * the motion tokens in styles/global.css; keep the two in sync. The reasoning is in docs/design.md §5.
+ * the motion tokens in styles/global.css; keep the two in sync.
  */
 
 /** `--ease-out` */

@@ -12,7 +12,7 @@ import {
 /*
  * The words on a card. They say where the day stands and nothing about how it went: an empty day or
  * an unfinished one gets no comment. The wording stays the same from day to day and only the part
- * that differs changes (docs/design.md §10).
+ * that differs changes.
  */
 
 /** The card's title is what the day is called out loud: "Today", "Yesterday", "Tomorrow", otherwise its weekday. */
