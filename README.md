@@ -150,7 +150,6 @@ The rest is in [docs/development.md](docs/development.md).
 | [docs/features.md](docs/features.md)         | What the app does, feature by feature                                |
 | [docs/development.md](docs/development.md)   | Scripts, the folder structure, packaging, releasing, the demo        |
 | [docs/architecture.md](docs/architecture.md) | How it is built: structure, IPC, security, data, packaging, updates  |
-| [docs/design.md](docs/design.md)             | Colour, type, space and motion, with the evidence behind each choice |
 | [docs/archive.md](docs/archive.md)           | What was built and decided, one short entry per feature              |
 | [docs/research.md](docs/research.md)         | Facts and their sources; no conclusions                              |
 | [docs/backlog.md](docs/backlog.md)           | Features that are wanted and not built yet, with the research behind |
