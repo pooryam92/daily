@@ -9,7 +9,8 @@ const TOAST_ID = 'update'
 /**
  * Says that a newer version is there, in a toast that stays until it is answered: the app is open
  * for days and nobody may be looking when the update arrives. Nothing depends on the answer. An
- * update that is downloaded is installed when the app quits, with or without the Restart button.
+ * update that is downloaded is installed when the app quits, with or without the Restart button,
+ * except a `.deb` or `.rpm`: that waits for Restart, and the toast comes back at the next launch.
  */
 export function useUpdateNotice(): void {
   const gateway = useGateway()

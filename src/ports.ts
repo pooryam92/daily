@@ -28,8 +28,7 @@ export interface AppUpdate {
   readonly version: string
   /**
    * `restart`: it is downloaded, and a restart installs it. `manual`: this install cannot replace
-   * itself (a Linux package belongs to the package manager, the macOS app is not signed by an Apple
-   * developer), so it has to be downloaded by hand.
+   * itself (the macOS app is not signed by an Apple developer), so it has to be downloaded by hand.
    */
   readonly install: 'restart' | 'manual'
 }

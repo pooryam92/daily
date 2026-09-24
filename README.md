@@ -49,8 +49,8 @@ Each file name downloads that file. Older versions are on the
 | macOS, Apple chip | [Daily-1.1.0-arm64.dmg](https://github.com/pooryam92/daily/releases/download/v1.1.0/Daily-1.1.0-arm64.dmg)   | The app tells you; you install it |
 | macOS, Intel chip | [Daily-1.1.0-x64.dmg](https://github.com/pooryam92/daily/releases/download/v1.1.0/Daily-1.1.0-x64.dmg)       | The app tells you; you install it |
 | Any Linux         | [Daily-1.1.0.AppImage](https://github.com/pooryam92/daily/releases/download/v1.1.0/Daily-1.1.0.AppImage)     | By itself                         |
-| Debian, Ubuntu    | [daily_1.1.0_amd64.deb](https://github.com/pooryam92/daily/releases/download/v1.1.0/daily_1.1.0_amd64.deb)   | The app tells you; you install it |
-| Fedora, openSUSE  | [daily-1.1.0.x86_64.rpm](https://github.com/pooryam92/daily/releases/download/v1.1.0/daily-1.1.0.x86_64.rpm) | The app tells you; you install it |
+| Debian, Ubuntu    | [daily_1.1.0_amd64.deb](https://github.com/pooryam92/daily/releases/download/v1.1.0/daily_1.1.0_amd64.deb)   | By itself, after your password    |
+| Fedora, openSUSE  | [daily-1.1.0.x86_64.rpm](https://github.com/pooryam92/daily/releases/download/v1.1.0/daily-1.1.0.x86_64.rpm) | By itself, after your password    |
 
 Nothing here is signed, because a certificate is a yearly cost that a personal app does not justify.
 Windows and macOS therefore warn at the first start. The steps below get past that, once.
@@ -108,15 +108,16 @@ release page. Install the new `.dmg` over the old app; the todos are not in it a
   sudo zypper install ./daily-1.1.0.x86_64.rpm   # openSUSE
   ```
 
-The `.deb` and the `.rpm` add Daily to the launcher. They belong to the package manager, so the app
-does not replace them: it says "Update available" and opens the release page.
+The `.deb` and the `.rpm` add Daily to the launcher. They belong to the package manager, so an
+update asks for your password before it installs the new package.
 
 ## Updates
 
 The installed app looks for a newer release when it starts and every four hours. The Windows install
 and the AppImage download it in the background and show "Update ready" with a Restart button; it is
-installed when the app quits either way. The macOS app, the `.deb` and the `.rpm` only say "Update
-available" and open the release page. Being offline shows nothing.
+installed when the app quits either way. The `.deb` and the `.rpm` download it too, but install it
+only on Restart, after your password; with Later, the toast comes back at the next start. The macOS
+app only says "Update available" and opens the release page. Being offline shows nothing.
 
 What each version changed is in the [changelog](CHANGELOG.md).
 

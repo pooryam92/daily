@@ -6,6 +6,11 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+### Changed
+
+- The `.deb` and the `.rpm` update themselves. The update downloads in the background, and Restart
+  installs it after your password. Installs of 1.1.0 or older still need this one update by hand.
+
 ## [1.1.0] - 2026-09-23
 
 ### Added

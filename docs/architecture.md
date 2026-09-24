@@ -158,8 +158,8 @@ The app loads no remote content, which makes the rules simple to hold.
   `electron-updater` comes with electron-builder and reads the same config. `npm run dist` never uploads.
 - **Targets: AppImage, `.deb` and `.rpm` on Linux, NSIS on Windows, `.dmg` on macOS.** The AppImage
   runs anywhere and updates itself; the two packages are for people who want the app installed by
-  their package manager, on Debian/Ubuntu and on Fedora/openSUSE. No Flatpak, Snap or apt
-  repository: none of them would update itself either, and each is infrastructure to keep up. The
+  their package manager, on Debian/Ubuntu and on Fedora/openSUSE, and update themselves through it
+  (section 6). No Flatpak, Snap or apt repository yet: each is infrastructure to keep up. The
   NSIS installer keeps its defaults, one click and per user, so an update needs no administrator.
 - **Only `out/` goes into the app.** The renderer's libraries are `devDependencies` because Vite has
   already bundled them; left in `dependencies`, all of `node_modules` was copied in as well.
@@ -221,13 +221,15 @@ flowchart TD
   packaged -- no --> never([never checks])
   packaged -- yes --> check[ask GitHub Releases for a newer version]
   check -- "none, or the check failed" --> quiet([nothing is shown])
-  check -- newer version --> replace{Windows, or an AppImage?}
-  replace -- no --> manual["toast: Update available"]
+  check -- newer version --> replace{macOS?}
+  replace -- yes --> manual["toast: Update available"]
   manual -- Download --> page([the release page opens])
-  replace -- yes --> download[download in the background]
+  replace -- no --> download[download in the background]
   download --> ready["toast: Update ready"]
-  ready -- Restart --> restart([release the lock, install, start again])
-  ready -- Later --> quit([installed when the app quits])
+  ready -- Restart --> restart([install, start again])
+  ready -- Later --> later{.deb or .rpm?}
+  later -- no --> quit([installed when the app quits])
+  later -- yes --> next([found again at the next launch])
 ```
 
 - **GitHub Releases on a public repo is the feed.** Public, so the app needs no token inside it.
@@ -238,14 +240,22 @@ flowchart TD
   without one throws.
 - **The UI hears about an update only once the user can act on it:** downloaded (`restart`), or
   available for download by hand (`manual`). "Checking" and "downloading" are not states the UI has.
-- **Who can replace itself:** Windows, and Linux when `APPIMAGE` is set. Everything else only
-  checks. macOS is in "everything else": its updater (Squirrel.Mac) checks the new app's signature
-  against the running one's, which an ad-hoc signature never passes. The feed needs no `.zip` for
-  that, because only a download reads the file list; a check reads the version. electron-updater 6
-  could install a `.deb` itself through `pkexec dpkg -i`; not used, because it asks for the password
-  when the app quits and goes around apt.
-- **Restart gives up the single-instance lock first.** The updater starts the new AppImage before
-  the old app is gone, and the new one would exit at the lock.
+- **Who can replace itself:** Windows, Linux when `APPIMAGE` is set, and a `.deb` or `.rpm`, which
+  electron-builder marks with a `package-type` file in the app's resources. macOS only checks: its
+  updater (Squirrel.Mac) checks the new app's signature against the running one's, which an ad-hoc
+  signature never passes. The feed needs no `.zip` for that, because only a download reads the file
+  list; a check reads the version.
+- **A package installs through the package manager, as root.** electron-updater runs `dpkg -i`, or
+  dnf, zypper or yum with the signature check off, through `pkexec`, so the desktop asks for the
+  password. The package is unsigned and comes from no repository, so this is the same thing a user
+  does by hand. The main process waits while the dialog is open. Cancelling it leaves the app
+  running, with the toast gone until the next launch.
+- **A package installs only on Restart,** never when the app quits: a password dialog should answer
+  a click, not appear from nowhere. After "Later" the next launch finds the downloaded update again.
+- **Restart gives up the single-instance lock first, except for a package.** The updater starts the
+  new AppImage or Windows install before the old app is gone, and the new one would exit at the
+  lock. A package is installed before the app quits, and the new version starts after it has exited;
+  keeping the lock matters when the install fails and the app stays open.
 - **The toast stays until it is answered.** Nobody may be looking when the update arrives. "Later"
   is quieter than "Restart", and nothing depends on either: the update is installed on quit.
 - **Testable without a release:** two builds with a `generic` feed on localhost. The relaunched app

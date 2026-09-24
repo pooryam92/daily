@@ -116,10 +116,11 @@ The installed app looks for a newer version when it starts and every four hours.
 - **AppImage and Windows.** The new version is downloaded in the background. A toast then says
   "Update ready": Restart installs it now and brings the app back; Later leaves it for the next time
   the app quits. It is installed then either way.
-- **`.deb` and `.rpm`.** The package belongs to the package manager, so the app only says "Update available";
-  Download opens the release page.
-- **macOS.** The same: macOS lets only an app signed by an Apple developer replace itself, and this
-  one is not.
+- **`.deb` and `.rpm`.** Downloaded in the background too, and the toast says "Update ready". Restart
+  asks for the password, installs the package through the package manager and brings the app back.
+  Later leaves it until the next start, when the toast comes back; it is never installed on quit.
+- **macOS.** The app only says "Update available", and Download opens the release page: macOS lets
+  only an app signed by an Apple developer replace itself, and this one is not.
 - The toast stays until it is answered. Being offline, or any other failure, shows nothing.
 
 ## Accessibility
