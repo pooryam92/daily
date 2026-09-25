@@ -84,9 +84,16 @@
   display: none;
 }
 
+.column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 /* The text is a button (click it to edit it) that looks like the text it is. */
 .text {
-  flex: 1;
   min-width: 0;
   padding: 0;
   border-radius: var(--radius-sm);
@@ -125,6 +132,52 @@
   .todo[data-status='done'] .strike {
     text-decoration: line-through;
   }
+}
+
+/*
+ * One ellipsized line, so a note makes the row exactly one line taller. Not a word at the end of
+ * the row, so the text keeps its width in the small window; it does not drag (ROW_CONTROLS).
+ */
+.note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  color: var(--text-faint);
+  text-align: start;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+/* Pressing text does not squeeze it. */
+.note:active {
+  scale: none;
+}
+
+.note:hover {
+  color: var(--text-muted);
+}
+
+.note[data-offer]:hover {
+  color: var(--accent);
+}
+
+.todo[data-status='done'] .note:hover {
+  color: var(--text-faint);
+}
+
+.noteMark {
+  flex: none;
+}
+
+.noteLine {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The words at the end of the row: labels, not icons, and none dressed up as dangerous. */

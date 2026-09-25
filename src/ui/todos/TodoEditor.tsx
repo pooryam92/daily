@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import styles from './TodoEditor.module.css'
 
@@ -22,6 +22,24 @@ export function TodoEditor({ text, onCommit, onClose }: TodoEditorProps) {
   const field = useRef<HTMLTextAreaElement>(null)
   // Enter closes the editor, which takes the field away, which can blur it: one close per edit.
   const closed = useRef(false)
+  const pressed = useRef(false)
+
+  useEffect(() => {
+    const down = (): void => {
+      pressed.current = true
+    }
+    const up = (): void => {
+      pressed.current = false
+    }
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('pointerup', up, true)
+    window.addEventListener('pointercancel', up, true)
+    return () => {
+      window.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('pointerup', up, true)
+      window.removeEventListener('pointercancel', up, true)
+    }
+  }, [])
 
   // The cursor starts at the end, where a sentence is carried on and most slips are made.
   useLayoutEffect(() => {
@@ -37,6 +55,20 @@ export function TodoEditor({ text, onCommit, onClose }: TodoEditorProps) {
     // A todo is one line, however it was typed or pasted; the row wraps it as needed.
     const next = draft.trim().replace(/\s+/g, ' ')
     if (how !== 'escape' && next !== '' && next !== text) onCommit(next)
+    if (how === 'blur' && pressed.current) {
+      // Closing mid-press drops the note line and shifts the rows under the pointer,
+      // so the click would land on the wrong row. Wait for the release.
+      const released = (): void => {
+        window.removeEventListener('pointerup', released)
+        window.removeEventListener('pointercancel', released)
+        setTimeout(() => {
+          onClose(how)
+        }, 0)
+      }
+      window.addEventListener('pointerup', released)
+      window.addEventListener('pointercancel', released)
+      return
+    }
     onClose(how)
   }
 

@@ -3,7 +3,6 @@
  * starts or ends. `field-sizing` lets the field grow with its text, line by line, like the row does.
  */
 .editor {
-  flex: 1;
   min-width: 0;
   margin: 0;
   padding: 0;

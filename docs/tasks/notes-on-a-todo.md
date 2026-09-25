@@ -63,12 +63,12 @@ The note is a Markdown string on the todo, absent when empty, and the file stays
 
 A row with a note is one line taller, and nothing else about it changes.
 
-- [ ] The line is faint, one line tall, cut at the row's width with an ellipsis, never wrapped.
-- [ ] It is a button: a click unfolds the note. `→` on the focused text does the same.
-- [ ] While the text is edited and there is no note, the line reads `Add a note`; a click opens an
+- [x] The line is faint, one line tall, cut at the row's width with an ellipsis, never wrapped.
+- [x] It is a button: a click unfolds the note. `→` on the focused text does the same.
+- [x] While the text is edited and there is no note, the line reads `Add a note`; a click opens an
       empty note. No third hover word: the small window keeps its text width.
-- [ ] On touch the line is always there, like the words. A done todo's line dims with its text.
-- [ ] The hover words keep their width while hidden, so unfolding shifts nothing sideways.
+- [x] On touch the line is always there, like the words. A done todo's line dims with its text.
+- [x] The hover words keep their width while hidden, so unfolding shifts nothing sideways.
 
 ## 3. Unfolded: the note under its row
 

@@ -94,6 +94,7 @@ export function DayCard({
   const progress = useMemo(() => dayProgress(todos), [todos])
   // While a row is being dragged, nothing else may move the list.
   const [dragging, setDragging] = useState(false)
+  const [openNote, setOpenNote] = useState<string | null>(null)
   const { ordered, settled } = useSettledTodos(todos, dragging)
   const order = ordered.map((todo) => todo.id).join()
   const [list, setList] = useState<HTMLUListElement | null>(null)
@@ -229,9 +230,9 @@ export function DayCard({
             onDragEnd={({ operation: { source }, canceled }) => {
               setDragging(false)
               if (canceled || !isSortable(source)) return
-              const target = ordered[source.index]
-              if (target !== undefined && source.index !== source.initialIndex) {
-                onReorder(String(source.id), target.id)
+              const landedOn = ordered[source.index]
+              if (landedOn !== undefined && source.index !== source.initialIndex) {
+                onReorder(String(source.id), landedOn.id)
               }
             }}
           >
@@ -251,10 +252,12 @@ export function DayCard({
                     isNew={!initialIds.has(todo.id)}
                     animateEnter={animateEnter}
                     moveTarget={target}
+                    noteOpen={openNote === todo.id}
                     onToggleDone={onToggleDone}
                     onRemove={onRemove}
                     onEdit={onEdit}
                     onMove={move}
+                    onOpenNote={setOpenNote}
                   />
                 ))}
               </AnimatePresence>

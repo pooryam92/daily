@@ -1,10 +1,11 @@
 import { KeyboardSensor, PointerActivationConstraints, PointerSensor } from '@dnd-kit/dom'
 import type { Sensors } from '@dnd-kit/dom'
 import { useSortable } from '@dnd-kit/react/sortable'
-import { GripVertical } from 'lucide-react'
+import { AlignLeft, GripVertical } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, Ref } from 'react'
+import { noteExcerpt } from '@/domain/note'
 import type { Todo } from '@/domain/todo'
 import type { MoveDirection, MoveTarget } from '../day/copy'
 import { ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
@@ -65,10 +66,14 @@ interface TodoItemProps {
   readonly animateEnter: boolean
   /** Where the move word sends the todo. */
   readonly moveTarget: MoveTarget
+  /** Whether the note is unfolded under the row; one per card at a time. */
+  readonly noteOpen: boolean
   readonly onToggleDone: (id: string) => void
   readonly onRemove: (id: string) => void
   readonly onEdit: (id: string, text: string) => void
   readonly onMove: (id: string) => void
+  /** Unfolds the note under the row; a todo without one gets an empty note. */
+  readonly onOpenNote: (id: string) => void
   /** Set by `AnimatePresence`, which takes the row out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
@@ -87,14 +92,16 @@ export function TodoItem({
   isNew,
   animateEnter,
   moveTarget,
+  noteOpen,
   onToggleDone,
   onRemove,
   onEdit,
   onMove,
+  onOpenNote,
   ref
 }: TodoItemProps) {
   const [editing, setEditing] = useState(false)
-  const text = useRef<HTMLButtonElement>(null)
+  const textButton = useRef<HTMLButtonElement>(null)
   // Under reduced motion a moved row only fades, like a deleted one.
   const still = useReducedMotion() === true
 
@@ -132,10 +139,18 @@ export function TodoItem({
   }, [])
 
   const onTextKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
-    if (event.key !== 'Delete' && event.key !== 'Backspace') return
-    event.preventDefault()
-    onRemove(todo.id)
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault()
+      onRemove(todo.id)
+    } else if (event.key === 'ArrowRight') {
+      // Otherwise the deck takes it as a flip to the next day (useDayNavigation).
+      event.preventDefault()
+      onOpenNote(todo.id)
+    }
   }
+
+  const offeringNote = todo.note === undefined
+  const noteLine = todo.note === undefined ? (editing ? 'Add a note' : null) : noteExcerpt(todo.note)
 
   return (
     <motion.li
@@ -145,6 +160,7 @@ export function TodoItem({
       data-status={todo.status}
       data-editing={editing || undefined}
       data-dragging={isDragging || undefined}
+      data-note-open={noteOpen || undefined}
       layout={sorting ? false : 'position'}
       layoutDependency={order}
       initial={isNew && animateEnter ? { opacity: 0, y: -8 } : false}
@@ -177,34 +193,54 @@ export function TodoItem({
           onToggleDone(todo.id)
         }}
       />
-      {editing ? (
-        <TodoEditor
-          text={todo.text}
-          onCommit={(next) => {
-            onEdit(todo.id, next)
-          }}
-          onClose={(how) => {
-            setEditing(false)
-            // Escape and Enter leave the keyboard where it was; after a click elsewhere, it has moved on.
-            if (how !== 'blur') requestAnimationFrame(() => text.current?.focus())
-          }}
-        />
-      ) : (
-        // A button, so the text can be edited from the keyboard. A press that moves drags the row.
-        <button
-          ref={text}
-          type="button"
-          className={styles.text}
-          data-todo-text
-          aria-label={`Edit ${todo.text}`}
-          onClick={() => {
-            setEditing(true)
-          }}
-          onKeyDown={onTextKeyDown}
-        >
-          <span className={styles.strike}>{todo.text}</span>
-        </button>
-      )}
+      <div className={styles.column}>
+        {editing ? (
+          <TodoEditor
+            text={todo.text}
+            onCommit={(next) => {
+              onEdit(todo.id, next)
+            }}
+            onClose={(how) => {
+              setEditing(false)
+              // Escape and Enter leave the keyboard where it was; after a click elsewhere, it has moved on.
+              if (how !== 'blur') requestAnimationFrame(() => textButton.current?.focus())
+            }}
+          />
+        ) : (
+          // A button, so the text can be edited from the keyboard. A press that moves drags the row.
+          <button
+            ref={textButton}
+            type="button"
+            className={styles.text}
+            data-todo-text
+            aria-label={`Edit ${todo.text}`}
+            onClick={() => {
+              setEditing(true)
+            }}
+            onKeyDown={onTextKeyDown}
+          >
+            <span className={styles.strike}>{todo.text}</span>
+          </button>
+        )}
+        {noteLine !== null && (
+          <button
+            type="button"
+            className={styles.note}
+            data-offer={offeringNote || undefined}
+            aria-label={offeringNote ? undefined : `Open the note: ${noteLine}`}
+            // Keep focus in the editor: its blur would end editing and drop this button before the click.
+            onMouseDown={(event) => {
+              event.preventDefault()
+            }}
+            onClick={() => {
+              onOpenNote(todo.id)
+            }}
+          >
+            <AlignLeft className={styles.noteMark} size={12} aria-hidden="true" />
+            <span className={styles.noteLine}>{noteLine}</span>
+          </button>
+        )}
+      </div>
       {todo.status === 'open' && (
         <button
           type="button"
