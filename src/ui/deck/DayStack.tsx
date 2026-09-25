@@ -96,9 +96,9 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
             onAdd={(text) => {
               actions.add(day, text)
             }}
-            onToggleStatus={(id, status) => {
-              playMark(days[day] ?? [], id, status)
-              actions.toggleStatus(day, id, status)
+            onToggleDone={(id) => {
+              playMark(days[day] ?? [], id)
+              actions.toggleDone(day, id)
             }}
             onRemove={(id) => {
               removeWithUndo(day, id)

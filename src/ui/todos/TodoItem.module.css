@@ -75,12 +75,12 @@
   }
 }
 
-/* While the text is edited the row is a field with `delete` after it: nothing else is offered. */
+/* While the text is edited the row is a field: nothing else is offered. */
 .todo[data-editing] .handle {
   visibility: hidden;
 }
 
-.todo[data-editing] :is(.move, .drop) {
+.todo[data-editing] :is(.move, .remove) {
   display: none;
 }
 
@@ -127,13 +127,9 @@
   }
 }
 
-.todo[data-status='dropped'] .text {
-  color: var(--text-faint);
-}
-
-/* The two words at the end of the row: labels, not icons, and neither dressed up as dangerous. */
+/* The words at the end of the row: labels, not icons, and none dressed up as dangerous. */
 .move,
-.drop {
+.remove {
   flex: none;
   height: 28px;
   padding: 0 var(--space-2);
@@ -148,41 +144,37 @@
 }
 
 .move:hover,
-.drop:hover {
+.remove:hover {
   color: var(--text);
   background: var(--hover-strong);
 }
 
-/* "→ tomorrow" or "→ today": the arrow points the way the deck flips to reach that day. */
 .move {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
   color: var(--text-muted);
 }
 
 /*
- * Where there is a mouse, the word rests only on a day that has passed (`data-past`, DayCard.tsx),
- * where the decision is due; elsewhere it waits for a hover, so today's card stays quiet. Its width
- * is always kept, so nothing shifts.
+ * Where there is a mouse the words wait for a hover, so a row at rest is its box and its text and
+ * the card stays quiet. Their width is always kept, so nothing shifts. On touch they are always
+ * there, since there is nothing to hover.
  */
 @media (hover: hover) and (pointer: fine) {
-  .move {
+  .move,
+  .remove {
     opacity: 0;
   }
 
-  [data-past] .move,
-  .todo:hover .move,
-  .move:focus-visible {
+  .todo:hover :is(.move, .remove),
+  :is(.move, .remove):focus-visible {
     opacity: 1;
   }
 }
 
-/* Always there: letting go is meant to be used. Pressed, it takes the neutral dropped colour. */
-.drop {
+/*
+ * The second tier: a gap sets it apart from the move word, and it is the faintest word on the row,
+ * since it is never red (the toast brings the todo back).
+ */
+.remove {
+  margin-inline-start: var(--space-2);
   color: var(--text-faint);
-}
-
-.drop[aria-pressed='true'] {
-  color: var(--dropped);
 }

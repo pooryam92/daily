@@ -25,10 +25,8 @@ export const CHECK = {
   draw: {
     on: { duration: 0.18, ease: EASE_OUT, delay: 0.1 },
     off: { duration: 0.1, ease: EASE_OUT }
-  },
-  /** The X of a dropped todo only cross-fades: a release, not an achievement. */
-  cross: { duration: 0.15, ease: EASE_OUT }
-} as const satisfies Record<string, Transition | Record<'on' | 'off', Transition>>
+  }
+} as const satisfies Record<string, Record<'on' | 'off', Transition>>
 
 /** The arc of the progress ring following the day's todos. */
 export const RING: Transition = { type: 'spring', duration: 0.5, bounce: 0 }

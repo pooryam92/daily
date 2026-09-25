@@ -14,8 +14,8 @@ organise. Open it, write down what today is for, and tick things off.
   card, and today is a fresh page. There is no overdue list and no red badge.
 - **A todo is a line of text.** No priority, no tag, no due date, no project. The day it is on is all
   it has, so there is nothing to decide but what to do.
-- **Three states.** A todo is open, done (the checkbox) or dropped (the ✗). Dropping is a decision,
-  not a failure, and it counts as progress.
+- **Done or not.** A todo is open or it is done, and the checkbox is the whole of it. There is no
+  third state to file a todo under.
 - **A ring, not a score.** It closes as the day's todos are resolved. Resolve the last one and the day
   is "Cleared". No streaks, no points, no statistics.
 - **No account, no sync, no cloud.** Your todos stay on your machine, in one readable JSON file. The

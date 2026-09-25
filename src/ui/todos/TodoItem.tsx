@@ -1,11 +1,11 @@
 import { KeyboardSensor, PointerActivationConstraints, PointerSensor } from '@dnd-kit/dom'
 import type { Sensors } from '@dnd-kit/dom'
 import { useSortable } from '@dnd-kit/react/sortable'
-import { ArrowLeft, ArrowRight, GripVertical } from 'lucide-react'
+import { GripVertical } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Ref } from 'react'
-import type { ResolvedStatus, Todo } from '@/domain/todo'
+import type { KeyboardEvent, Ref } from 'react'
+import type { Todo } from '@/domain/todo'
 import type { MoveDirection, MoveTarget } from '../day/copy'
 import { ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
 import { DoneCheckbox } from './DoneCheckbox'
@@ -65,7 +65,7 @@ interface TodoItemProps {
   readonly animateEnter: boolean
   /** Where the move word sends the todo. */
   readonly moveTarget: MoveTarget
-  readonly onToggleStatus: (id: string, status: ResolvedStatus) => void
+  readonly onToggleDone: (id: string) => void
   readonly onRemove: (id: string) => void
   readonly onEdit: (id: string, text: string) => void
   readonly onMove: (id: string) => void
@@ -74,8 +74,9 @@ interface TodoItemProps {
 }
 
 /*
- * `☐ Buy milk ········ → tomorrow  drop`. What became of the todo is on the row; what the todo is
- * changes through its text (edit, and delete in the editor).
+ * `☐ Buy milk ········ tomorrow   delete`. The words at the end are two tiers: where the todo goes
+ * (move), then set apart and fainter, whether it was a mistake (delete). Left to right they are
+ * ever more final, so the row is a spectrum to read, not a menu to compare.
  */
 export function TodoItem({
   todo,
@@ -86,7 +87,7 @@ export function TodoItem({
   isNew,
   animateEnter,
   moveTarget,
-  onToggleStatus,
+  onToggleDone,
   onRemove,
   onEdit,
   onMove,
@@ -130,8 +131,11 @@ export function TodoItem({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const dropped = todo.status === 'dropped'
-  const Arrow = moveTarget.direction === 'next' ? ArrowRight : ArrowLeft
+  const onTextKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    if (event.key !== 'Delete' && event.key !== 'Backspace') return
+    event.preventDefault()
+    onRemove(todo.id)
+  }
 
   return (
     <motion.li
@@ -169,10 +173,8 @@ export function TodoItem({
       </button>
       <DoneCheckbox
         checked={todo.status === 'done'}
-        dropped={dropped}
         onChange={() => {
-          // The box of a dropped todo reopens it.
-          onToggleStatus(todo.id, dropped ? 'dropped' : 'done')
+          onToggleDone(todo.id)
         }}
       />
       {editing ? (
@@ -181,13 +183,10 @@ export function TodoItem({
           onCommit={(next) => {
             onEdit(todo.id, next)
           }}
-          onDelete={() => {
-            onRemove(todo.id)
-          }}
           onClose={(how) => {
             setEditing(false)
-            // Escape and Enter leave the keyboard where it was; after a click elsewhere or a delete, it has moved on.
-            if (how === 'enter' || how === 'escape') requestAnimationFrame(() => text.current?.focus())
+            // Escape and Enter leave the keyboard where it was; after a click elsewhere, it has moved on.
+            if (how !== 'blur') requestAnimationFrame(() => text.current?.focus())
           }}
         />
       ) : (
@@ -201,11 +200,11 @@ export function TodoItem({
           onClick={() => {
             setEditing(true)
           }}
+          onKeyDown={onTextKeyDown}
         >
           <span className={styles.strike}>{todo.text}</span>
         </button>
       )}
-      {/* Only an open todo has somewhere to go. The arrow points the way the deck flips. */}
       {todo.status === 'open' && (
         <button
           type="button"
@@ -215,19 +214,18 @@ export function TodoItem({
             onMove(todo.id)
           }}
         >
-          <Arrow size={12} aria-hidden="true" />
           {moveTarget.name}
         </button>
       )}
       <button
         type="button"
-        className={styles.drop}
-        aria-pressed={dropped}
+        className={styles.remove}
+        aria-label={`Delete ${todo.text}`}
         onClick={() => {
-          onToggleStatus(todo.id, 'dropped')
+          onRemove(todo.id)
         }}
       >
-        drop
+        delete
       </button>
     </motion.li>
   )

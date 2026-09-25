@@ -21,23 +21,3 @@
   user-select: text;
   cursor: text;
 }
-
-/* Styled like the row's words, and not as dangerous: the toast brings the todo back. */
-.remove {
-  flex: none;
-  height: 28px;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-  color: var(--text-muted);
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out),
-    scale var(--duration-fast) var(--ease-out);
-}
-
-.remove:hover {
-  color: var(--text);
-  background: var(--hover-strong);
-}

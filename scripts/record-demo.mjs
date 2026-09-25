@@ -60,7 +60,7 @@ function pageSetup(version) {
       [key(-1)]: [
         todo('Book the train to Hamburg', 'done'),
         todo('Reply to Jonas', 'done'),
-        todo('Fix the bike light', 'dropped'),
+        todo('Fix the bike light', 'done'),
         todo('Read chapter four', 'done'),
         todo('Return the library book')
       ],
@@ -171,7 +171,7 @@ async function story(page) {
 
   await click(row('Water the plants').getByLabel('Done'))
   await pause(450)
-  await click(row('Renew the library card').getByRole('button', { name: 'drop' }))
+  await click(row('Renew the library card').getByLabel('Done'))
   await pause(500)
   await click(row('Write the release notes').getByLabel('Done'))
   await pause(400)

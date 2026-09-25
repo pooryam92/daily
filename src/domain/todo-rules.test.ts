@@ -29,19 +29,13 @@ describe('daysReducer', () => {
   })
 
   it('marks a todo', () => {
-    const next = daysReducer(days, { type: 'statusToggled', day: DAY, id: 'milk', status: 'done' })
+    const next = daysReducer(days, { type: 'doneToggled', day: DAY, id: 'milk' })
     expect(next[DAY]).toEqual([{ ...milk, status: 'done' }, taxes])
   })
 
-  it('switches directly between marks', () => {
-    const done = daysReducer(days, { type: 'statusToggled', day: DAY, id: 'milk', status: 'done' })
-    const dropped = daysReducer(done, { type: 'statusToggled', day: DAY, id: 'milk', status: 'dropped' })
-    expect(dropped[DAY]?.[0]?.status).toBe('dropped')
-  })
-
-  it('reopens a todo when it is marked with the status it already has', () => {
-    const done = daysReducer(days, { type: 'statusToggled', day: DAY, id: 'milk', status: 'done' })
-    const reopened = daysReducer(done, { type: 'statusToggled', day: DAY, id: 'milk', status: 'done' })
+  it('reopens a done todo', () => {
+    const done = daysReducer(days, { type: 'doneToggled', day: DAY, id: 'milk' })
+    const reopened = daysReducer(done, { type: 'doneToggled', day: DAY, id: 'milk' })
     expect(reopened).toEqual(days)
   })
 
@@ -92,7 +86,7 @@ describe('daysReducer', () => {
   })
 
   it('edits the text of a todo and leaves its status alone', () => {
-    const done = daysReducer(days, { type: 'statusToggled', day: DAY, id: 'milk', status: 'done' })
+    const done = daysReducer(days, { type: 'doneToggled', day: DAY, id: 'milk' })
     const next = daysReducer(done, { type: 'edited', day: DAY, id: 'milk', text: 'Buy oat milk' })
     expect(next[DAY]).toEqual([{ ...milk, text: 'Buy oat milk', status: 'done' }, taxes])
   })
@@ -142,16 +136,16 @@ describe('daysReducer', () => {
 })
 
 describe('displayOrder', () => {
-  const done: Todo = { id: 'done', text: 'Call mum', status: 'done' }
-  const dropped: Todo = { id: 'dropped', text: 'Iron shirts', status: 'dropped' }
-  const todos = [done, milk, dropped, taxes]
+  const mum: Todo = { id: 'mum', text: 'Call mum', status: 'done' }
+  const shirts: Todo = { id: 'shirts', text: 'Iron shirts', status: 'done' }
+  const todos = [mum, milk, shirts, taxes]
 
   it('moves settled todos below the open ones and keeps the order within each group', () => {
-    expect(displayOrder(todos, new Set(['done', 'dropped']))).toEqual([milk, taxes, done, dropped])
+    expect(displayOrder(todos, new Set(['mum', 'shirts']))).toEqual([milk, taxes, mum, shirts])
   })
 
   it('leaves a resolved todo in place until it has settled', () => {
-    expect(displayOrder(todos, new Set(['dropped']))).toEqual([done, milk, taxes, dropped])
+    expect(displayOrder(todos, new Set(['shirts']))).toEqual([mum, milk, taxes, shirts])
   })
 
   it('leaves a reopened todo at the bottom until it has settled', () => {
@@ -164,24 +158,26 @@ describe('displayOrder', () => {
 })
 
 describe('resolvedIds', () => {
-  it('collects the todos that are done or dropped', () => {
-    const done: Todo = { id: 'done', text: 'Call mum', status: 'done' }
-    const dropped: Todo = { id: 'dropped', text: 'Iron shirts', status: 'dropped' }
-    expect(resolvedIds([done, milk, dropped])).toEqual(new Set(['done', 'dropped']))
+  it('collects the todos that are done', () => {
+    const mum: Todo = { id: 'mum', text: 'Call mum', status: 'done' }
+    const shirts: Todo = { id: 'shirts', text: 'Iron shirts', status: 'done' }
+    expect(resolvedIds([mum, milk, shirts])).toEqual(new Set(['mum', 'shirts']))
   })
 })
 
 describe('dayProgress', () => {
   const done: Todo = { ...milk, status: 'done' }
-  const dropped: Todo = { ...taxes, status: 'dropped' }
 
-  it('counts dropped todos as resolved, like done ones', () => {
+  it('counts the done todos', () => {
     expect(dayProgress([done, taxes])).toEqual({ resolved: 1, total: 2, cleared: false })
-    expect(dayProgress([milk, dropped])).toEqual({ resolved: 1, total: 2, cleared: false })
   })
 
   it('is cleared once nothing is left open', () => {
-    expect(dayProgress([done, dropped])).toEqual({ resolved: 2, total: 2, cleared: true })
+    expect(dayProgress([done, { ...taxes, status: 'done' }])).toEqual({
+      resolved: 2,
+      total: 2,
+      cleared: true
+    })
   })
 
   it('does not call a day without todos cleared', () => {

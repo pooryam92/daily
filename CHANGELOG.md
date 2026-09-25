@@ -6,6 +6,20 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+### Removed
+
+- Dropping a todo. A todo is open or done; one that will not be done is deleted or moved. Todos
+  dropped in an older version show as done.
+- The arrow on the move word: it reads `tomorrow` or `today`.
+
+### Changed
+
+- `delete` is back on the row, as the last word, set a little apart from the move word. Delete on
+  a focused todo does the same. The editor no longer has a `delete` of its own.
+- A row at rest shows only its box and its text. `tomorrow` and `delete` appear when the row is
+  hovered; on touch they are always there.
+- The falling note for a drop is gone with it; a tick and the chord remain.
+
 ## [1.2.0] - 2026-09-24
 
 ### Changed

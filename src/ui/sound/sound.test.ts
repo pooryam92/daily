@@ -6,32 +6,21 @@ const milk: Todo = { id: 'milk', text: 'Buy milk', status: 'open' }
 const taxes: Todo = { id: 'taxes', text: 'Do taxes', status: 'open' }
 
 describe('cueFor', () => {
-  it('sounds like the mark that was clicked', () => {
-    expect(cueFor([milk, taxes], 'milk', 'done')).toBe('done')
-    expect(cueFor([milk, taxes], 'milk', 'dropped')).toBe('dropped')
+  it('ticks when a todo is checked', () => {
+    expect(cueFor([milk, taxes], 'milk')).toBe('done')
   })
 
   it('is silent when a todo is reopened', () => {
-    expect(cueFor([{ ...milk, status: 'done' }, taxes], 'milk', 'done')).toBeNull()
+    expect(cueFor([{ ...milk, status: 'done' }, taxes], 'milk')).toBeNull()
   })
 
-  it('sounds like the new mark when a todo goes from done to dropped', () => {
-    expect(cueFor([{ ...milk, status: 'done' }, taxes], 'milk', 'dropped')).toBe('dropped')
-  })
-
-  it('chimes when the last open todo is resolved, with either mark', () => {
-    expect(cueFor([milk, { ...taxes, status: 'dropped' }], 'milk', 'done')).toBe('cleared')
-    expect(cueFor([milk, { ...taxes, status: 'done' }], 'milk', 'dropped')).toBe('cleared')
-    expect(cueFor([milk], 'milk', 'done')).toBe('cleared')
-  })
-
-  it('does not chime again when a cleared day changes a mark', () => {
-    const done: Todo = { ...milk, status: 'done' }
-    expect(cueFor([done, { ...taxes, status: 'done' }], 'milk', 'dropped')).toBe('dropped')
+  it('chimes when the last open todo is checked', () => {
+    expect(cueFor([milk, { ...taxes, status: 'done' }], 'milk')).toBe('cleared')
+    expect(cueFor([milk], 'milk')).toBe('cleared')
   })
 
   it('is silent for a todo that is not there', () => {
-    expect(cueFor([milk], 'gone', 'done')).toBeNull()
+    expect(cueFor([milk], 'gone')).toBeNull()
   })
 })
 

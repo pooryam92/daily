@@ -13,9 +13,13 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isTodoStatus = (value: unknown): value is TodoStatus =>
   typeof value === 'string' && (TODO_STATUSES as readonly string[]).includes(value)
 
+/** Until 1.2.0 a todo could be dropped; that state now reads as done. */
+const statusOf = (value: unknown): unknown => (value === 'dropped' ? 'done' : value)
+
 function parseTodo(value: unknown): Todo {
   if (!isRecord(value)) throw new TypeError('A todo must be an object')
-  const { id, text, status } = value
+  const { id, text } = value
+  const status = statusOf(value.status)
   if (typeof id !== 'string' || id === '') throw new TypeError('A todo must have an id')
   if (typeof text !== 'string') throw new TypeError(`Todo ${id} must have a text`)
   if (!isTodoStatus(status)) throw new TypeError(`Todo ${id} has an unknown status`)

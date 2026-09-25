@@ -6,11 +6,11 @@ import { isSortable } from '@dnd-kit/react/sortable'
 import { AnimatePresence, motion, useTransform } from 'motion/react'
 import type { MotionValue } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { DayKey, ResolvedStatus, Todo } from '@/domain/todo'
+import type { DayKey, Todo } from '@/domain/todo'
 import { useSettledTodos } from '../todos/useSettledTodos'
 import { CLEARED_LABEL, dayDetail, dayTitle, emptyDayLine, moveTarget } from './copy'
 import type { MoveDirection } from './copy'
-import { compareDays, dayIndex, formatWeekday, fromDayKey } from '@/domain/dates'
+import { dayIndex, formatWeekday, fromDayKey } from '@/domain/dates'
 import { deckTransform, deckZIndex } from '../deck/deck'
 import { CLEARED, EMPTY_ENTER, QUICK_ADD_MS, ROW_ENTER, ROW_EXIT } from '../lib/motion'
 import { dayProgress } from '@/domain/todo-rules'
@@ -33,7 +33,7 @@ interface DayCardProps {
   readonly view: MotionValue<number>
   readonly todos: readonly Todo[]
   readonly onAdd: (text: string) => void
-  readonly onToggleStatus: (id: string, status: ResolvedStatus) => void
+  readonly onToggleDone: (id: string) => void
   readonly onRemove: (id: string) => void
   readonly onEdit: (id: string, text: string) => void
   /** Move a todo to the day the card's move word names. */
@@ -61,7 +61,7 @@ export function DayCard({
   view,
   todos,
   onAdd,
-  onToggleStatus,
+  onToggleDone,
   onRemove,
   onEdit,
   onMove,
@@ -69,7 +69,6 @@ export function DayCard({
   onSelect
 }: DayCardProps) {
   const inFront = offset === 0
-  const past = compareDays(day, today) < 0
   const target = moveTarget(day, today)
 
   // From frame to frame only transform and opacity change, which need neither layout nor paint
@@ -134,7 +133,6 @@ export function DayCard({
       data-offset={offset}
       data-side={side}
       data-today={day === today}
-      data-past={past || undefined}
       aria-hidden={!inFront}
       onClick={inFront ? undefined : onSelect}
     >
@@ -253,7 +251,7 @@ export function DayCard({
                     isNew={!initialIds.has(todo.id)}
                     animateEnter={animateEnter}
                     moveTarget={target}
-                    onToggleStatus={onToggleStatus}
+                    onToggleDone={onToggleDone}
                     onRemove={onRemove}
                     onEdit={onEdit}
                     onMove={move}

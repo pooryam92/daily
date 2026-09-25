@@ -24,6 +24,11 @@ describe('parseStoreData', () => {
     expect(parseStoreData({})).toEqual({ version: 1, days: {} })
   })
 
+  it('reads a todo dropped by an older version as done', () => {
+    const parsed = parseStoreData({ days: { '2026-09-19': [{ ...todo, status: 'dropped' }] } })
+    expect(parsed.days['2026-09-19']).toEqual([todo])
+  })
+
   it('strips unknown todo fields', () => {
     const parsed = parseStoreData({ days: { '2026-09-19': [{ ...todo, extra: true }] } })
     expect(parsed.days['2026-09-19']).toEqual([todo])

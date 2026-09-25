@@ -43,35 +43,36 @@ Keep it current: a change to what the user can do changes this file in the same 
 
 - **Add.** The input at the bottom of the front card has the focus whenever the day changes. Enter
   adds the todo; blank text adds nothing. Todos can be added to any day, past or future.
-- **Three states.** A todo is open, done (the checkbox before the text) or dropped (the word `drop`
-  at the end of the row). A dropped todo shows an X inside its checkbox. Marking a todo with the
-  state it already has puts it back to open; the box of a dropped todo reopens it too. Dropped is a
-  decision, not a failure: it is neutral, not red, and it counts as progress.
+- **Done or open.** The checkbox before the text marks a todo done; the same click reopens it.
+  There is no third state. A todo that will not be done is deleted, or moved to a day it will be.
 - **Settling.** A resolved todo moves below the open ones after 700ms of quiet, and a reopened one
   waits the same before it goes back up, so a mis-click is undone in place. Only the display order
   changes; the stored order does not.
-- **Move.** `→ tomorrow` on an open todo of today, `→ today` on an open todo of any other day; the
-  arrow points the way the deck flips to reach that day. The todo changes its day and nothing else:
+- **Move.** `tomorrow` on an open todo of today, `today` on an open todo of any other day. The
+  todo changes its day and nothing else:
   it lands at the end of that day's list, and nothing records that it moved. The deck stays put. A
-  toast offers Undo for six seconds. Where there is a mouse the word rests only on a day that has
-  passed; elsewhere it appears when the row is hovered. On touch it is always there.
-- **Edit.** Click a todo's text, or activate it from the keyboard. The row becomes the field, with
-  `delete` after it; the words and the grip step aside. Enter or clicking away saves, Escape
-  cancels. A blank edit keeps the original text. The state is kept.
+  toast offers Undo for six seconds.
+- **Edit.** Click a todo's text, or activate it from the keyboard. The row becomes the field; the
+  words and the grip step aside. Enter or clicking away saves, Escape cancels. A blank edit keeps
+  the original text. The state is kept.
 - **Reorder.** Drag a todo by any part of its row, within the open part or the resolved part of
   the day: the grip, left of the checkbox on hover, lifts it at once, the rest of the row after a
   few pixels of movement, so a click on the text still edits it. On touch, hold the row for a
   moment first. The checkbox and the words keep their presses. From the keyboard: focus the grip,
   Space or Enter picks the todo up, the arrow keys move it, Space or Enter drops it, Escape cancels.
   The order is saved.
-- **Delete.** In the editor: click the text, then `delete` after the field (Tab reaches it). What
-  was typed is not saved. It never asks: the todo is gone and saved as gone at once, and a toast
-  offers Undo for six seconds. Undo puts it back where it was.
+- **Delete.** `delete` is the last word on the row, set a little apart from `tomorrow`: that
+  one says where the todo goes, this one says it was a mistake. From the keyboard,
+  Delete (or Backspace) on the focused text does the same. It never asks: the todo is gone and
+  saved as gone at once, and a toast offers Undo for six seconds. Undo puts it back where it was.
+- **The words wait for a hover.** Where there is a mouse a row at rest is its box and its text;
+  `tomorrow` and `delete` appear when the row is hovered or one of them has the focus.
+  On touch they are always there.
 
 ## Progress and the cleared day
 
 - **A ring in the card's header** shows how close the day is to having nothing open. There is no
-  count. Done and dropped todos both advance it. A day without todos has no ring. The cards behind
+  count. A done todo advances it. A day without todos has no ring. The cards behind
   show a smaller ring on their tab.
 - **Cleared.** Resolving the last open todo closes the ring into a check and adds the word "Cleared".
   The flourish plays once, while it is watched; a day that is already cleared when its card appears
@@ -87,9 +88,9 @@ Keep it current: a change to what the user can do changes this file in the same 
 The gear in the bottom-left corner opens a popover.
 
 - **Theme:** Auto, Light or Dark. Auto follows the operating system, also while the app runs.
-- **Sound:** off until switched on. Three synthesised sounds: a tick for a check, which climbs a
-  scale over checks in quick succession; a lower, falling note for a drop; a chord for the cleared
-  day. Reopening, deleting and moving are silent.
+- **Sound:** off until switched on. Two synthesised sounds: a tick for a check, which climbs a
+  scale over checks in quick succession, and a chord for the cleared day. Reopening, deleting and
+  moving are silent.
 - **The app's version** is at the bottom of the popover.
 
 Both settings are kept in `settings.json` next to the todos, and the theme is applied before the
@@ -127,9 +128,9 @@ The installed app looks for a newer version when it starts and every four hours.
 
 - Everything works from the keyboard, including reordering. Every focusable control shows a focus
   ring.
-- A screen reader hears a todo's box as "Done, checkbox", checked or not; on a dropped todo the box
-  is also described as "Dropped", and `drop` is a toggle button that is pressed. The move word is
-  "Move <the todo> to tomorrow" or "to today"; the grip is "Reorder <the todo>".
+- A screen reader hears a todo's box as "Done, checkbox", checked or not. The move word is
+  "Move <the todo> to tomorrow" or "to today", `delete` is "Delete <the todo>", and the grip is
+  "Reorder <the todo>".
 - `prefers-reduced-motion` keeps fades and drops movement: a flip is instant, though a drag still
   follows the hand; the cleared day cross-fades.
 - `prefers-contrast: more` gets solid borders. Forced colours keep the strike-through.

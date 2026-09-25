@@ -48,7 +48,7 @@ export interface MoveTarget {
   readonly direction: MoveDirection
 }
 
-/** Where a moved todo goes: tomorrow from today, today from any other day. The arrow on the word follows the direction. */
+/** Where a moved todo goes: tomorrow from today, today from any other day. A moved row slides out in the direction. */
 export function moveTarget(day: DayKey, today: DayKey): MoveTarget {
   if (day === today) return { day: addDays(today, 1), name: 'tomorrow', direction: 'next' }
   return { day: today, name: 'today', direction: compareDays(day, today) < 0 ? 'next' : 'previous' }

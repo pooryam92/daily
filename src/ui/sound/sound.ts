@@ -1,23 +1,21 @@
-import type { ResolvedStatus, Todo } from '@/domain/todo'
+import type { Todo } from '@/domain/todo'
 
 /*
- * The app's three sounds, synthesised with Web Audio: no samples, no library. They are off unless
+ * The app's two sounds, synthesised with Web Audio: no samples, no library. They are off unless
  * switched on in the settings. Every value here is a starting point to tune by ear.
  */
 
-export type SoundCue = 'done' | 'dropped' | 'cleared'
+export type SoundCue = 'done' | 'cleared'
 
 /**
- * What a click on a mark sounds like. Reopening a todo is silent. The click that resolves the last
- * open todo gets the chime instead of its own sound, whichever mark it was: the day is cleared
- * either way.
+ * What a click on a todo's box sounds like. Reopening a todo is silent. The click that checks the
+ * last open todo gets the chime instead of the tick: the day is cleared.
  */
-export function cueFor(todos: readonly Todo[], id: string, status: ResolvedStatus): SoundCue | null {
+export function cueFor(todos: readonly Todo[], id: string): SoundCue | null {
   const todo = todos.find((candidate) => candidate.id === id)
-  if (todo === undefined || todo.status === status) return null
-  // Only resolving the last open todo clears the day; changing a mark on a cleared day does not.
-  const clears = todo.status === 'open' && todos.every((other) => other.id === id || other.status !== 'open')
-  return clears ? 'cleared' : status
+  if (todo === undefined || todo.status === 'done') return null
+  const clears = todos.every((other) => other.id === id || other.status === 'done')
+  return clears ? 'cleared' : 'done'
 }
 
 /** Checks that follow each other within this time continue the rising scale. */
@@ -66,9 +64,6 @@ const CHIME: readonly Note[] = [523.25, 659.25, 783.99, 1046.5].map((frequency, 
   decay: 0.9,
   brightness: 0.12
 }))
-
-/** Lower and softer than the tick, sliding down a little: a release, and never an error tone. */
-const DROP: Note = { frequency: 246.94, glideTo: 220, gain: 0.45, decay: 0.2 }
 
 let output: { readonly context: AudioContext; readonly master: GainNode } | null = null
 let step = -1
@@ -122,9 +117,6 @@ export function play(cue: SoundCue): void {
       pluck(out, { frequency: tickFrequency(step), gain: 0.5, decay: 0.16, brightness: 0.2 })
       return
     }
-    case 'dropped':
-      pluck(out, DROP)
-      return
     case 'cleared':
       // The next run of checks starts from the bottom of the scale again.
       lastTickAt = Number.NEGATIVE_INFINITY

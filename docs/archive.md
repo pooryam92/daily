@@ -10,11 +10,32 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Drop is gone, delete is back on the row (2026-09-25)
+
+- **Two states.** A todo is open or done; dropped is gone from `domain/todo.ts`, the checkbox,
+  the sounds and the row. It was a third answer to a question with two, and the word for it was
+  one more button on every row. A todo that will not be done is deleted or moved. A file with
+  dropped todos still loads: they read as done (`domain/store-schema.ts`), so the day stays as it
+  was.
+- **Two words on hover, in two tiers.** The row reads `☐ Buy milk ········ tomorrow   delete`
+  (`todos/TodoItem.tsx`). The move word, now plain text without an arrow, says where the todo
+  goes; delete, set apart by a gap and the faintest word, says it was a mistake. Left to right they
+  are ever more final, so they read as a spectrum, not a menu to compare: choice overload comes
+  from options that look like peers, not from their number. At rest a row is its box and its text:
+  the words wait for a hover, the past-day rule for the move word included, so the card stays quiet
+  (`data-past` is gone from `day/DayCard.tsx`). The editor lost its `delete`.
+- **Words, grey, no red.** Icons are only quick when standard
+  ([NN/g](https://www.nngroup.com/articles/icon-usability/)), and move has none; a red
+  delete would pop out ([Treisman 1980](<https://doi.org/10.1016/0010-0285(80)90005-5>)) on the one
+  action least wanted, and it is not irreversible: the toast brings the todo back. Colour marks
+  the tier, never danger, and the word carries the meaning (WCAG 1.4.1).
+- **Delete or Backspace on the focused text deletes it,** with the same toast.
+
 ## Move a todo by hand, and the row read left to right (2026-09-23)
 
 - **The row carries what became of the todo; the todo itself changes through its text.** A row
-  reads `☐ Buy milk ········ → tomorrow  drop`. To edit or delete, click the text: the field ends
-  with `delete` (`todos/TodoEditor.tsx`). The grip sits left of the checkbox in a slot that is
+  reads `☐ Buy milk ········ → tomorrow  drop`. To edit, click the text (`todos/TodoEditor.tsx`); delete
+  was in the editor until 2026-09-25. The grip sits left of the checkbox in a slot that is
   always there, so the list never jumps.
 - **The checkbox went left.** The left of a page gets 80% of the viewing time
   ([NN/g](https://www.nngroup.com/articles/horizontal-attention-leans-left/)), and a control beside
