@@ -1,0 +1,13 @@
+{
+  // End-to-end tests: type-checked only, Playwright transpiles them itself.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "module": "nodenext",
+    "noEmit": true,
+    "tsBuildInfoFile": "out/.tsbuildinfo.e2e"
+  },
+  "include": ["e2e", "playwright.config.ts", "src/domain"],
+  "exclude": ["**/*.test.ts"]
+}

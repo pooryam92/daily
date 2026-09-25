@@ -19,6 +19,7 @@ same commit.
 | `npm run readme` | Put the README's download links on the `package.json` version     |
 | `npm run check`  | Type-check, lint, test and check formatting — run before a commit |
 | `npm test`       | Unit tests (Vitest)                                               |
+| `npm run e2e`    | Build, then drive the built app end to end (Playwright)           |
 | `npm run lint`   | ESLint (type-aware)                                               |
 | `npm run format` | Prettier                                                          |
 
@@ -81,7 +82,7 @@ Rules of thumb:
 
 ESLint enforces the import direction, so a wrong import fails `npm run check`.
 
-Outside `src/`: `build/` holds the icons, `scripts/` the demo recorder and what `npm version` runs, `electron-builder.yml` the
+Outside `src/`: `build/` holds the icons, `e2e/` the end-to-end tests, `scripts/` the demo recorder and what `npm version` runs, `electron-builder.yml` the
 packaging, and `.github/workflows/` the check and the release.
 
 ## Checking a change
@@ -89,9 +90,13 @@ packaging, and `.github/workflows/` the check and the release.
 `npm run check` is the gate: types, lint, tests and formatting. Run it before a commit;
 `.github/workflows/check.yml` runs it on every push and pull request.
 
-A test sits next to its file. The domain and the pure parts of `ui/` have unit tests. Components and
-the main process are checked by running the built app (`npm start`), not by unit tests with mocks
-(`architecture.md`, section 7).
+A unit test sits next to its file. The domain and the pure parts of `ui/` have them. Components and
+the main process are not unit-tested with mocks; `e2e/` drives the built app instead, with the real
+main process, IPC and CSP (`architecture.md`, section 7). `npm run e2e` builds and runs it; the
+workflow runs it after the check, under `xvfb-run` because Electron needs a display. Each test
+launches the app with a temporary data folder, which it may seed with todos through `test.use`, and
+reads the JSON files back to check what was saved. Neither the real todos nor `daily-dev/` are
+touched.
 
 ## Data while developing
 

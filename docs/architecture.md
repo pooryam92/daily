@@ -267,9 +267,11 @@ flowchart TD
 - **TypeScript at its strictest** (`strict`, `noUncheckedIndexedAccess`), and typescript-eslint's
   `strictTypeChecked`. A small app can afford it, and it is what lets the IPC contract be trusted.
 - **Vitest for the domain and the pure parts of `ui/`** (`deck/deck.ts`, `day/copy.ts`,
-  `sound/sound.ts`), each test next to its file. Components and the main process are checked by
-  driving the built app, where the real CSP applies, not by unit tests with mocks. The scripts for
-  that are throwaway and not in the repo.
+  `sound/sound.ts`), each test next to its file. Components and the main process are not unit-tested
+  with mocks: `e2e/` drives the built app with Playwright (`npm run e2e`), where the real main
+  process, IPC and CSP apply. Electron brings its own Chromium, so nothing has to be downloaded.
+  Each test gets its own `--user-data-dir`, seeds it and reads the JSON files back, so what is saved
+  is checked on disk and a restart can be part of a test.
 - **The README's demo is recorded by a script** (`scripts/record-demo.mjs`, `npm run demo`), so it
   is remade, not redone by hand, when the app looks different. It films the built renderer in
   headless Chromium with a gateway that lives in the page: the second use of the seam in section 1.
