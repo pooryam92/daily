@@ -11,6 +11,8 @@ export type TodoAction =
   | { type: 'edited'; day: DayKey; id: string; text: string }
   /** Moves the todo to another day, at `index` there or at the end. Undo is a move back with the old index. */
   | { type: 'moved'; from: DayKey; to: DayKey; id: string; index?: number }
+  /** Sets the note, or clears it when the note is empty. */
+  | { type: 'noteChanged'; day: DayKey; id: string; note: string }
 
 export function createTodo(text: string): Todo {
   return { id: crypto.randomUUID(), text, status: 'open' }
@@ -21,6 +23,22 @@ function withDay(days: DaysMap, day: DayKey, todos: readonly Todo[]): DaysMap {
   // Days without todos have no entry.
   const { [day]: _removed, ...rest } = days
   return rest
+}
+
+function updateTodo(days: DaysMap, day: DayKey, id: string, change: (todo: Todo) => Todo): DaysMap {
+  const todos = days[day] ?? []
+  const index = todos.findIndex((todo) => todo.id === id)
+  const todo = todos[index]
+  if (todo === undefined) return days
+  const changed = change(todo)
+  return changed === todo ? days : withDay(days, day, todos.with(index, changed))
+}
+
+function withNote(todo: Todo, note: string): Todo {
+  const next = note.trim() === '' ? undefined : note
+  if (todo.note === next) return todo
+  const { note: _cleared, ...bare } = todo
+  return next === undefined ? bare : { ...bare, note: next }
 }
 
 function moveTodo(days: DaysMap, { from, to, id, index }: Extract<TodoAction, { type: 'moved' }>): DaysMap {
@@ -50,13 +68,10 @@ export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
       return withDay(days, action.day, [...todos, action.todo])
 
     case 'doneToggled':
-      return withDay(
-        days,
-        action.day,
-        todos.map((todo) =>
-          todo.id === action.id ? { ...todo, status: todo.status === 'done' ? 'open' : 'done' } : todo
-        )
-      )
+      return updateTodo(days, action.day, action.id, (todo) => ({
+        ...todo,
+        status: todo.status === 'done' ? 'open' : 'done'
+      }))
 
     case 'removed':
       return withDay(
@@ -80,12 +95,13 @@ export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
       return withDay(days, action.day, todos.toSpliced(from, 1).toSpliced(to, 0, moved))
     }
 
-    case 'edited': {
-      const index = todos.findIndex((todo) => todo.id === action.id)
-      const todo = todos[index]
-      if (todo === undefined || todo.text === action.text) return days
-      return withDay(days, action.day, todos.with(index, { ...todo, text: action.text }))
-    }
+    case 'edited':
+      return updateTodo(days, action.day, action.id, (todo) =>
+        todo.text === action.text ? todo : { ...todo, text: action.text }
+      )
+
+    case 'noteChanged':
+      return updateTodo(days, action.day, action.id, (todo) => withNote(todo, action.note))
   }
 }
 

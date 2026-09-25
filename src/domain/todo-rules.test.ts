@@ -96,6 +96,31 @@ describe('daysReducer', () => {
     expect(daysReducer(days, { type: 'edited', day: DAY, id: 'gone', text: 'Whatever' })).toBe(days)
   })
 
+  it('sets the note of a todo', () => {
+    const next = daysReducer(days, { type: 'noteChanged', day: DAY, id: 'milk', note: 'Oat, not soy' })
+    expect(next[DAY]).toEqual([{ ...milk, note: 'Oat, not soy' }, taxes])
+  })
+
+  it('drops the note key when the note is emptied', () => {
+    const noted = daysReducer(days, { type: 'noteChanged', day: DAY, id: 'milk', note: 'Oat' })
+    const cleared = daysReducer(noted, { type: 'noteChanged', day: DAY, id: 'milk', note: ' \n ' })
+    expect(cleared[DAY]?.[0]).not.toHaveProperty('note')
+    expect(cleared).toEqual(days)
+  })
+
+  it('ignores a note change that changes nothing', () => {
+    expect(daysReducer(days, { type: 'noteChanged', day: DAY, id: 'milk', note: '' })).toBe(days)
+    expect(daysReducer(days, { type: 'noteChanged', day: DAY, id: 'gone', note: 'Oat' })).toBe(days)
+    const noted = daysReducer(days, { type: 'noteChanged', day: DAY, id: 'milk', note: 'Oat' })
+    expect(daysReducer(noted, { type: 'noteChanged', day: DAY, id: 'milk', note: 'Oat' })).toBe(noted)
+  })
+
+  it('keeps the note when a todo is moved to another day', () => {
+    const noted = daysReducer(days, { type: 'noteChanged', day: DAY, id: 'milk', note: 'Oat' })
+    const moved = daysReducer(noted, { type: 'moved', from: DAY, to: '2026-09-20', id: 'milk' })
+    expect(moved['2026-09-20']).toEqual([{ ...milk, note: 'Oat' }])
+  })
+
   it('moves a todo to the end of another day, unchanged', () => {
     const done: Todo = { ...milk, status: 'done' }
     const two: DaysMap = { [DAY]: [done, taxes], '2026-09-20': [plants] }

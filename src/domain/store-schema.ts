@@ -16,6 +16,12 @@ const isTodoStatus = (value: unknown): value is TodoStatus =>
 /** Until 1.2.0 a todo could be dropped; that state now reads as done. */
 const statusOf = (value: unknown): unknown => (value === 'dropped' ? 'done' : value)
 
+function noteOf(id: string, value: unknown): string | undefined {
+  if (value === undefined || value === '') return undefined
+  if (typeof value !== 'string') throw new TypeError(`Todo ${id} has a note that is not a string`)
+  return value
+}
+
 function parseTodo(value: unknown): Todo {
   if (!isRecord(value)) throw new TypeError('A todo must be an object')
   const { id, text } = value
@@ -23,7 +29,8 @@ function parseTodo(value: unknown): Todo {
   if (typeof id !== 'string' || id === '') throw new TypeError('A todo must have an id')
   if (typeof text !== 'string') throw new TypeError(`Todo ${id} must have a text`)
   if (!isTodoStatus(status)) throw new TypeError(`Todo ${id} has an unknown status`)
-  return { id, text, status }
+  const note = noteOf(id, value.note)
+  return note === undefined ? { id, text, status } : { id, text, status, note }
 }
 
 /**

@@ -17,6 +17,8 @@ export interface TodoActions {
   readonly edit: (day: DayKey, id: string, text: string) => void
   /** Moves a todo to another day: to `index` there, or to the end when none is given. */
   readonly move: (from: DayKey, to: DayKey, id: string, index?: number) => void
+  /** Sets the note of a todo; an empty note clears it. */
+  readonly setNote: (day: DayKey, id: string, note: string) => void
 }
 
 type State =
@@ -107,6 +109,9 @@ export function useTodoStore(): TodoStore {
       },
       move: (from, to, id, index) => {
         dispatch({ type: 'moved', from, to, id, index })
+      },
+      setNote: (day, id, note) => {
+        dispatch({ type: 'noteChanged', day, id, note })
       }
     }),
     []

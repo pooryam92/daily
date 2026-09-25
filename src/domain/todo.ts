@@ -6,6 +6,8 @@ export interface Todo {
   readonly id: string
   readonly text: string
   readonly status: TodoStatus
+  /** Markdown. A todo without a note has no key. */
+  readonly note?: string
 }
 
 /** A calendar day in local time, formatted as `YYYY-MM-DD`. */
