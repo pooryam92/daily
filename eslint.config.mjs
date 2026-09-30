@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 export default tseslint.config(
   { ignores: ['out', 'release', 'node_modules'] },
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'e2e/**/*.ts', 'playwright.config.ts'],
     extends: [
       js.configs.recommended,
       tseslint.configs.strictTypeChecked,
@@ -70,7 +70,7 @@ export default tseslint.config(
     }
   },
   {
-    files: ['src/electron/main/**', 'src/electron/preload/**'],
+    files: ['src/electron/main/**', 'src/electron/preload/**', 'e2e/**', 'playwright.config.ts'],
     languageOptions: { globals: globals.node }
   },
   {
