@@ -34,6 +34,41 @@ describe('parseStoreData', () => {
     expect(parsed.days['2026-09-19']).toEqual([todo])
   })
 
+  it('reads a todo with steps', () => {
+    const parent = {
+      id: 'p',
+      text: 'Set up CI',
+      status: 'open',
+      steps: [todo, { id: 'b', text: 'Cache', status: 'open' }]
+    }
+    expect(parseStoreData({ days: { '2026-09-19': [parent] } }).days['2026-09-19']).toStrictEqual([parent])
+  })
+
+  it('leaves the steps key off a todo whose steps are empty, or that has none', () => {
+    const parsed = parseStoreData({ days: { '2026-09-19': [{ ...todo, steps: [] }, todo] } })
+    expect(parsed.days['2026-09-19']).toStrictEqual([todo, todo])
+    expect(parsed.days['2026-09-19']?.[1]).not.toHaveProperty('steps')
+  })
+
+  it('accepts a step with an empty steps list, and leaves the key off', () => {
+    const parsed = parseStoreData({
+      days: { '2026-09-19': [{ id: 'p', text: 'x', status: 'open', steps: [{ ...todo, steps: [] }] }] }
+    })
+    expect(parsed.days['2026-09-19']?.[0]?.steps).toStrictEqual([todo])
+  })
+
+  it('strips unknown step fields and reads a dropped step as done', () => {
+    const parent = {
+      id: 'p',
+      text: 'x',
+      status: 'open',
+      steps: [{ ...todo, status: 'dropped', extra: true }]
+    }
+    expect(parseStoreData({ days: { '2026-09-19': [parent] } }).days['2026-09-19']).toStrictEqual([
+      { ...parent, steps: [todo] }
+    ])
+  })
+
   it.each([
     ['not an object', null],
     ['days is a list', { days: [] }],
@@ -41,7 +76,14 @@ describe('parseStoreData', () => {
     ['todos is not a list', { days: { '2026-09-19': {} } }],
     ['a todo without an id', { days: { '2026-09-19': [{ text: 'x', status: 'open' }] } }],
     ['a todo without a text', { days: { '2026-09-19': [{ id: 'a', status: 'open' }] } }],
-    ['an unknown status', { days: { '2026-09-19': [{ id: 'a', text: 'x', status: 'later' }] } }]
+    ['an unknown status', { days: { '2026-09-19': [{ id: 'a', text: 'x', status: 'later' }] } }],
+    ['steps that are not a list', { days: { '2026-09-19': [{ ...todo, steps: {} }] } }],
+    ['steps that are null', { days: { '2026-09-19': [{ ...todo, steps: null }] } }],
+    ['a step that is not a todo', { days: { '2026-09-19': [{ ...todo, steps: [{ id: 'b' }] }] } }],
+    [
+      'a step with steps',
+      { days: { '2026-09-19': [{ ...todo, steps: [{ ...todo, id: 'b', steps: [todo] }] }] } }
+    ]
   ])('rejects %s', (_name, value) => {
     expect(() => parseStoreData(value)).toThrow(TypeError)
   })

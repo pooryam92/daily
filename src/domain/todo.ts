@@ -6,6 +6,8 @@ export interface Todo {
   readonly id: string
   readonly text: string
   readonly status: TodoStatus
+  /** One level of todos under this one; `parseStoreData` enforces the depth. No key means none. */
+  readonly steps?: readonly Todo[]
 }
 
 /** A calendar day in local time, formatted as `YYYY-MM-DD`. */

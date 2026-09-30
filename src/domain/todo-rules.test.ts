@@ -1,12 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import type { DaysMap, Todo } from './todo'
-import { createTodo, dayProgress, daysReducer, displayOrder, resolvedIds } from './todo-rules'
+import {
+  createTodo,
+  dayProgress,
+  daysReducer,
+  displayOrder,
+  locate,
+  resolvedIds,
+  stepProgress
+} from './todo-rules'
 
 const DAY = '2026-09-19'
 const milk: Todo = { id: 'milk', text: 'Buy milk', status: 'open' }
 const taxes: Todo = { id: 'taxes', text: 'Do taxes', status: 'open' }
 const plants: Todo = { id: 'plants', text: 'Water plants', status: 'open' }
 const days: DaysMap = { [DAY]: [milk, taxes] }
+const workflow: Todo = { id: 'workflow', text: 'Write the workflow', status: 'open' }
+const lint: Todo = { id: 'lint', text: 'Fix lint', status: 'open' }
+const cache: Todo = { id: 'cache', text: 'Add a cache', status: 'open' }
+const ci: Todo = { id: 'ci', text: 'Set up CI', status: 'open', steps: [workflow, lint, cache] }
+const withSteps: DaysMap = { [DAY]: [milk, ci] }
+const finished = (todo: Todo): Todo => ({ ...todo, status: 'done' })
 
 describe('createTodo', () => {
   it('creates an open todo with a unique id', () => {
@@ -132,6 +146,165 @@ describe('daysReducer', () => {
     const snapshot = structuredClone(days)
     daysReducer(days, { type: 'removed', day: DAY, id: 'milk' })
     expect(days).toEqual(snapshot)
+    const nested = structuredClone(withSteps)
+    daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
+    daysReducer(withSteps, { type: 'removed', day: DAY, id: 'lint' })
+    expect(withSteps).toStrictEqual(nested)
+  })
+})
+
+describe('daysReducer with steps', () => {
+  it('adds a step to the end of its parent', () => {
+    const next = daysReducer({ [DAY]: [milk] }, { type: 'added', day: DAY, todo: workflow, parentId: 'milk' })
+    expect(next[DAY]).toStrictEqual([{ ...milk, steps: [workflow] }])
+    const more = daysReducer(withSteps, { type: 'added', day: DAY, todo: plants, parentId: 'ci' })
+    expect(more[DAY]).toStrictEqual([milk, { ...ci, steps: [workflow, lint, cache, plants] }])
+  })
+
+  it('ignores a step added to a parent that is gone, or that is a step', () => {
+    expect(daysReducer(withSteps, { type: 'added', day: DAY, todo: plants, parentId: 'gone' })).toBe(
+      withSteps
+    )
+    expect(daysReducer(withSteps, { type: 'added', day: DAY, todo: plants, parentId: 'lint' })).toBe(
+      withSteps
+    )
+    expect(daysReducer({}, { type: 'added', day: DAY, todo: plants, parentId: 'ci' })).toStrictEqual({})
+  })
+
+  it('finishes the steps of a todo that is finished', () => {
+    const next = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
+    expect(next[DAY]).toStrictEqual([
+      milk,
+      { ...ci, status: 'done', steps: [workflow, lint, cache].map(finished) }
+    ])
+  })
+
+  it('leaves the parent open when every step is done', () => {
+    const next = ['workflow', 'lint', 'cache'].reduce(
+      (state, id) => daysReducer(state, { type: 'doneToggled', day: DAY, id }),
+      withSteps
+    )
+    expect(next[DAY]).toStrictEqual([milk, { ...ci, steps: [workflow, lint, cache].map(finished) }])
+  })
+
+  it('leaves the steps done when their parent is reopened', () => {
+    const closed = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
+    const reopened = daysReducer(closed, { type: 'doneToggled', day: DAY, id: 'ci' })
+    expect(reopened[DAY]).toStrictEqual([milk, { ...ci, steps: [workflow, lint, cache].map(finished) }])
+  })
+
+  it('marks, reopens and edits a step and leaves its parent alone', () => {
+    const marked = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'lint' })
+    expect(marked[DAY]).toStrictEqual([milk, { ...ci, steps: [workflow, finished(lint), cache] }])
+    expect(daysReducer(marked, { type: 'doneToggled', day: DAY, id: 'lint' })).toStrictEqual(withSteps)
+    const edited = daysReducer(withSteps, { type: 'edited', day: DAY, id: 'lint', text: 'Fix types' })
+    expect(edited[DAY]).toStrictEqual([
+      milk,
+      { ...ci, steps: [workflow, { ...lint, text: 'Fix types' }, cache] }
+    ])
+    expect(daysReducer(withSteps, { type: 'edited', day: DAY, id: 'lint', text: lint.text })).toBe(withSteps)
+  })
+
+  it('ignores a toggle or a removal of a todo that is not there', () => {
+    expect(daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'gone' })).toBe(withSteps)
+    expect(daysReducer(withSteps, { type: 'removed', day: DAY, id: 'gone' })).toBe(withSteps)
+  })
+
+  it('removes a step', () => {
+    const next = daysReducer(withSteps, { type: 'removed', day: DAY, id: 'lint' })
+    expect(next[DAY]).toStrictEqual([milk, { ...ci, steps: [workflow, cache] }])
+  })
+
+  it('drops the steps key when the last step is removed', () => {
+    const next = daysReducer(
+      { [DAY]: [{ ...milk, steps: [lint] }] },
+      { type: 'removed', day: DAY, id: 'lint' }
+    )
+    expect(next[DAY]).toStrictEqual([milk])
+    expect(next[DAY]?.[0]).not.toHaveProperty('steps')
+  })
+
+  it('removes a parent with its steps, and a restore brings them all back', () => {
+    const removed = daysReducer(withSteps, { type: 'removed', day: DAY, id: 'ci' })
+    expect(removed[DAY]).toStrictEqual([milk])
+    expect(daysReducer(removed, { type: 'restored', day: DAY, todo: ci, index: 1 })).toStrictEqual(withSteps)
+  })
+
+  it('restores a removed step to the place it had in its parent', () => {
+    const removed = daysReducer(withSteps, { type: 'removed', day: DAY, id: 'lint' })
+    const restored = daysReducer(removed, {
+      type: 'restored',
+      day: DAY,
+      todo: lint,
+      index: 1,
+      parentId: 'ci'
+    })
+    expect(restored).toStrictEqual(withSteps)
+  })
+
+  it('restores the last step of a parent, whose key was dropped', () => {
+    const next = daysReducer(
+      { [DAY]: [milk] },
+      { type: 'restored', day: DAY, todo: lint, index: 3, parentId: 'milk' }
+    )
+    expect(next[DAY]).toStrictEqual([{ ...milk, steps: [lint] }])
+  })
+
+  it('ignores a restore of a step whose parent is gone, or that is already there', () => {
+    const restore = { type: 'restored', day: DAY, todo: plants, index: 0, parentId: 'gone' } as const
+    expect(daysReducer(withSteps, restore)).toBe(withSteps)
+    expect(daysReducer(withSteps, { type: 'restored', day: DAY, todo: lint, index: 0, parentId: 'ci' })).toBe(
+      withSteps
+    )
+  })
+
+  it('moves a step to the place of the step it was dropped on', () => {
+    const next = daysReducer(withSteps, { type: 'reordered', day: DAY, id: 'workflow', targetId: 'cache' })
+    expect(next[DAY]).toStrictEqual([milk, { ...ci, steps: [lint, cache, workflow] }])
+  })
+
+  it('ignores a reorder across lists', () => {
+    expect(daysReducer(withSteps, { type: 'reordered', day: DAY, id: 'lint', targetId: 'milk' })).toBe(
+      withSteps
+    )
+    expect(daysReducer(withSteps, { type: 'reordered', day: DAY, id: 'milk', targetId: 'lint' })).toBe(
+      withSteps
+    )
+    const two: DaysMap = { [DAY]: [{ ...milk, steps: [plants] }, ci] }
+    expect(daysReducer(two, { type: 'reordered', day: DAY, id: 'plants', targetId: 'lint' })).toBe(two)
+  })
+
+  it('moves a parent to another day with its steps', () => {
+    const next = daysReducer(withSteps, { type: 'moved', from: DAY, to: '2026-09-20', id: 'ci' })
+    expect(next).toStrictEqual({ [DAY]: [milk], '2026-09-20': [ci] })
+  })
+
+  it('ignores a move of a step', () => {
+    expect(daysReducer(withSteps, { type: 'moved', from: DAY, to: '2026-09-20', id: 'lint' })).toBe(withSteps)
+  })
+})
+
+describe('locate', () => {
+  it('finds a todo at the top level', () => {
+    expect(locate([milk, ci], 'ci')).toEqual({ todo: ci, index: 1, parentId: undefined })
+  })
+
+  it("finds a step with its index among its parent's steps", () => {
+    expect(locate([milk, ci], 'cache')).toEqual({ todo: cache, index: 2, parentId: 'ci' })
+  })
+
+  it('finds nothing for an id that is not there', () => {
+    expect(locate([milk, ci], 'gone')).toBeUndefined()
+  })
+})
+
+describe('stepProgress', () => {
+  it('counts the done steps', () => {
+    expect(stepProgress({ ...ci, steps: [finished(workflow), lint, cache] })).toEqual({ done: 1, total: 3 })
+  })
+
+  it('is 0/0 for a todo without steps', () => {
+    expect(stepProgress(milk)).toEqual({ done: 0, total: 0 })
   })
 })
 
@@ -177,6 +350,14 @@ describe('dayProgress', () => {
       resolved: 2,
       total: 2,
       cleared: true
+    })
+  })
+
+  it('counts the top-level todos only', () => {
+    expect(dayProgress([{ ...ci, steps: [finished(workflow), finished(lint), cache] }])).toEqual({
+      resolved: 0,
+      total: 1,
+      cleared: false
     })
   })
 
