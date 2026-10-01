@@ -172,18 +172,20 @@ describe('daysReducer with steps', () => {
     expect(daysReducer({}, { type: 'added', day: DAY, todo: plants, parentId: 'ci' })).toStrictEqual({})
   })
 
-  it('finishes the steps of a todo that is finished', () => {
+  it('finishes and folds the steps of a todo that is finished', () => {
     const next = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
     expect(next[DAY]).toStrictEqual([
       milk,
-      { ...ci, status: 'done', steps: [workflow, lint, cache].map(finished) }
+      { ...ci, status: 'done', steps: [workflow, lint, cache].map(finished), folded: true }
     ])
   })
 
   it('finishes the open steps of a todo whose steps were part done', () => {
     const part: DaysMap = { [DAY]: [{ ...ci, steps: [finished(workflow), lint, cache] }] }
     const next = daysReducer(part, { type: 'doneToggled', day: DAY, id: 'ci' })
-    expect(next[DAY]).toStrictEqual([{ ...ci, status: 'done', steps: [workflow, lint, cache].map(finished) }])
+    expect(next[DAY]).toStrictEqual([
+      { ...ci, status: 'done', steps: [workflow, lint, cache].map(finished), folded: true }
+    ])
   })
 
   it('leaves the parent open when every step is done', () => {
@@ -194,10 +196,13 @@ describe('daysReducer with steps', () => {
     expect(next[DAY]).toStrictEqual([milk, { ...ci, steps: [workflow, lint, cache].map(finished) }])
   })
 
-  it('leaves the steps done when their parent is reopened', () => {
+  it('leaves the steps done, and folded, when their parent is reopened', () => {
     const closed = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
     const reopened = daysReducer(closed, { type: 'doneToggled', day: DAY, id: 'ci' })
-    expect(reopened[DAY]).toStrictEqual([milk, { ...ci, steps: [workflow, lint, cache].map(finished) }])
+    expect(reopened[DAY]).toStrictEqual([
+      milk,
+      { ...ci, steps: [workflow, lint, cache].map(finished), folded: true }
+    ])
   })
 
   it('marks, reopens and edits a step and leaves its parent alone', () => {
@@ -319,8 +324,312 @@ describe('daysReducer with steps', () => {
     }
     expect(state).toStrictEqual({
       [DAY]: [milk],
-      '2026-09-20': [{ id: 'ci', text: 'Set up CI', status: 'done' }]
+      // Restoring the open step into the done todo reopened it.
+      '2026-09-20': [{ id: 'ci', text: 'Set up CI', status: 'open' }]
     })
+  })
+})
+
+describe('daysReducer with a fold', () => {
+  const folded: Todo = { ...ci, folded: true }
+  const foldedDay: DaysMap = { [DAY]: [milk, folded] }
+  const fold = (id: string): TodoAction => ({ type: 'foldToggled', day: DAY, id })
+
+  it('folds an open todo with steps, and unfolds it again with no key left', () => {
+    const next = daysReducer(withSteps, fold('ci'))
+    expect(next[DAY]).toStrictEqual([milk, folded])
+    const back = daysReducer(next, fold('ci'))
+    expect(back).toStrictEqual(withSteps)
+    expect(back[DAY]?.[1]).not.toHaveProperty('folded')
+  })
+
+  it('folds and unfolds a done todo, as an open one', () => {
+    const done = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
+    const shown = daysReducer(done, fold('ci'))
+    const finishedCi: Todo = { ...ci, status: 'done', steps: [workflow, lint, cache].map(finished) }
+    expect(shown[DAY]).toStrictEqual([milk, finishedCi])
+    expect(shown[DAY]?.[1]).not.toHaveProperty('folded')
+    expect(daysReducer(shown, fold('ci'))[DAY]).toStrictEqual([milk, { ...finishedCi, folded: true }])
+  })
+
+  it('checking a todo without steps adds no fold', () => {
+    const next = daysReducer(days, { type: 'doneToggled', day: DAY, id: 'milk' })
+    expect(next[DAY]).toStrictEqual([{ ...milk, status: 'done' }, taxes])
+    expect(Object.keys(next[DAY]?.[0] ?? {})).toEqual(['id', 'text', 'status'])
+  })
+
+  it('unchecking a todo leaves the fold as it is, folded or not', () => {
+    const done = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
+    expect(daysReducer(done, { type: 'doneToggled', day: DAY, id: 'ci' })[DAY]?.[1]).toHaveProperty(
+      'folded',
+      true
+    )
+    const shown = daysReducer(done, fold('ci'))
+    const reopened = daysReducer(shown, { type: 'doneToggled', day: DAY, id: 'ci' })
+    expect(reopened[DAY]?.[1]).toStrictEqual({ ...ci, steps: [workflow, lint, cache].map(finished) })
+    expect(reopened[DAY]?.[1]).not.toHaveProperty('folded')
+  })
+
+  it('unchecking a step under a done todo reopens the todo, and leaves its fold as it is', () => {
+    const done = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
+    const steps = [finished(workflow), lint, finished(cache)]
+    const fromFolded = daysReducer(done, { type: 'doneToggled', day: DAY, id: 'lint' })
+    expect(fromFolded[DAY]?.[1]).toStrictEqual({ ...ci, steps, folded: true })
+    const shown = daysReducer(done, fold('ci'))
+    const fromShown = daysReducer(shown, { type: 'doneToggled', day: DAY, id: 'lint' })
+    expect(fromShown[DAY]?.[1]).toStrictEqual({ ...ci, steps })
+    expect(fromShown[DAY]?.[1]).not.toHaveProperty('folded')
+  })
+
+  it('reopens a done todo when the delete of an open step under it is undone, and keeps its fold', () => {
+    const removed = daysReducer(withSteps, { type: 'removed', day: DAY, id: 'lint' })
+    const done = daysReducer(removed, { type: 'doneToggled', day: DAY, id: 'ci' })
+    const undo = { type: 'restored', day: DAY, todo: lint, index: 1, parentId: 'ci' } as const
+    const steps = [finished(workflow), lint, finished(cache)]
+    expect(daysReducer(done, undo)[DAY]?.[1]).toStrictEqual({ ...ci, steps, folded: true })
+    const unfolded = daysReducer(daysReducer(done, fold('ci')), undo)
+    expect(unfolded[DAY]?.[1]).toStrictEqual({ ...ci, steps })
+    expect(unfolded[DAY]?.[1]).not.toHaveProperty('folded')
+  })
+
+  it('keeps a done todo done when a done step is restored under it', () => {
+    const removed = daysReducer(withSteps, { type: 'removed', day: DAY, id: 'lint' })
+    const done = daysReducer(removed, { type: 'doneToggled', day: DAY, id: 'ci' })
+    const restored = daysReducer(done, {
+      type: 'restored',
+      day: DAY,
+      todo: finished(lint),
+      index: 1,
+      parentId: 'ci'
+    })
+    expect(restored[DAY]?.[1]).toStrictEqual({
+      ...ci,
+      status: 'done',
+      steps: [workflow, lint, cache].map(finished),
+      folded: true
+    })
+  })
+
+  it('reopens and unfolds a done todo when a step is added to it', () => {
+    const done = daysReducer(withSteps, { type: 'doneToggled', day: DAY, id: 'ci' })
+    const next = daysReducer(done, { type: 'added', day: DAY, todo: plants, parentId: 'ci' })
+    expect(next[DAY]?.[1]).toStrictEqual({ ...ci, steps: [...[workflow, lint, cache].map(finished), plants] })
+    const plain = daysReducer(days, { type: 'doneToggled', day: DAY, id: 'milk' })
+    const first = daysReducer(plain, { type: 'added', day: DAY, todo: plants, parentId: 'milk' })
+    expect(first[DAY]?.[0]).toStrictEqual({ ...milk, steps: [plants] })
+  })
+
+  it('ignores a fold of a step, of a todo without steps, or of a todo that is not there', () => {
+    expect(daysReducer(withSteps, fold('lint'))).toBe(withSteps)
+    expect(daysReducer(withSteps, fold('milk'))).toBe(withSteps)
+    expect(daysReducer(withSteps, fold('gone'))).toBe(withSteps)
+    expect(daysReducer(foldedDay, fold('lint'))).toBe(foldedDay)
+    expect(daysReducer(withSteps, { type: 'foldToggled', day: '2026-09-20', id: 'ci' })).toBe(withSteps)
+  })
+
+  it('unfolds a todo when a step is added to it', () => {
+    const next = daysReducer(foldedDay, { type: 'added', day: DAY, todo: plants, parentId: 'ci' })
+    expect(next[DAY]).toStrictEqual([milk, { ...ci, steps: [workflow, lint, cache, plants] }])
+    expect(next[DAY]?.[1]).not.toHaveProperty('folded')
+  })
+
+  it('drops the fold with the last step', () => {
+    const one: DaysMap = { [DAY]: [{ ...milk, steps: [lint], folded: true }] }
+    const next = daysReducer(one, { type: 'removed', day: DAY, id: 'lint' })
+    expect(next[DAY]).toStrictEqual([milk])
+    expect(Object.keys(next[DAY]?.[0] ?? {})).toEqual(['id', 'text', 'status'])
+  })
+
+  it('keeps the fold when a step is removed and others are left', () => {
+    const next = daysReducer(foldedDay, { type: 'removed', day: DAY, id: 'lint' })
+    expect(next[DAY]).toStrictEqual([milk, { ...folded, steps: [workflow, cache] }])
+  })
+
+  it('keeps the fold through done, edits, reorders and restores', () => {
+    const done = daysReducer(foldedDay, { type: 'doneToggled', day: DAY, id: 'ci' })
+    expect(done[DAY]?.[1]).toStrictEqual({
+      ...folded,
+      status: 'done',
+      steps: [workflow, lint, cache].map(finished)
+    })
+    const reopened = daysReducer(done, { type: 'doneToggled', day: DAY, id: 'ci' })
+    expect(reopened[DAY]?.[1]).toHaveProperty('folded', true)
+
+    const stepDone = daysReducer(foldedDay, { type: 'doneToggled', day: DAY, id: 'lint' })
+    expect(stepDone[DAY]?.[1]).toStrictEqual({ ...folded, steps: [workflow, finished(lint), cache] })
+
+    const edited = daysReducer(foldedDay, { type: 'edited', day: DAY, id: 'ci', text: 'Set up the CI' })
+    expect(edited[DAY]?.[1]).toStrictEqual({ ...folded, text: 'Set up the CI' })
+    const stepEdited = daysReducer(foldedDay, { type: 'edited', day: DAY, id: 'lint', text: 'Fix types' })
+    expect(stepEdited[DAY]?.[1]).toStrictEqual({
+      ...folded,
+      steps: [workflow, { ...lint, text: 'Fix types' }, cache]
+    })
+
+    const stepMoved = daysReducer(foldedDay, {
+      type: 'reordered',
+      day: DAY,
+      id: 'cache',
+      targetId: 'workflow'
+    })
+    expect(stepMoved[DAY]?.[1]).toStrictEqual({ ...folded, steps: [cache, workflow, lint] })
+    const todoMoved = daysReducer(foldedDay, { type: 'reordered', day: DAY, id: 'ci', targetId: 'milk' })
+    expect(todoMoved[DAY]).toStrictEqual([folded, milk])
+
+    const removed = daysReducer(foldedDay, { type: 'removed', day: DAY, id: 'lint' })
+    const restored = daysReducer(removed, {
+      type: 'restored',
+      day: DAY,
+      todo: lint,
+      index: 1,
+      parentId: 'ci'
+    })
+    expect(restored).toStrictEqual(foldedDay)
+  })
+
+  it('moves a folded todo to another day folded, and back', () => {
+    const moved = daysReducer(foldedDay, { type: 'moved', from: DAY, to: '2026-09-20', id: 'ci' })
+    expect(moved).toStrictEqual({ [DAY]: [milk], '2026-09-20': [folded] })
+    const back = daysReducer(moved, { type: 'moved', from: '2026-09-20', to: DAY, id: 'ci', index: 1 })
+    expect(back).toStrictEqual(foldedDay)
+  })
+
+  it('brings a deleted folded todo back folded, with its steps', () => {
+    const removed = daysReducer(foldedDay, { type: 'removed', day: DAY, id: 'ci' })
+    expect(removed[DAY]).toStrictEqual([milk])
+    expect(daysReducer(removed, { type: 'restored', day: DAY, todo: folded, index: 1 })).toStrictEqual(
+      foldedDay
+    )
+  })
+
+  it('changes neither the ring nor the order a day is shown in', () => {
+    const done: Todo = { ...folded, status: 'done', steps: [workflow, lint, cache].map(finished) }
+    const unfolded: Todo = { ...ci, status: 'done', steps: done.steps }
+    expect(dayProgress([milk, done])).toEqual(dayProgress([milk, unfolded]))
+    expect(dayProgress([milk, folded])).toEqual(dayProgress([milk, ci]))
+    expect(resolvedIds([milk, done])).toEqual(resolvedIds([milk, unfolded]))
+    expect(displayOrder([done, milk], new Set(['ci']))).toStrictEqual([milk, done])
+    expect(displayOrder([folded, milk], new Set())).toStrictEqual([folded, milk])
+  })
+})
+
+describe('any run of actions', () => {
+  const TOMORROW = '2026-09-20'
+
+  /** A small seeded generator (mulberry32), so a failing run can be replayed from its seed. */
+  const generator = (seed: number) => (): number => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+
+  const holdsUndefined = (value: unknown): boolean =>
+    typeof value === 'object' &&
+    value !== null &&
+    Object.values(value).some((entry) => entry === undefined || holdsUndefined(entry))
+
+  /** What must hold after every action; each broken rule is named. */
+  function broken(state: DaysMap): string[] {
+    const out: string[] = []
+    const ids = new Set<string>()
+    for (const [day, todos] of Object.entries(state)) {
+      if (todos.length === 0) out.push(`${day} is an empty entry`)
+      for (const todo of todos) {
+        for (const each of [todo, ...(todo.steps ?? [])]) {
+          if (ids.has(each.id)) out.push(`${each.id} is there twice`)
+          ids.add(each.id)
+        }
+        const steps = todo.steps
+        if (steps?.length === 0) out.push(`${todo.id} has an empty steps list`)
+        if (todo.status === 'done' && steps?.some((step) => step.status === 'open') === true)
+          out.push(`${todo.id} is done with an open step`)
+        if ('folded' in todo && (todo.folded !== true || steps === undefined))
+          out.push(`${todo.id} has folded ${String(todo.folded)} with ${String(steps?.length ?? 0)} steps`)
+        for (const step of steps ?? []) {
+          if ('steps' in step || 'folded' in step) out.push(`step ${step.id} has steps or a fold`)
+        }
+      }
+    }
+    // No key holds undefined: what is saved reads back the same.
+    if (holdsUndefined(state)) out.push('a key holds undefined')
+    return out
+  }
+
+  it.each([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])('keeps every rule over 400 actions, seed %i', (seed) => {
+    const random = generator(seed)
+    const pick = <T>(list: readonly T[]): T | undefined => list[Math.floor(random() * list.length)]
+    let state: DaysMap = { [DAY]: [milk, ci], [TOMORROW]: [{ ...taxes, steps: [plants] }] }
+    const undos: TodoAction[] = []
+    const done: string[] = []
+    let made = 0
+
+    for (let i = 0; i < 400; i++) {
+      const day = random() < 0.7 ? DAY : TOMORROW
+      const todos = state[day] ?? []
+      const every = todos.flatMap((todo) => [todo, ...(todo.steps ?? [])])
+      const top = pick(todos)
+      const any = pick(every)
+      const fresh = (): Todo => ({ id: `new${String(made++)}`, text: 'New', status: 'open' })
+      let action: TodoAction | undefined
+      switch (Math.floor(random() * 10)) {
+        case 0:
+          action = { type: 'added', day, todo: fresh() }
+          break
+        case 1:
+          if (top) action = { type: 'added', day, todo: fresh(), parentId: top.id }
+          break
+        case 2:
+        case 3:
+          if (any) action = { type: 'doneToggled', day, id: any.id }
+          break
+        case 4: {
+          const found = any && locate(todos, any.id)
+          if (found) {
+            const { todo, index, parentId } = found
+            undos.push({
+              type: 'restored',
+              day,
+              todo,
+              index,
+              ...(parentId === undefined ? {} : { parentId })
+            })
+            action = { type: 'removed', day, id: todo.id }
+          }
+          break
+        }
+        case 5:
+          action = undos.splice(Math.floor(random() * undos.length), 1)[0]
+          break
+        case 6: {
+          const found = any && locate(todos, any.id)
+          const list =
+            found?.parentId === undefined ? todos : todos.find((t) => t.id === found.parentId)?.steps
+          const target = list && pick(list)
+          if (any && target) action = { type: 'reordered', day, id: any.id, targetId: target.id }
+          break
+        }
+        case 7:
+          if (top) action = { type: 'foldToggled', day, id: top.id }
+          break
+        case 8:
+          if (top) {
+            const to = day === DAY ? TOMORROW : DAY
+            action = { type: 'moved', from: day, to, id: top.id, index: Math.floor(random() * 4) }
+          }
+          break
+        case 9:
+          if (any) action = { type: 'edited', day, id: any.id, text: `Edit ${String(i)}` }
+          break
+      }
+      if (action === undefined) continue
+      state = daysReducer(state, action)
+      done.push(JSON.stringify(action))
+      expect(broken(state), `seed ${String(seed)}, after:\n${done.slice(-6).join('\n')}`).toEqual([])
+    }
+    // The run did reach the cases the rules are about.
+    expect(done.filter((a) => a.includes('"restored"')).length).toBeGreaterThan(5)
+    expect(done.filter((a) => a.includes('"foldToggled"')).length).toBeGreaterThan(5)
   })
 })
 

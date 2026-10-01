@@ -108,3 +108,57 @@ describe('parseStoreData', () => {
     expect(() => parseStoreData(value)).toThrow(TypeError)
   })
 })
+
+describe('parseStoreData with a fold', () => {
+  const DAY = '2026-09-19'
+  const step = { id: 's', text: 'Cache', status: 'open' }
+  const parent = { id: 'p', text: 'Set up CI', status: 'open', steps: [step] }
+  const parsed = (todos: unknown[]) => parseStoreData({ version: 1, days: { [DAY]: todos } }).days[DAY]
+
+  it('keeps folded on a todo with steps, open or done', () => {
+    expect(parsed([{ ...parent, folded: true }])).toStrictEqual([{ ...parent, folded: true }])
+    const done = { ...parent, status: 'done', steps: [{ ...step, status: 'done' }], folded: true }
+    expect(parsed([done])).toStrictEqual([done])
+  })
+
+  it.each([
+    ['false', false],
+    ['a string', 'true'],
+    ['a number', 1],
+    ['null', null],
+    ['an object', {}]
+  ])('drops a folded that is %s, without an error', (_name, folded) => {
+    const [todo] = parsed([{ ...parent, folded }]) ?? []
+    expect(todo).toStrictEqual(parent)
+    expect(todo).not.toHaveProperty('folded')
+  })
+
+  it('drops folded on a todo without steps, or with an empty steps list', () => {
+    const plain = { id: 'a', text: 'Buy milk', status: 'open' }
+    const todos = parsed([
+      { ...plain, folded: true },
+      { ...plain, id: 'b', steps: [], folded: true }
+    ])
+    expect(todos).toStrictEqual([plain, { ...plain, id: 'b' }])
+    for (const todo of todos ?? []) expect(Object.keys(todo)).toEqual(['id', 'text', 'status'])
+  })
+
+  it('drops folded on a step', () => {
+    const todos = parsed([{ ...parent, steps: [{ ...step, folded: true }] }])
+    expect(todos).toStrictEqual([parent])
+    expect(todos?.[0]?.steps?.[0]).not.toHaveProperty('folded')
+  })
+
+  it('never reads a todo as having folded: undefined', () => {
+    for (const todo of parsed([parent, { ...parent, id: 'q', folded: false }]) ?? []) {
+      expect(Object.keys(todo)).not.toContain('folded')
+    }
+  })
+
+  it('reads a file with steps and no fold exactly as it was, and keeps version 1', () => {
+    const file = { version: 1, days: { [DAY]: [parent, { id: 'a', text: 'Buy milk', status: 'done' }] } }
+    const back = parseStoreData(JSON.parse(JSON.stringify(file)))
+    expect(JSON.stringify(back)).toBe(JSON.stringify(file))
+    expect(parseStoreData({ version: 1, days: { [DAY]: [{ ...parent, folded: true }] } }).version).toBe(1)
+  })
+})

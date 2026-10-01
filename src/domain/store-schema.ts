@@ -25,7 +25,9 @@ function parseTodo(value: unknown, parentId?: string): Todo {
   if (!isTodoStatus(status)) throw new TypeError(`Todo ${id} has an unknown status`)
   const steps = parseSteps(value.steps, id, parentId)
   // No key rather than an empty list, so a todo without steps is saved as it always was.
-  return steps.length > 0 ? { id, text, status, steps } : { id, text, status }
+  if (steps.length === 0) return { id, text, status }
+  // A fold hides steps, so it is kept only where there are some (never on a step), and only as `true`.
+  return value.folded === true ? { id, text, status, steps, folded: true } : { id, text, status, steps }
 }
 
 function parseSteps(value: unknown, id: string, parentId: string | undefined): readonly Todo[] {
