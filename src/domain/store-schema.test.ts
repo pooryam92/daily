@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { STORE_VERSION } from './store'
 import { isDayKey, parseStoreData } from './store-schema'
 
 describe('isDayKey', () => {
@@ -32,6 +33,25 @@ describe('parseStoreData', () => {
   it('strips unknown todo fields', () => {
     const parsed = parseStoreData({ days: { '2026-09-19': [{ ...todo, extra: true }] } })
     expect(parsed.days['2026-09-19']).toEqual([todo])
+  })
+
+  it('reads a file written before steps existed exactly as it was', () => {
+    const file = {
+      version: 1,
+      days: {
+        '2026-09-19': [todo, { id: 'b', text: 'Call mum', status: 'open' }],
+        '2026-09-20': [{ id: 'c', text: 'Dentist', status: 'open' }]
+      }
+    }
+    const parsed = parseStoreData(JSON.parse(JSON.stringify(file)))
+    expect(parsed).toStrictEqual(file)
+    expect(JSON.stringify(parsed)).toBe(JSON.stringify(file))
+  })
+
+  it('keeps version 1 for a file with steps', () => {
+    const parent = { id: 'p', text: 'Set up CI', status: 'open', steps: [todo] }
+    expect(STORE_VERSION).toBe(1)
+    expect(parseStoreData({ version: 1, days: { '2026-09-19': [parent] } }).version).toBe(1)
   })
 
   it('reads a todo with steps', () => {

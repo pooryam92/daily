@@ -119,8 +119,18 @@ export class Daily {
     return this.read<Settings>('settings.json')
   }
 
+  /** A file in the data folder as it is written, for its exact shape. */
+  file(name: string): Promise<string> {
+    return readFile(path.join(this.userData, name), 'utf8')
+  }
+
+  /** The day's progress ring, which says how many of its todos are resolved. */
+  get ring(): Locator {
+    return this.page.getByRole('progressbar', { name: 'Day progress' })
+  }
+
   private async read<T>(file: string): Promise<T> {
-    return JSON.parse(await readFile(path.join(this.userData, file), 'utf8')) as T
+    return JSON.parse(await this.file(file)) as T
   }
 }
 
