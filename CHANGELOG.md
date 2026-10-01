@@ -22,6 +22,8 @@ What changed for someone using Daily, newest first. The format is
 
 ### Changed
 
+- A todo whose text runs over several lines keeps its box, grip and words beside its first line,
+  instead of centred on the whole text.
 - `delete` is back on the row, as the last word, set a little apart from the move word. Delete on
   a focused todo does the same. The editor no longer has a `delete` of its own.
 - A row at rest shows only its box and its text. `tomorrow` and `delete` appear when the row is

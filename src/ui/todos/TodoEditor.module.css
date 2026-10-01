@@ -28,12 +28,14 @@
 }
 
 /*
- * Styled like the row's words, but always there while editing: it is how steps are added. Centred
- * like the row's words, so that a 28px button does not make the line taller than the text it edits.
+ * Styled like the row's words, but always there while editing: it is how steps are added. It sits
+ * with the first line like the row's words; the negative margin lays its 28px over the 24px line and
+ * the label's padding, so it does not make the line taller than the text it edits.
  */
 .step {
   flex: none;
-  align-self: center;
+  align-self: flex-start;
+  margin-block: -2px;
   height: 28px;
   padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
