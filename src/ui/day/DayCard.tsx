@@ -32,7 +32,8 @@ interface DayCardProps {
   /** Where the deck is looking, as a day index; see `useDeckView`. */
   readonly view: MotionValue<number>
   readonly todos: readonly Todo[]
-  readonly onAdd: (text: string) => void
+  /** Adds a todo, or with `parentId`, a step at the end of that todo's steps. */
+  readonly onAdd: (text: string, parentId?: string) => void
   readonly onToggleDone: (id: string) => void
   readonly onRemove: (id: string) => void
   readonly onEdit: (id: string, text: string) => void
@@ -52,12 +53,14 @@ const DRAG_PLUGINS = [StyleInjector.configure({ nonce: __STYLE_NONCE__ })]
 
 /**
  * A todo's part in the key that says when rows are measured: its id, and while its steps are shown
- * (while it is open), theirs, since they make it taller. Checking a todo folds them away.
+ * (while it is open), theirs, and a mark while a step is being written under it, since both make it
+ * taller. Checking a todo folds them away.
  */
-const layoutKey = (todo: Todo): string =>
-  todo.status === 'open' && todo.steps !== undefined
-    ? `${todo.id}(${todo.steps.map((step) => step.id).join(' ')})`
-    : todo.id
+const layoutKey = (todo: Todo, drafting: string | null): string => {
+  if (todo.status !== 'open') return todo.id
+  const steps = todo.steps === undefined ? '' : `(${todo.steps.map((step) => step.id).join(' ')})`
+  return `${todo.id}${steps}${todo.id === drafting ? '+' : ''}`
+}
 
 /** A todo's bar in the glance is short, medium or long, like its text. */
 const glanceLength = (text: string): 'short' | 'medium' | 'long' =>
@@ -104,7 +107,10 @@ export function DayCard({
   // While a row is being dragged, nothing else may move the list.
   const [dragging, setDragging] = useState(false)
   const { ordered, settled } = useSettledTodos(todos, dragging)
-  const order = ordered.map(layoutKey).join()
+  // The todo a step is being written under, if any. It is kept here, not in the todo, because opening
+  // and closing the step editor moves the rows below, which then have to be measured.
+  const [drafting, setDrafting] = useState<string | null>(null)
+  const order = ordered.map((todo) => layoutKey(todo, drafting)).join()
   const [list, setList] = useState<HTMLUListElement | null>(null)
   const modifiers = useMemo(
     () => [RestrictToVerticalAxis, RestrictToElement.configure({ element: () => list })],
@@ -117,13 +123,14 @@ export function DayCard({
   )
   const isNew = (id: string): boolean => !initialIds.has(id)
   // Animating every row of a quick run of additions would be noise, so only the first one does.
+  // Steps count too: a list of them is typed one after another.
   const [animateEnter, setAnimateEnter] = useState(true)
   const lastAddedAt = useRef(Number.NEGATIVE_INFINITY)
-  const add = (text: string): void => {
+  const add = (text: string, parentId?: string): void => {
     const now = performance.now()
     setAnimateEnter(now - lastAddedAt.current > QUICK_ADD_MS)
     lastAddedAt.current = now
-    onAdd(text)
+    onAdd(text, parentId)
   }
 
   // Which way a moved row leaves (`LeavingRows`). Cleared once the todo is back, so a later delete only fades.
@@ -267,6 +274,12 @@ export function DayCard({
                     onRemove={onRemove}
                     onEdit={onEdit}
                     onMove={move}
+                    onAddStep={add}
+                    addingStep={drafting === todo.id}
+                    onAddingStep={(open) => {
+                      // Only the todo whose step editor is open closes it: another may have opened since.
+                      setDrafting((current) => (open ? todo.id : current === todo.id ? null : current))
+                    }}
                   />
                 ))}
               </AnimatePresence>

@@ -7,7 +7,8 @@ import { createTodo, daysReducer } from '@/domain/todo-rules'
 import type { TodoAction } from '@/domain/todo-rules'
 
 export interface TodoActions {
-  readonly add: (day: DayKey, text: string) => void
+  /** Adds a todo at the end of its day, or a step at the end of the steps of `parentId`. */
+  readonly add: (day: DayKey, text: string, parentId?: string) => void
   readonly toggleDone: (day: DayKey, id: string) => void
   readonly remove: (day: DayKey, id: string) => void
   /** Puts a removed todo back at `index` of its day, or a removed step at `index` of its parent's steps. */
@@ -87,8 +88,8 @@ export function useTodoStore(): TodoStore {
 
   const actions = useMemo<TodoActions>(
     () => ({
-      add: (day, text) => {
-        dispatch({ type: 'added', day, todo: createTodo(text) })
+      add: (day, text, parentId) => {
+        dispatch({ type: 'added', day, todo: createTodo(text), parentId })
       },
       toggleDone: (day, id) => {
         dispatch({ type: 'doneToggled', day, id })
