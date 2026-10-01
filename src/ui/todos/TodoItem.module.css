@@ -3,33 +3,64 @@
  * result cannot be measured per theme), and never with font weight on the text: a weight change
  * reflows the line, so the list would shimmer when a todo is toggled. Only the marks go bold.
  */
+
+/*
+ * A todo is its row and, while it is open, its steps under it. The todo is what is sorted, animated
+ * and lifted, as a whole; everything that styles a line is on the row, so none of it reaches the
+ * steps, which are rows of their own.
+ */
 .todo {
+  /* The anchor its steps are positioned against while they fold away (AnimatePresence popLayout). */
+  position: relative;
+  border-radius: var(--radius-md);
+}
+
+.row {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1);
   border-radius: var(--radius-md);
+}
+
+/* A todo is picked up anywhere on its row. A step cannot be moved on its own. */
+.todo > .row {
   cursor: grab;
 }
 
-.todo:hover {
+.row:hover {
   background: var(--hover);
 }
 
 /* While its text is edited the row is the field, and it says so like the add-todo input does. */
-.todo[data-editing] {
+.row[data-editing] {
   box-shadow:
     inset 0 0 0 1px var(--accent),
     0 0 0 1px var(--accent);
 }
 
 /*
- * A row that is being dragged is lifted off the card: it gets the card's surface and a shadow, since
- * it now lies over other rows. The row itself travels; what stays behind in the list is its gap.
+ * A todo that is being dragged is lifted off the card, steps and all: it gets the card's surface and
+ * a shadow, since it now lies over other rows. The todo itself travels; what stays behind in the list
+ * is its gap.
  */
 .todo[data-dragging] {
   background: var(--surface);
   box-shadow: var(--shadow-drag);
+}
+
+/*
+ * A todo's steps, indented by a box and its gap (32px), so that a step's box sits under its todo's
+ * text. They keep their place when they are done: only the todos settle. The indent is padding, not
+ * margin: while the list folds away it is placed where it was measured, and a margin would be added
+ * to that a second time.
+ */
+.steps {
+  /* The anchor a deleted step is positioned against while it fades out (AnimatePresence popLayout). */
+  position: relative;
+  margin: 0;
+  padding: 0 0 0 var(--space-8);
+  list-style: none;
 }
 
 /*
@@ -69,24 +100,35 @@
     opacity: 0;
   }
 
-  :is(.todo:hover, .todo[data-dragging]) .grip,
+  :is(.row:hover, .todo[data-dragging] > .row) .grip,
   .handle:focus-visible .grip {
     opacity: 1;
   }
 }
 
 /* While the text is edited the row is a field: nothing else is offered. */
-.todo[data-editing] .handle {
+.row[data-editing] .handle {
   visibility: hidden;
 }
 
-.todo[data-editing] :is(.move, .remove) {
+.row[data-editing] :is(.move, .remove, .count) {
   display: none;
+}
+
+/*
+ * The text and, for a todo with steps, the count right after it. The text wraps; the count stays on
+ * its first line, on its baseline.
+ */
+.label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
 }
 
 /* The text is a button (click it to edit it) that looks like the text it is. */
 .text {
-  flex: 1;
   min-width: 0;
   padding: 0;
   border-radius: var(--radius-sm);
@@ -112,19 +154,48 @@
   transition: background-size var(--duration-base) var(--ease-out);
 }
 
-.todo[data-status='done'] .text {
+.row[data-status='done'] .text {
   color: var(--text-muted);
 }
 
-.todo[data-status='done'] .strike {
+.row[data-status='done'] .strike {
   background-size: 100% 1px;
 }
 
 /* Forced colours remove background images. */
 @media (forced-colors: active) {
-  .todo[data-status='done'] .strike {
+  .row[data-status='done'] .strike {
     text-decoration: line-through;
   }
+}
+
+/* How many of the steps are done, in figures of one width so the count does not shift as it rises. */
+.count {
+  flex: none;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+/* Every step is done and the todo is still open: what is left is to check it. */
+.row[data-status='open'] .count[data-complete] {
+  color: var(--done);
+}
+
+.row[data-status='done'] .count {
+  color: var(--text-faint);
+}
+
+/* Read out, not shown: "1 of 3 steps done" instead of "1 slash 3". */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* The words at the end of the row: labels, not icons, and none dressed up as dangerous. */
@@ -164,7 +235,7 @@
     opacity: 0;
   }
 
-  .todo:hover :is(.move, .remove),
+  .row:hover :is(.move, .remove),
   :is(.move, .remove):focus-visible {
     opacity: 1;
   }

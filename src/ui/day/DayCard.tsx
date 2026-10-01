@@ -50,6 +50,15 @@ interface DayCardProps {
  */
 const DRAG_PLUGINS = [StyleInjector.configure({ nonce: __STYLE_NONCE__ })]
 
+/**
+ * A todo's part in the key that says when rows are measured: its id, and while its steps are shown
+ * (while it is open), theirs, since they make it taller. Checking a todo folds them away.
+ */
+const layoutKey = (todo: Todo): string =>
+  todo.status === 'open' && todo.steps !== undefined
+    ? `${todo.id}(${todo.steps.map((step) => step.id).join(' ')})`
+    : todo.id
+
 /** A todo's bar in the glance is short, medium or long, like its text. */
 const glanceLength = (text: string): 'short' | 'medium' | 'long' =>
   text.length < 16 ? 'short' : text.length < 36 ? 'medium' : 'long'
@@ -95,15 +104,18 @@ export function DayCard({
   // While a row is being dragged, nothing else may move the list.
   const [dragging, setDragging] = useState(false)
   const { ordered, settled } = useSettledTodos(todos, dragging)
-  const order = ordered.map((todo) => todo.id).join()
+  const order = ordered.map(layoutKey).join()
   const [list, setList] = useState<HTMLUListElement | null>(null)
   const modifiers = useMemo(
     () => [RestrictToVerticalAxis, RestrictToElement.configure({ element: () => list })],
     [list]
   )
 
-  // Todos that were there when the card mounted are not new: they neither animate in nor scroll.
-  const [initialIds] = useState(() => new Set(todos.map((todo) => todo.id)))
+  // Todos and steps that were there when the card mounted are not new: they neither animate in nor scroll.
+  const [initialIds] = useState(
+    () => new Set(todos.flatMap((todo) => [todo.id, ...(todo.steps ?? []).map((step) => step.id)]))
+  )
+  const isNew = (id: string): boolean => !initialIds.has(id)
   // Animating every row of a quick run of additions would be noise, so only the first one does.
   const [animateEnter, setAnimateEnter] = useState(true)
   const lastAddedAt = useRef(Number.NEGATIVE_INFINITY)
@@ -248,7 +260,7 @@ export function DayCard({
                     group={settled.has(todo.id) ? 'settled' : 'open'}
                     sorting={dragging}
                     order={order}
-                    isNew={!initialIds.has(todo.id)}
+                    isNew={isNew}
                     animateEnter={animateEnter}
                     moveTarget={target}
                     onToggleDone={onToggleDone}
