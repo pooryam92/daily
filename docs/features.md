@@ -65,6 +65,7 @@ Keep it current: a change to what the user can do changes this file in the same 
   one says where the todo goes, this one says it was a mistake. From the keyboard,
   Delete (or Backspace) on the focused text does the same. It never asks: the todo is gone and
   saved as gone at once, and a toast offers Undo for six seconds. Undo puts it back where it was.
+- **Long text wraps** across the row. The box, the grip and the words stay beside the first line.
 - **The words wait for a hover.** Where there is a mouse a row at rest is its box and its text;
   `tomorrow` and `delete` appear when the row is hovered or one of them has the focus.
   On touch they are always there.
@@ -77,9 +78,9 @@ Keep it current: a change to what the user can do changes this file in the same 
   text and opens an empty step editor under the todo's steps. Enter adds the step and opens the
   next one; Enter on an empty one, or Escape, closes it and adds nothing, and the keyboard is back
   on the todo's text. A click elsewhere adds what was typed. A done todo has no `step`.
-- **The count.** After the text of a todo with steps, how many are done, like `1/3`, in figures
-  of one width. It turns green when every step is done and the todo is still open. A screen reader
-  hears "1 of 3 steps done".
+- **The count.** Right after the last word of a todo with steps, how many are done, like `1/3`,
+  in figures of one width. It turns green when every step is done and the todo is still open. A
+  screen reader hears "1 of 3 steps done".
 - **Done flows down, not up.** Checking a todo checks all its steps. Checking every step leaves the
   todo open: checking it is still yours to do. Reopening a todo leaves its steps done.
 - **A done todo is one line,** with its count; its steps show again when it is reopened.

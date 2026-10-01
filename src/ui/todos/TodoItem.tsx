@@ -6,7 +6,7 @@ import { RestrictToElement } from '@dnd-kit/dom/modifiers'
 import { useSortable } from '@dnd-kit/react/sortable'
 import { GripVertical } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from 'react'
 import type { Todo } from '@/domain/todo'
 import { stepProgress } from '@/domain/todo-rules'
@@ -449,6 +449,9 @@ function TodoRow({
   onEdit
 }: TodoRowProps) {
   const step = move === undefined
+  // The count is in the text button, whose label would hide it: it is the button's description instead.
+  const countId = useId()
+  const counted = stepProgress(todo).total > 0
 
   const onTextKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
     if (event.key !== 'Delete' && event.key !== 'Backspace') return
@@ -477,14 +480,7 @@ function TodoRow({
           onToggleDone(todo.id)
         }}
       />
-      {/* The text wraps and the count stays on its first line, right after it. A click on the room
-          left after them edits the text, as it did when the text filled the row. */}
-      <div
-        className={styles.label}
-        onClick={(event) => {
-          if (event.target === event.currentTarget && !editing) setEditing(true)
-        }}
-      >
+      <div className={styles.label}>
         {editing ? (
           <TodoEditor
             text={todo.text}
@@ -509,15 +505,17 @@ function TodoRow({
             className={styles.text}
             data-todo-text
             aria-label={`Edit ${todo.text}`}
+            aria-describedby={counted ? countId : undefined}
             onClick={() => {
               setEditing(true)
             }}
             onKeyDown={onTextKeyDown}
           >
+            {/* No space between them: the count goes with the last word, and never onto a line alone. */}
             <span className={styles.strike}>{todo.text}</span>
+            <StepCount todo={todo} id={countId} />
           </button>
         )}
-        <StepCount todo={todo} />
       </div>
       {move !== undefined && todo.status === 'open' && (
         <button
@@ -554,9 +552,10 @@ function TodoRow({
 
 /**
  * How many of a todo's steps are done, as `1/3`: a count rather than a percentage, since the steps
- * are few. Screen readers hear it in words; nothing is shown for a todo without steps.
+ * are few. Screen readers hear it in words, from the element `id`; nothing is shown for a todo
+ * without steps.
  */
-function StepCount({ todo }: { readonly todo: Todo }) {
+function StepCount({ todo, id }: { readonly todo: Todo; readonly id: string }) {
   const { done, total } = stepProgress(todo)
   if (total === 0) return null
   return (
@@ -565,6 +564,7 @@ function StepCount({ todo }: { readonly todo: Todo }) {
         {done}/{total}
       </span>
       <span
+        id={id}
         className={styles.visuallyHidden}
       >{`${String(done)} of ${String(total)} ${total === 1 ? 'step' : 'steps'} done`}</span>
     </span>

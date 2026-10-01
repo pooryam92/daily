@@ -21,7 +21,7 @@
 
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-1);
   padding: var(--space-1);
   border-radius: var(--radius-md);
@@ -115,24 +115,25 @@
   visibility: hidden;
 }
 
-.row[data-editing] :is(.move, .remove, .count) {
+.row[data-editing] :is(.move, .remove) {
   display: none;
 }
 
 /*
- * The text and, for a todo with steps, the count right after it. The text wraps; the count stays on
- * its first line, on its baseline.
+ * The text, or its editor, across the row; a todo's count follows its last word, inline. The padding
+ * centres the first 24px line on the 28px box, so the box and the words sit with the first line.
  */
 .label {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+  align-items: flex-start;
+  padding-block: 2px;
 }
 
 /* The text is a button (click it to edit it) that looks like the text it is. */
 .text {
+  flex: 1;
   min-width: 0;
   padding: 0;
   border-radius: var(--radius-sm);
@@ -175,7 +176,8 @@
 
 /* How many of the steps are done, in figures of one width so the count does not shift as it rises. */
 .count {
-  flex: none;
+  margin-inline-start: var(--space-2);
+  white-space: nowrap;
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
