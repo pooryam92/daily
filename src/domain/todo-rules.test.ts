@@ -381,18 +381,20 @@ describe('daysReducer with a fold', () => {
     expect(fromShown[DAY]?.[1]).not.toHaveProperty('folded')
   })
 
-  it('reopens a done todo when the delete of an open step under it is undone, and keeps its fold', () => {
+  it('reopens and unfolds a done todo when the delete of an open step under it is undone', () => {
     const removed = daysReducer(withSteps, { type: 'removed', day: DAY, id: 'lint' })
     const done = daysReducer(removed, { type: 'doneToggled', day: DAY, id: 'ci' })
     const undo = { type: 'restored', day: DAY, todo: lint, index: 1, parentId: 'ci' } as const
     const steps = [finished(workflow), lint, finished(cache)]
-    expect(daysReducer(done, undo)[DAY]?.[1]).toStrictEqual({ ...ci, steps, folded: true })
-    const unfolded = daysReducer(daysReducer(done, fold('ci')), undo)
-    expect(unfolded[DAY]?.[1]).toStrictEqual({ ...ci, steps })
-    expect(unfolded[DAY]?.[1]).not.toHaveProperty('folded')
+    // Folded by the check, or unfolded since: the step that comes back shows either way.
+    for (const before of [done, daysReducer(done, fold('ci'))]) {
+      const restored = daysReducer(before, undo)
+      expect(restored[DAY]?.[1]).toStrictEqual({ ...ci, steps })
+      expect(restored[DAY]?.[1]).not.toHaveProperty('folded')
+    }
   })
 
-  it('keeps a done todo done when a done step is restored under it', () => {
+  it('keeps a done todo done, and unfolds it, when a done step is restored under it', () => {
     const removed = daysReducer(withSteps, { type: 'removed', day: DAY, id: 'lint' })
     const done = daysReducer(removed, { type: 'doneToggled', day: DAY, id: 'ci' })
     const restored = daysReducer(done, {
@@ -405,9 +407,9 @@ describe('daysReducer with a fold', () => {
     expect(restored[DAY]?.[1]).toStrictEqual({
       ...ci,
       status: 'done',
-      steps: [workflow, lint, cache].map(finished),
-      folded: true
+      steps: [workflow, lint, cache].map(finished)
     })
+    expect(restored[DAY]?.[1]).not.toHaveProperty('folded')
   })
 
   it('reopens and unfolds a done todo when a step is added to it', () => {
@@ -445,7 +447,7 @@ describe('daysReducer with a fold', () => {
     expect(next[DAY]).toStrictEqual([milk, { ...folded, steps: [workflow, cache] }])
   })
 
-  it('keeps the fold through done, edits, reorders and restores', () => {
+  it('keeps the fold through done, edits and reorders, and a restored step unfolds it', () => {
     const done = daysReducer(foldedDay, { type: 'doneToggled', day: DAY, id: 'ci' })
     expect(done[DAY]?.[1]).toStrictEqual({
       ...folded,
@@ -484,7 +486,9 @@ describe('daysReducer with a fold', () => {
       index: 1,
       parentId: 'ci'
     })
-    expect(restored).toStrictEqual(foldedDay)
+    // A step is deleted while it shows, so it comes back showing.
+    expect(restored).toStrictEqual(withSteps)
+    expect(restored[DAY]?.[1]).not.toHaveProperty('folded')
   })
 
   it('moves a folded todo to another day folded, and back', () => {
@@ -623,9 +627,16 @@ describe('any run of actions', () => {
           break
       }
       if (action === undefined) continue
+      const before = state
       state = daysReducer(state, action)
       done.push(JSON.stringify(action))
-      expect(broken(state), `seed ${String(seed)}, after:\n${done.slice(-6).join('\n')}`).toEqual([])
+      const problems = broken(state)
+      // A step that comes back shows: its todo is unfolded.
+      if (action.type === 'restored' && action.parentId !== undefined && state !== before) {
+        const parent = state[action.day]?.find((todo) => todo.id === action.parentId)
+        if (parent?.folded === true) problems.push(`${parent.id} is folded over a restored step`)
+      }
+      expect(problems, `seed ${String(seed)}, after:\n${done.slice(-6).join('\n')}`).toEqual([])
     }
     // The run did reach the cases the rules are about.
     expect(done.filter((a) => a.includes('"restored"')).length).toBeGreaterThan(5)

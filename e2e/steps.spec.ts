@@ -126,6 +126,33 @@ test.describe('with three steps', () => {
     await expect.poll(() => daily.todos()).toStrictEqual({ [today]: [ci, milk] })
   })
 
+  test('a done todo is open again when an open step is put back under it', async ({ daily }) => {
+    await daily
+      .step('Fix the lint errors')
+      .getByRole('button', { name: 'Delete Fix the lint errors' })
+      .click()
+    await daily.box('Set up CI').check()
+    await expect.poll(async () => (await daily.todos())[today]?.[0]?.status).toBe('done')
+
+    await daily.page.getByRole('button', { name: 'Undo' }).click()
+
+    // No done todo has an open step: the step that came back reopens it, and unfolds it to be seen.
+    await expect(daily.box('Set up CI')).not.toBeChecked()
+    await expect(shown(daily)).toHaveText([
+      'Add the workflow file',
+      'Fix the lint errors',
+      'Cache the dependencies'
+    ])
+    await expect(daily.box('Fix the lint errors')).not.toBeChecked()
+    await expect(daily.row('Set up CI').getByText('2/3', { exact: true })).toBeVisible()
+    await expect
+      .poll(async () => (await daily.todos())[today]?.[0])
+      .toStrictEqual({
+        ...ci,
+        steps: [{ ...workflow, status: 'done' }, lint, { ...cache, status: 'done' }]
+      })
+  })
+
   test('a step has no move word: it goes to tomorrow with its todo', async ({ daily }) => {
     for (const step of ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies']) {
       await expect(daily.step(step).getByRole('button', { name: `Delete ${step}`, exact: true })).toHaveCount(
