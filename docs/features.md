@@ -69,6 +69,29 @@ Keep it current: a change to what the user can do changes this file in the same 
   `tomorrow` and `delete` appear when the row is hovered or one of them has the focus.
   On touch they are always there.
 
+## Steps
+
+- **What.** A todo can hold steps: one level of todos under it, indented so each step's box sits
+  under the todo's text, with a smaller box. A step cannot have steps.
+- **Add.** Click an open todo's text: the word `step` sits at the end of the field. It saves the
+  text and opens an empty step editor under the todo's steps. Enter adds the step and opens the
+  next one; Enter on an empty one, or Escape, closes it and adds nothing, and the keyboard is back
+  on the todo's text. A click elsewhere adds what was typed. A done todo has no `step`.
+- **The count.** After the text of a todo with steps, how many are done, like `1/3`, in figures
+  of one width. It turns green when every step is done and the todo is still open. A screen reader
+  hears "1 of 3 steps done".
+- **Done flows down, not up.** Checking a todo checks all its steps. Checking every step leaves the
+  todo open: checking it is still yours to do. Reopening a todo leaves its steps done.
+- **A done todo is one line,** with its count; its steps show again when it is reopened.
+- **Steps do not settle.** A done step is struck through where it is. Only todos settle.
+- **On a step's row:** its box, its text (click to edit, as for a todo), and on hover the grip and
+  `delete`. No `tomorrow`: a step goes wherever its todo goes.
+- **Delete.** `delete`, or Delete on the focused text. The toast says "Step deleted", and Undo puts
+  the step back in its place. Deleting a todo deletes its steps, and Undo brings them all back.
+- **Reorder.** A step is dragged within its todo's steps only, the same ways as a todo, keyboard
+  included. Dragging or moving a todo takes its steps along.
+- **The ring and the sounds count todos only.** Checking a step ticks; it never clears the day.
+
 ## Progress and the cleared day
 
 - **A ring in the card's header** shows how close the day is to having nothing open. There is no
@@ -130,7 +153,8 @@ The installed app looks for a newer version when it starts and every four hours.
   ring.
 - A screen reader hears a todo's box as "Done, checkbox", checked or not. The move word is
   "Move <the todo> to tomorrow" or "to today", `delete` is "Delete <the todo>", and the grip is
-  "Reorder <the todo>".
+  "Reorder <the todo>". In the editor, `step` is "Add a step to <the todo>", and the step editor is
+  "New step".
 - `prefers-reduced-motion` keeps fades and drops movement: a flip is instant, though a drag still
   follows the hand; the cleared day cross-fades.
 - `prefers-contrast: more` gets solid borders. Forced colours keep the strike-through.

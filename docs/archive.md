@@ -10,6 +10,28 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Steps on a todo (2026-10-01)
+
+- **A step is a todo, one level down.** `Todo.steps` is optional, so files stay `version: 1`; the
+  depth of one is enforced in `domain/store-schema.ts`, not in the type. Breaking a goal into
+  specific steps is the plan that stops it intruding (Masicampo & Baumeister 2011), and each one is
+  a small win. Not deeper: Google Tasks, Microsoft To Do and Things stop at one level too.
+- **Done flows down, not up** (`toggled` in `domain/todo-rules.ts`): checking a todo checks its
+  steps, as Reminders does; every step done leaves the todo open, as Microsoft To Do does, with its
+  count in green. Reopening leaves the steps done: nothing records which were open. Not a mixed
+  checkbox: that is select-all semantics in WAI-ARIA, not a task's state.
+- **The ring and the settling count todos only.** Steps stay where they are when done, and a step
+  ticks but never clears the day (`ui/sound/sound.ts`).
+- **The one way in is the editor's `step`,** where `delete` lived until 2026-09-25: every app puts
+  "add a step" inside the opened task, and the row keeps its two words. Enter chains steps
+  (`todos/StepDraft.tsx`); Escape, or leaving an empty one, adds nothing. Not on a done todo: an
+  open step under it would undo "done flows down".
+- **A count, not a bar:** `1/3` after the text in tabular figures; counts read better than
+  percentages for a few items. A done todo folds to that one line; no fold state is stored.
+- **A step drags within its todo only** (its sortable group and type are the todo's id, and its own
+  modifiers hold it in the todo's list). Not across todos or to the top level: rows are locked to
+  the vertical axis, and nesting by drag is in the backlog with keyboard indent and a fold chevron.
+
 ## Drop is gone, delete is back on the row (2026-09-25)
 
 - **Two states.** A todo is open or done; dropped is gone from `domain/todo.ts`, the checkbox,
