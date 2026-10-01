@@ -18,6 +18,10 @@ export interface TodoActions {
   readonly edit: (day: DayKey, id: string, text: string) => void
   /** Hides a todo's steps, or shows them again. */
   readonly toggleFold: (day: DayKey, id: string) => void
+  /** Makes a todo without steps the last step of the todo `parentId`. */
+  readonly nest: (day: DayKey, id: string, parentId: string) => void
+  /** Makes a step a todo, just after the todo it was under. */
+  readonly unnest: (day: DayKey, id: string) => void
   /** Moves a todo to another day: to `index` there, or to the end when none is given. */
   readonly move: (from: DayKey, to: DayKey, id: string, index?: number) => void
 }
@@ -110,6 +114,12 @@ export function useTodoStore(): TodoStore {
       },
       toggleFold: (day, id) => {
         dispatch({ type: 'foldToggled', day, id })
+      },
+      nest: (day, id, parentId) => {
+        dispatch({ type: 'nested', day, id, parentId })
+      },
+      unnest: (day, id) => {
+        dispatch({ type: 'unnested', day, id })
       },
       move: (from, to, id, index) => {
         dispatch({ type: 'moved', from, to, id, index })

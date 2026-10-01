@@ -21,6 +21,13 @@ export type TodoAction =
   /** Hides the steps of the todo `id`, or shows them again. A step, or a todo without steps, has none. */
   | { type: 'foldToggled'; day: DayKey; id: string }
   /**
+   * Makes the todo `id` the last step of the todo `parentId`, which unfolds to show it. Steps go one
+   * level deep: a todo with steps of its own, or a step, is not nested.
+   */
+  | { type: 'nested'; day: DayKey; id: string; parentId: string }
+  /** Makes the step `id` a todo of its own, just after the todo it was a step of. */
+  | { type: 'unnested'; day: DayKey; id: string }
+  /**
    * Moves the todo, with its steps, to another day, at `index` there or at the end. Undo is a move back
    * with the old index. Steps never move on their own.
    */
@@ -205,6 +212,30 @@ function nextTodos(
       const todo = todos[index]
       if (todo?.steps === undefined) return undefined
       return todos.with(index, todo.folded === true ? unfolded(todo) : { ...todo, folded: true })
+    }
+
+    case 'nested': {
+      const { id, parentId } = action
+      const index = todos.findIndex((todo) => todo.id === id)
+      const todo = todos[index]
+      if (todo === undefined || todo.steps !== undefined || parentId === id) return undefined
+      // Only a todo is searched for the parent, so a step cannot become one.
+      return updateSteps(
+        todos.toSpliced(index, 1),
+        parentId,
+        (steps) => [...steps, todo],
+        (parent) => holding(todo)(unfolded(parent))
+      )
+    }
+
+    case 'unnested': {
+      const found = locate(todos, action.id)
+      if (found?.parentId === undefined) return undefined
+      const { todo, parentId } = found
+      const rest = updateSteps(todos, parentId, (steps) => steps.toSpliced(found.index, 1))
+      if (rest === undefined) return undefined
+      // A done step becomes a done todo. Its parent keeps its status: done does not flow up.
+      return rest.toSpliced(rest.findIndex((entry) => entry.id === parentId) + 1, 0, todo)
     }
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DaysMap, Todo } from './todo'
+import type { DayKey, DaysMap, Todo } from './todo'
 import {
   createTodo,
   dayProgress,
@@ -517,6 +517,122 @@ describe('daysReducer with a fold', () => {
   })
 })
 
+describe('daysReducer nesting and un-nesting', () => {
+  const TOMORROW = '2026-09-20'
+  const nest = (id: string, parentId: string, day: DayKey = DAY): TodoAction => ({
+    type: 'nested',
+    day,
+    id,
+    parentId
+  })
+  const unnest = (id: string, day: DayKey = DAY): TodoAction => ({ type: 'unnested', day, id })
+
+  it('nests a todo as the last step of another', () => {
+    expect(daysReducer({ [DAY]: [milk, ci, taxes] }, nest('taxes', 'ci'))).toStrictEqual({
+      [DAY]: [milk, { ...ci, steps: [workflow, lint, cache, taxes] }]
+    })
+    expect(daysReducer({ [DAY]: [milk, taxes] }, nest('taxes', 'milk'))).toStrictEqual({
+      [DAY]: [{ ...milk, steps: [taxes] }]
+    })
+  })
+
+  it('unfolds the todo it nests under', () => {
+    expect(daysReducer({ [DAY]: [{ ...ci, folded: true }, taxes] }, nest('taxes', 'ci'))).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [workflow, lint, cache, taxes] }]
+    })
+  })
+
+  it('reopens a done todo when an open one is nested under it', () => {
+    const done: Todo = { ...finished(ci), steps: ci.steps?.map(finished), folded: true }
+    expect(daysReducer({ [DAY]: [done, milk] }, nest('milk', 'ci'))).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [finished(workflow), finished(lint), finished(cache), milk] }]
+    })
+  })
+
+  it('leaves the todo it nests under as it was when a done one is nested', () => {
+    expect(daysReducer({ [DAY]: [ci, finished(milk)] }, nest('milk', 'ci'))).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [workflow, lint, cache, finished(milk)] }]
+    })
+    expect(daysReducer({ [DAY]: [finished(taxes), finished(milk)] }, nest('milk', 'taxes'))).toStrictEqual({
+      [DAY]: [{ ...finished(taxes), steps: [finished(milk)] }]
+    })
+  })
+
+  it('un-nests a step to just after its todo as stored, among settled todos', () => {
+    const state: DaysMap = { [DAY]: [finished(milk), ci, finished(taxes), plants] }
+    expect(daysReducer(state, unnest('lint'))).toStrictEqual({
+      [DAY]: [finished(milk), { ...ci, steps: [workflow, cache] }, lint, finished(taxes), plants]
+    })
+  })
+
+  it('takes the steps key and the fold away with the last step out', () => {
+    expect(
+      daysReducer({ [DAY]: [{ ...milk, steps: [plants], folded: true }, taxes] }, unnest('plants'))
+    ).toStrictEqual({ [DAY]: [milk, plants, taxes] })
+    expect(
+      daysReducer(
+        { [DAY]: [{ ...finished(milk), steps: [finished(plants)], folded: true }] },
+        unnest('plants')
+      )
+    ).toStrictEqual({ [DAY]: [finished(milk), finished(plants)] })
+  })
+
+  it('keeps the status of a step it un-nests, and leaves its todo as it was', () => {
+    const state: DaysMap = { [DAY]: [{ ...ci, steps: [finished(workflow), lint] }] }
+    expect(daysReducer(state, unnest('workflow'))).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [lint] }, finished(workflow)]
+    })
+    // Done flows down, not up: the open step leaving does not finish its todo.
+    expect(daysReducer(state, unnest('lint'))).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [finished(workflow)] }, lint]
+    })
+  })
+
+  it('takes a nest back with an un-nest', () => {
+    const state: DaysMap = { [DAY]: [milk, ci, taxes] }
+    expect(daysReducer(daysReducer(state, nest('taxes', 'ci')), unnest('taxes'))).toStrictEqual(state)
+  })
+
+  it('refuses a nest that is not one, and returns the days as they were', () => {
+    const state: DaysMap = { [DAY]: [milk, ci, taxes], [TOMORROW]: [plants] }
+    for (const action of [
+      nest('gone', 'ci'),
+      nest('taxes', 'gone'),
+      nest('ci', 'ci'),
+      // A todo with steps of its own, and a step, are never put under another todo.
+      nest('ci', 'milk'),
+      nest('lint', 'milk'),
+      // Only a todo takes steps.
+      nest('milk', 'lint'),
+      nest('taxes', 'ci', TOMORROW),
+      nest('taxes', 'ci', '2026-09-21'),
+      nest('plants', 'ci'),
+      nest('taxes', 'plants')
+    ])
+      expect(daysReducer(state, action), JSON.stringify(action)).toBe(state)
+  })
+
+  it('refuses an un-nest of anything but a step of that day, and returns the days as they were', () => {
+    const state: DaysMap = { [DAY]: [milk, ci], [TOMORROW]: [plants] }
+    for (const action of [
+      unnest('gone'),
+      unnest('milk'),
+      unnest('ci'),
+      unnest('lint', TOMORROW),
+      unnest('plants')
+    ])
+      expect(daysReducer(state, action), JSON.stringify(action)).toBe(state)
+  })
+
+  it('does not mutate its input', () => {
+    const state: DaysMap = { [DAY]: [{ ...ci, folded: true }, taxes] }
+    const snapshot = structuredClone(state)
+    daysReducer(state, nest('taxes', 'ci'))
+    daysReducer(state, unnest('lint'))
+    expect(state).toStrictEqual(snapshot)
+  })
+})
+
 describe('any run of actions', () => {
   const TOMORROW = '2026-09-20'
 
@@ -567,6 +683,8 @@ describe('any run of actions', () => {
     const undos: TodoAction[] = []
     const done: string[] = []
     let made = 0
+    let nests = 0
+    let unnests = 0
 
     for (let i = 0; i < 400; i++) {
       const day = random() < 0.7 ? DAY : TOMORROW
@@ -576,7 +694,7 @@ describe('any run of actions', () => {
       const any = pick(every)
       const fresh = (): Todo => ({ id: `new${String(made++)}`, text: 'New', status: 'open' })
       let action: TodoAction | undefined
-      switch (Math.floor(random() * 10)) {
+      switch (Math.floor(random() * 12)) {
         case 0:
           action = { type: 'added', day, todo: fresh() }
           break
@@ -625,6 +743,16 @@ describe('any run of actions', () => {
         case 9:
           if (any) action = { type: 'edited', day, id: any.id, text: `Edit ${String(i)}` }
           break
+        case 10: {
+          const parent = pick(todos)
+          if (top && parent) action = { type: 'nested', day, id: top.id, parentId: parent.id }
+          break
+        }
+        case 11: {
+          const step = pick(todos.flatMap((todo) => todo.steps ?? []))
+          if (step) action = { type: 'unnested', day, id: step.id }
+          break
+        }
       }
       if (action === undefined) continue
       const before = state
@@ -636,11 +764,28 @@ describe('any run of actions', () => {
         const parent = state[action.day]?.find((todo) => todo.id === action.parentId)
         if (parent?.folded === true) problems.push(`${parent.id} is folded over a restored step`)
       }
+      // A nested todo is its parent's last step, and shows; an un-nested step comes just after its todo.
+      if (action.type === 'nested' && state !== before) {
+        const parent = state[action.day]?.find((todo) => todo.id === action.parentId)
+        if (parent?.steps?.at(-1)?.id !== action.id) problems.push(`${action.id} is not the last step`)
+        if (parent?.folded === true) problems.push(`${action.parentId} is folded over a nested todo`)
+        nests++
+      }
+      if (action.type === 'unnested' && state !== before) {
+        const from = locate(before[action.day] ?? [], action.id)
+        const list = state[action.day] ?? []
+        const at = list.findIndex((todo) => todo.id === from?.parentId)
+        if (list[at + 1]?.id !== action.id)
+          problems.push(`${action.id} is not just after ${String(from?.parentId)}`)
+        unnests++
+      }
       expect(problems, `seed ${String(seed)}, after:\n${done.slice(-6).join('\n')}`).toEqual([])
     }
     // The run did reach the cases the rules are about.
     expect(done.filter((a) => a.includes('"restored"')).length).toBeGreaterThan(5)
     expect(done.filter((a) => a.includes('"foldToggled"')).length).toBeGreaterThan(5)
+    expect(nests).toBeGreaterThan(5)
+    expect(unnests).toBeGreaterThan(5)
   })
 })
 
