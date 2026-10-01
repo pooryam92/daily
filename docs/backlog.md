@@ -16,8 +16,6 @@ https://claude.ai/artifact/CdsxWGqZSUdhN1GNtmZ8rG.
 - **Drag sideways to nest or un-nest.** The mouse gesture Reminders, Todoist, Google Tasks and
   TickTick share. Hard because rows are locked to the vertical axis, and a step only drags within
   its todo. It is also the only way to promote a step, which until then is deleted and re-added.
-- **A chevron to fold an open todo.** Today an open todo shows its steps and a done one folds. If a
-  chevron is added, remember the choice per todo, as Apple's outline views do.
 
 ## Undo of two deletes, oldest first
 

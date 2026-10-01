@@ -41,6 +41,8 @@ interface DayCardProps {
   readonly onMove: (id: string) => void
   /** Move a todo to the place the todo `targetId` has now. */
   readonly onReorder: (id: string, targetId: string) => void
+  /** Fold a todo's steps away, or show them again. */
+  readonly onToggleFold: (id: string) => void
   /** Bring this card to the front. */
   readonly onSelect: () => void
 }
@@ -52,14 +54,15 @@ interface DayCardProps {
 const DRAG_PLUGINS = [StyleInjector.configure({ nonce: __STYLE_NONCE__ })]
 
 /**
- * A todo's part in the key that says when rows are measured: its id, and while its steps are shown
- * (while it is open), theirs, and a mark while a step is being written under it, since both make it
- * taller. Checking a todo folds them away.
+ * A todo's part in the key that says when rows are measured: its id, and while its steps show (while
+ * it is not folded), theirs, and a mark while a step is being written under it (only an open todo
+ * takes one), since both make it taller.
  */
 const layoutKey = (todo: Todo, drafting: string | null): string => {
-  if (todo.status !== 'open') return todo.id
-  const steps = todo.steps === undefined ? '' : `(${todo.steps.map((step) => step.id).join(' ')})`
-  return `${todo.id}${steps}${todo.id === drafting ? '+' : ''}`
+  const steps =
+    todo.steps === undefined || todo.folded === true ? '' : `(${todo.steps.map((step) => step.id).join(' ')})`
+  const draft = todo.status === 'open' && todo.id === drafting ? '+' : ''
+  return `${todo.id}${steps}${draft}`
 }
 
 /** A todo's bar in the glance is short, medium or long, like its text. */
@@ -78,6 +81,7 @@ export function DayCard({
   onEdit,
   onMove,
   onReorder,
+  onToggleFold,
   onSelect
 }: DayCardProps) {
   const inFront = offset === 0
@@ -279,6 +283,7 @@ export function DayCard({
                     onMove={move}
                     onAddStep={add}
                     addingStep={drafting === todo.id}
+                    onToggleFold={onToggleFold}
                     onAddingStep={(open) => {
                       // Only the todo whose step editor is open closes it: another may have opened since.
                       setDrafting((current) => (open ? todo.id : current === todo.id ? null : current))

@@ -81,9 +81,15 @@ Keep it current: a change to what the user can do changes this file in the same 
 - **The count.** Right after the last word of a todo with steps, how many are done, like `1/3`,
   in figures of one width. It turns green when every step is done and the todo is still open. A
   screen reader hears "1 of 3 steps done".
+- **Fold.** The count is also a button: click it, or press Enter or Space on it, to hide the
+  steps behind it, and again to show them. `1/3 ⌄` shows them, `2/2 ›` hides them. Open or done,
+  each todo keeps its fold, across restarts too. Clicking the text still opens the editor.
 - **Done flows down, not up.** Checking a todo checks all its steps. Checking every step leaves the
   todo open: checking it is still yours to do. Reopening a todo leaves its steps done.
-- **A done todo is one line,** with its count; its steps show again when it is reopened.
+- **Checking a todo folds it** to one line, with its count; reopening it leaves the fold as it is.
+  Writing a new step, or undoing a step's delete, unfolds it.
+- **A done todo never has an open step.** Unfold it, and its steps can be checked, edited and
+  deleted. Unchecking one reopens the todo, as does putting an open step back under it with Undo.
 - **Steps do not settle.** A done step is struck through where it is. Only todos settle.
 - **On a step's row:** its box, its text (click to edit, as for a todo), and on hover the grip and
   `delete`. No `tomorrow`: a step goes wherever its todo goes.
@@ -155,7 +161,8 @@ The installed app looks for a newer version when it starts and every four hours.
 - A screen reader hears a todo's box as "Done, checkbox", checked or not. The move word is
   "Move <the todo> to tomorrow" or "to today", `delete` is "Delete <the todo>", and the grip is
   "Reorder <the todo>". In the editor, `step` is "Add a step to <the todo>", and the step editor is
-  "New step".
+  "New step". The count is "Steps of <the todo>", expanded or collapsed, and is described as
+  "1 of 3 steps done". Folded steps are neither focusable nor read out.
 - `prefers-reduced-motion` keeps fades and drops movement: a flip is instant, though a drag still
   follows the hand; the cleared day cross-fades.
 - `prefers-contrast: more` gets solid borders. Forced colours keep the strike-through.

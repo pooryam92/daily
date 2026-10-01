@@ -4,7 +4,7 @@ import { KeyboardSensor, PointerActivationConstraints, PointerSensor } from '@dn
 import type { Sensors } from '@dnd-kit/dom'
 import { RestrictToElement } from '@dnd-kit/dom/modifiers'
 import { useSortable } from '@dnd-kit/react/sortable'
-import { GripVertical } from 'lucide-react'
+import { ChevronRight, GripVertical } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from 'react'
@@ -93,6 +93,8 @@ interface TodoItemProps extends RowActions, RowMotion {
   /** Whether a step is being written under the todo. The card keeps it: it moves the rows below. */
   readonly addingStep: boolean
   readonly onAddingStep: (open: boolean) => void
+  /** Folds the todo's steps away, or shows them again. */
+  readonly onToggleFold: (id: string) => void
   /** Set by `AnimatePresence`, which takes the row out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
@@ -153,6 +155,7 @@ export function TodoItem({
   onAddStep,
   addingStep,
   onAddingStep,
+  onToggleFold,
   ref
 }: TodoItemProps) {
   const [editing, setEditing] = useState(false)
@@ -178,10 +181,12 @@ export function TodoItem({
   })
   const setItem = useItemRef(isNew(todo.id), ref, sortableRef)
 
-  // A done todo is one line: its count says how its steps went. It takes no new ones either.
-  const open = todo.status === 'open'
-  const steps = open ? (todo.steps ?? []) : []
-  const drafting = open && addingStep
+  // A folded todo is one line, and its count says how its steps went; checking a todo folds it. Only
+  // an open todo takes new steps.
+  const folded = todo.folded === true
+  const steps = folded ? [] : (todo.steps ?? [])
+  const drafting = todo.status === 'open' && addingStep
+  const stepsId = useId()
   const actions = { onToggleDone, onRemove, onEdit }
   // The list a dragged step is held in: its own todo's steps, and nowhere else on the card.
   const [stepList, setStepList] = useState<HTMLUListElement | null>(null)
@@ -221,16 +226,27 @@ export function TodoItem({
         handleRef={handleRef}
         move={{ target: moveTarget, onMove }}
         onStep={() => {
+          // The step is written among the steps, so they have to show.
+          if (folded) onToggleFold(todo.id)
           onAddingStep(true)
+        }}
+        fold={{
+          folded,
+          stepsId,
+          onToggle: () => {
+            onToggleFold(todo.id)
+          }
         }}
         {...actions}
       />
-      {/* The steps fold away together when the todo is checked, and come back when it is reopened.
-          `popLayout` takes them out of the flow at once, so the rows below close up while they fade. */}
+      {/* The steps fold away together, by the count or by checking the todo, and come back when it is
+          unfolded. `popLayout` takes them out of the flow at once, so the rows below close up while
+          they fade. */}
       <AnimatePresence mode="popLayout" initial={false}>
         {(steps.length > 0 || drafting) && (
           <motion.ul
             key="steps"
+            id={stepsId}
             ref={setStepList}
             className={styles.steps}
             initial={{ opacity: 0 }}
@@ -433,6 +449,11 @@ interface TodoRowProps extends RowActions {
   readonly move?: { readonly target: MoveTarget; readonly onMove: (id: string) => void }
   /** Opens the step editor under the todo. Steps have none: a step cannot have steps. */
   readonly onStep?: () => void
+  /**
+   * Whether the todo's steps are folded away, the id of their list, and what folds or unfolds them.
+   * Steps have none.
+   */
+  readonly fold?: { readonly folded: boolean; readonly stepsId: string; readonly onToggle: () => void }
 }
 
 /** One line of the list, a todo's or a step's: the grip, the box, the text and the words at the end. */
@@ -444,12 +465,13 @@ function TodoRow({
   handleRef,
   move,
   onStep,
+  fold,
   onToggleDone,
   onRemove,
   onEdit
 }: TodoRowProps) {
   const step = move === undefined
-  // The count is in the text button, whose label would hide it: it is the button's description instead.
+  // The count is read out with the toggle that lies over it, as its description.
   const countId = useId()
   const counted = stepProgress(todo).total > 0
 
@@ -505,7 +527,6 @@ function TodoRow({
             className={styles.text}
             data-todo-text
             aria-label={`Edit ${todo.text}`}
-            aria-describedby={counted ? countId : undefined}
             onClick={() => {
               setEditing(true)
             }}
@@ -517,6 +538,22 @@ function TodoRow({
           </button>
         )}
       </div>
+      {/* The count is the toggle: this button lies over it (TodoItem.module.css, .fold), so a click on
+          the count folds the steps and a click on the text still edits it. It comes after the text, so
+          the keyboard reaches it there. Folded steps are not on the page, so there is nothing to control. */}
+      {fold !== undefined && counted && (
+        <button
+          type="button"
+          className={styles.fold}
+          aria-label={`Steps of ${todo.text}`}
+          aria-expanded={!fold.folded}
+          aria-controls={fold.folded ? undefined : fold.stepsId}
+          aria-describedby={countId}
+          onClick={fold.onToggle}
+        >
+          <ChevronRight size={12} aria-hidden="true" />
+        </button>
+      )}
       {move !== undefined && todo.status === 'open' && (
         <button
           type="button"

@@ -20,6 +20,9 @@
 }
 
 .row {
+  /* What the fold toggle is placed against; the scope keeps each row's toggle on its own count. */
+  position: relative;
+  anchor-scope: --fold;
   display: flex;
   align-items: flex-start;
   gap: var(--space-1);
@@ -115,7 +118,7 @@
   visibility: hidden;
 }
 
-.row[data-editing] :is(.move, .remove) {
+.row[data-editing] :is(.move, .remove, .fold) {
   display: none;
 }
 
@@ -176,7 +179,10 @@
 
 /* How many of the steps are done, in figures of one width so the count does not shift as it rises. */
 .count {
-  margin-inline-start: var(--space-2);
+  /* Far enough from the last letter for the toggle's focus ring, with room at the end for its chevron. */
+  margin-inline-start: var(--space-3);
+  padding-inline-end: 16px;
+  anchor-name: --fold;
   white-space: nowrap;
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
@@ -191,6 +197,46 @@
 
 .row[data-status='done'] .count {
   color: var(--text-faint);
+}
+
+/*
+ * The toggle that folds a todo's steps: a 28px target laid over the count, the chevron at its end.
+ * It is placed by anchor, since the count moves with the text's last word. The 28px are centred on
+ * the 24px line; the count's smaller inline box sits a pixel low. Unlike the words, it is always
+ * there: it says that there are steps, and whether they show.
+ */
+.fold {
+  position: absolute;
+  position-anchor: --fold;
+  top: calc(anchor(center) - 15px);
+  left: calc(anchor(left) - 4px);
+  width: calc(anchor-size(width) + 8px);
+  height: 28px;
+  display: grid;
+  place-items: center end;
+  padding: 0 var(--space-1) 0 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
+}
+
+.fold:hover {
+  color: var(--text);
+  background: var(--hover-strong);
+}
+
+/* Folded, the chevron points along the line (›); unfolded, down to the steps. */
+.fold[aria-expanded='true'] svg {
+  rotate: 90deg;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fold svg {
+    transition: rotate var(--duration-base) var(--ease-out);
+  }
 }
 
 /* Read out, not shown: "1 of 3 steps done" instead of "1 slash 3". */
