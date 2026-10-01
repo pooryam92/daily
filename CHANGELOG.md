@@ -9,10 +9,12 @@ What changed for someone using Daily, newest first. The format is
 ### Added
 
 - Steps on a todo. Click a todo's text and then `step` to write steps under it; Enter adds the
-  next one. A todo shows how many of its steps are done, like `1/3`. Checking the todo checks its
-  steps; checking every step leaves the todo for you to check. Steps are checked, edited, deleted
-  and reordered like todos, and move with their todo. Going back to an older version of Daily
-  loses the steps: it opens the todos without them, and saves them that way.
+  next one, and Escape stops. A todo shows how many of its steps are done, like `1/3`, and a done
+  todo folds its steps away behind that count. Checking the todo checks its steps; checking every
+  step leaves the todo for you to check. A checked step stays where it is. Steps are edited,
+  deleted with Undo, and dragged within their todo by mouse or keyboard, and they move with their
+  todo. Going back to an older version of Daily loses the steps: it opens the todos without them,
+  and saves them that way.
 
 ### Removed
 
