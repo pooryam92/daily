@@ -21,3 +21,32 @@
   user-select: text;
   cursor: text;
 }
+
+/* A step editor's hint, as muted as the add-todo input's. */
+.editor::placeholder {
+  color: var(--text-muted);
+}
+
+/*
+ * Styled like the row's words, but always there while editing: it is how steps are added. Centred
+ * like the row's words, so that a 28px button does not make the line taller than the text it edits.
+ */
+.step {
+  flex: none;
+  align-self: center;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  color: var(--text-muted);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
+}
+
+.step:hover {
+  color: var(--text);
+  background: var(--hover-strong);
+}

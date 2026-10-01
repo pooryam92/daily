@@ -5,7 +5,8 @@ import styles from './DoneCheckbox.module.css'
 
 interface DoneCheckboxProps {
   readonly checked: boolean
-  readonly onChange: () => void
+  /** Left out for a box that cannot be checked yet, which is then disabled. */
+  readonly onChange?: () => void
   /** A step's box is drawn smaller than a todo's, in a hit area of the same size. */
   readonly size?: 'md' | 'sm'
 }
@@ -29,6 +30,7 @@ export function DoneCheckbox({ checked, onChange, size = 'md' }: DoneCheckboxPro
         className={styles.input}
         aria-label="Done"
         checked={checked}
+        disabled={onChange === undefined}
         onChange={onChange}
       />
       <svg className={styles.box} viewBox="0 0 18 18" aria-hidden="true">

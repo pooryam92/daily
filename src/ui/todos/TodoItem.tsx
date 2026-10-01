@@ -4,14 +4,16 @@ import { useSortable } from '@dnd-kit/react/sortable'
 import { GripVertical } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, Ref } from 'react'
+import type { KeyboardEvent, MouseEvent, Ref, RefObject } from 'react'
 import type { Todo } from '@/domain/todo'
 import { stepProgress } from '@/domain/todo-rules'
 import type { MoveDirection, MoveTarget } from '../day/copy'
 import { ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
 import { DoneCheckbox } from './DoneCheckbox'
+import { StepDraft } from './StepDraft'
 import styles from './TodoItem.module.css'
 import { TodoEditor } from './TodoEditor'
+import type { EditorClose } from './TodoEditor'
 
 /** Open rows are sorted among themselves, and so are settled ones: see `TodoItemProps.group`. */
 export type TodoGroup = 'open' | 'settled'
@@ -80,6 +82,11 @@ interface TodoItemProps extends RowActions, RowMotion {
   /** Where the move word sends the todo. */
   readonly moveTarget: MoveTarget
   readonly onMove: (id: string) => void
+  /** Adds a step at the end of the steps of the todo `parentId`. */
+  readonly onAddStep: (text: string, parentId: string) => void
+  /** Whether a step is being written under the todo. The card keeps it: it moves the rows below. */
+  readonly addingStep: boolean
+  readonly onAddingStep: (open: boolean) => void
   /** Set by `AnimatePresence`, which takes the row out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
@@ -119,10 +126,10 @@ function useItemRef(
 }
 
 /*
- * `☐ Buy milk 1/3 ········ tomorrow   delete`, and while the todo is open, its steps under it. The
- * words at the end are two tiers: where the todo goes (move), then set apart and fainter, whether it
- * was a mistake (delete). Left to right they are ever more final, so the row is a spectrum to read,
- * not a menu to compare.
+ * `☐ Buy milk 1/3 ········ tomorrow   delete`, and while the todo is open, its steps under it, and
+ * under those the step being written, if any. The words at the end are two tiers: where the todo
+ * goes (move), then set apart and fainter, whether it was a mistake (delete). Left to right they are
+ * ever more final, so the row is a spectrum to read, not a menu to compare.
  */
 export function TodoItem({
   todo,
@@ -137,9 +144,15 @@ export function TodoItem({
   onRemove,
   onEdit,
   onMove,
+  onAddStep,
+  addingStep,
+  onAddingStep,
   ref
 }: TodoItemProps) {
   const [editing, setEditing] = useState(false)
+  // Which step is being written, while one is: each step added starts a new draft.
+  const [draft, setDraft] = useState(0)
+  const text = useRef<HTMLButtonElement>(null)
   // Under reduced motion a moved row only fades, like a deleted one.
   const still = useReducedMotion() === true
 
@@ -155,12 +168,14 @@ export function TodoItem({
     // dnd-kit animates its optimistic DOM moves; Motion handles changes outside a drag.
     // dnd-kit also disables this transition when reduced motion is requested.
     transition: { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' },
-    disabled: editing
+    disabled: editing || addingStep
   })
   const setItem = useItemRef(isNew(todo.id), ref, sortableRef)
 
-  // A done todo is one line: its count says how its steps went.
-  const steps = todo.status === 'open' ? (todo.steps ?? []) : []
+  // A done todo is one line: its count says how its steps went. It takes no new ones either.
+  const open = todo.status === 'open'
+  const steps = open ? (todo.steps ?? []) : []
+  const drafting = open && addingStep
   const actions = { onToggleDone, onRemove, onEdit }
 
   return (
@@ -190,14 +205,18 @@ export function TodoItem({
         todo={todo}
         editing={editing}
         setEditing={setEditing}
+        textRef={text}
         handleRef={handleRef}
         move={{ target: moveTarget, onMove }}
+        onStep={() => {
+          onAddingStep(true)
+        }}
         {...actions}
       />
       {/* The steps fold away together when the todo is checked, and come back when it is reopened.
           `popLayout` takes them out of the flow at once, so the rows below close up while they fade. */}
       <AnimatePresence mode="popLayout" initial={false}>
-        {steps.length > 0 && (
+        {(steps.length > 0 || drafting) && (
           <motion.ul
             key="steps"
             className={styles.steps}
@@ -217,6 +236,24 @@ export function TodoItem({
                   {...actions}
                 />
               ))}
+              {drafting && (
+                <StepDraftItem
+                  key="draft"
+                  draft={draft}
+                  sorting={sorting}
+                  order={order}
+                  onAdd={(next) => {
+                    onAddStep(next, todo.id)
+                    setDraft((count) => count + 1)
+                  }}
+                  onClose={(how) => {
+                    onAddingStep(false)
+                    // As in the editor: Escape and Enter leave the keyboard on the todo.
+                    if (how === 'enter' || how === 'escape')
+                      requestAnimationFrame(() => text.current?.focus())
+                  }}
+                />
+              )}
             </AnimatePresence>
           </motion.ul>
         )}
@@ -244,6 +281,7 @@ function StepItem({
   ref
 }: StepItemProps) {
   const [editing, setEditing] = useState(false)
+  const text = useRef<HTMLButtonElement>(null)
   const setItem = useItemRef(isNew(step.id), ref)
 
   return (
@@ -264,6 +302,7 @@ function StepItem({
         todo={step}
         editing={editing}
         setEditing={setEditing}
+        textRef={text}
         onToggleDone={onToggleDone}
         onRemove={onRemove}
         onEdit={onEdit}
@@ -272,14 +311,75 @@ function StepItem({
   )
 }
 
+interface StepDraftItemProps {
+  /** Which draft this is: each step added starts a new one, empty. */
+  readonly draft: number
+  readonly sorting: boolean
+  readonly order: string
+  readonly onAdd: (text: string) => void
+  readonly onClose: (how: EditorClose) => void
+  /** Set by `AnimatePresence`, which takes the row out of the flow while it fades out. */
+  readonly ref?: Ref<HTMLLIElement>
+}
+
+/**
+ * The step being written, as the last of the steps: a step's row with the field in place of the
+ * text, and an empty box that can be checked once it is a step. The row itself stays while one step
+ * after another is added: it slides down under each new step, and only the field starts afresh.
+ */
+function StepDraftItem({ draft, sorting, order, onAdd, onClose, ref }: StepDraftItemProps) {
+  const item = useRef<HTMLLIElement | null>(null)
+  const attach = useCallback((node: HTMLLIElement | null) => {
+    item.current = node
+  }, [])
+  const setItem = useItemRef(true, ref, attach)
+
+  // The row moves down with every step added, so it is brought into view again each time.
+  useEffect(() => {
+    if (draft > 0) item.current?.scrollIntoView({ block: 'nearest' })
+  }, [draft])
+
+  // A press anywhere on the row but the field keeps the field focused, so the draft is not ended by it.
+  const keepFocus = (event: MouseEvent): void => {
+    if (!(event.target instanceof HTMLTextAreaElement)) event.preventDefault()
+  }
+
+  return (
+    <motion.li
+      ref={setItem}
+      data-step
+      data-draft
+      layout={sorting ? false : 'position'}
+      layoutDependency={order}
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, transition: ROW_EXIT }}
+      transition={{ ...ROW_ENTER, layout: ROW_LAYOUT }}
+    >
+      <div className={styles.row} data-status="open" data-editing onMouseDown={keepFocus}>
+        {/* The grip's slot, so the box lines up with the steps above; there is nothing to move yet. */}
+        <span className={styles.handle} aria-hidden="true" />
+        <DoneCheckbox checked={false} size="sm" />
+        <div className={styles.label}>
+          <StepDraft key={draft} onAdd={onAdd} onClose={onClose} />
+        </div>
+      </div>
+    </motion.li>
+  )
+}
+
 interface TodoRowProps extends RowActions {
   readonly todo: Todo
   readonly editing: boolean
   readonly setEditing: (editing: boolean) => void
+  /** The text button, which the keyboard goes back to when an edit, or the step editor, is done. */
+  readonly textRef: RefObject<HTMLButtonElement | null>
   /** The drag handle's ref. Without one the row is a step's, which cannot be reordered. */
   readonly handleRef?: (element: Element | null) => void
   /** Where the move word sends the todo. Steps have none: they go wherever their todo goes. */
   readonly move?: { readonly target: MoveTarget; readonly onMove: (id: string) => void }
+  /** Opens the step editor under the todo. Steps have none: a step cannot have steps. */
+  readonly onStep?: () => void
 }
 
 /** One line of the list, a todo's or a step's: the grip, the box, the text and the words at the end. */
@@ -287,13 +387,14 @@ function TodoRow({
   todo,
   editing,
   setEditing,
+  textRef: text,
   handleRef,
   move,
+  onStep,
   onToggleDone,
   onRemove,
   onEdit
 }: TodoRowProps) {
-  const text = useRef<HTMLButtonElement>(null)
   const step = handleRef === undefined
 
   const onTextKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
@@ -335,13 +436,17 @@ function TodoRow({
         {editing ? (
           <TodoEditor
             text={todo.text}
+            // A done todo takes no steps: an open step under it would undo "done flows down".
+            canStep={onStep !== undefined && todo.status === 'open'}
             onCommit={(next) => {
               onEdit(todo.id, next)
             }}
             onClose={(how) => {
               setEditing(false)
-              // Escape and Enter leave the keyboard where it was; after a click elsewhere, it has moved on.
-              if (how !== 'blur') requestAnimationFrame(() => text.current?.focus())
+              // Escape and Enter leave the keyboard where it was; after a click elsewhere, it has moved
+              // on, and after `step` it is in the step editor.
+              if (how === 'step') onStep?.()
+              else if (how !== 'blur') requestAnimationFrame(() => text.current?.focus())
             }}
           />
         ) : (
@@ -378,7 +483,14 @@ function TodoRow({
         type="button"
         className={styles.remove}
         aria-label={`Delete ${todo.text}`}
-        onClick={() => {
+        // The second click of a double click is never meant for this word. It lands here when the
+        // first one was on the editor's `step`, which sits where this word is once the edit is over:
+        // it neither deletes nor takes the focus from the step editor that `step` opened.
+        onMouseDown={(event) => {
+          if (event.detail > 1) event.preventDefault()
+        }}
+        onClick={(event) => {
+          if (event.detail > 1) return
           onRemove(todo.id)
         }}
       >

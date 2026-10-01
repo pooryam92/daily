@@ -77,3 +77,8 @@
     stroke: HighlightText;
   }
 }
+
+/* A box that cannot be checked yet, on a step still being written: it does not answer the pointer. */
+.check:has(.input:disabled) {
+  pointer-events: none;
+}
