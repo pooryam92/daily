@@ -26,8 +26,12 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
   "add a step" inside the opened task, and the row keeps its two words. Enter chains steps
   (`todos/StepDraft.tsx`); Escape, or leaving an empty one, adds nothing. Not on a done todo: an
   open step under it would undo "done flows down".
-- **A count, not a bar:** `1/3` after the text in tabular figures; counts read better than
-  percentages for a few items. A done todo folds to that one line; no fold state is stored.
+- **A count, not a bar:** `1/3` after the last word, inline, in tabular figures; counts read better
+  than percentages for a few items. A done todo folds to that one line; no fold state is stored.
+  Its count there is faint, 3.5:1 at 13px, below AA, to match the `delete` word.
+- **The box and the words sit with the first line** of a wrapped row, todos and steps alike; before,
+  they were centred on the whole text. Found at the 640×420 window, where a long todo with steps
+  read as a column with its box adrift.
 - **A step drags within its todo only** (its sortable group and type are the todo's id, and its own
   modifiers hold it in the todo's list). Not across todos or to the top level: rows are locked to
   the vertical axis, and nesting by drag is in the backlog with keyboard indent and a fold chevron.
