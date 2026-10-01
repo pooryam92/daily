@@ -9,6 +9,7 @@ import {
   resolvedIds,
   stepProgress
 } from './todo-rules'
+import type { TodoAction } from './todo-rules'
 
 const DAY = '2026-09-19'
 const milk: Todo = { id: 'milk', text: 'Buy milk', status: 'open' }
@@ -179,6 +180,12 @@ describe('daysReducer with steps', () => {
     ])
   })
 
+  it('finishes the open steps of a todo whose steps were part done', () => {
+    const part: DaysMap = { [DAY]: [{ ...ci, steps: [finished(workflow), lint, cache] }] }
+    const next = daysReducer(part, { type: 'doneToggled', day: DAY, id: 'ci' })
+    expect(next[DAY]).toStrictEqual([{ ...ci, status: 'done', steps: [workflow, lint, cache].map(finished) }])
+  })
+
   it('leaves the parent open when every step is done', () => {
     const next = ['workflow', 'lint', 'cache'].reduce(
       (state, id) => daysReducer(state, { type: 'doneToggled', day: DAY, id }),
@@ -282,6 +289,39 @@ describe('daysReducer with steps', () => {
   it('ignores a move of a step', () => {
     expect(daysReducer(withSteps, { type: 'moved', from: DAY, to: '2026-09-20', id: 'lint' })).toBe(withSteps)
   })
+
+  it('moves a parent back with its steps, to the place it had', () => {
+    const moved = daysReducer(withSteps, { type: 'moved', from: DAY, to: '2026-09-20', id: 'ci' })
+    const back = daysReducer(moved, { type: 'moved', from: '2026-09-20', to: DAY, id: 'ci', index: 1 })
+    expect(back).toStrictEqual(withSteps)
+  })
+
+  it('never leaves an empty steps list behind', () => {
+    const actions: TodoAction[] = [
+      { type: 'added', day: DAY, todo: plants, parentId: 'milk' },
+      { type: 'doneToggled', day: DAY, id: 'milk' },
+      { type: 'removed', day: DAY, id: 'plants' },
+      { type: 'doneToggled', day: DAY, id: 'milk' },
+      { type: 'reordered', day: DAY, id: 'cache', targetId: 'workflow' },
+      { type: 'removed', day: DAY, id: 'workflow' },
+      { type: 'removed', day: DAY, id: 'lint' },
+      { type: 'edited', day: DAY, id: 'cache', text: 'Cache it' },
+      { type: 'removed', day: DAY, id: 'cache' },
+      { type: 'doneToggled', day: DAY, id: 'ci' },
+      { type: 'restored', day: DAY, todo: lint, index: 0, parentId: 'ci' },
+      { type: 'removed', day: DAY, id: 'lint' },
+      { type: 'moved', from: DAY, to: '2026-09-20', id: 'ci' }
+    ]
+    let state = withSteps
+    for (const action of actions) {
+      state = daysReducer(state, action)
+      expect(JSON.stringify(state)).not.toContain('"steps":[]')
+    }
+    expect(state).toStrictEqual({
+      [DAY]: [milk],
+      '2026-09-20': [{ id: 'ci', text: 'Set up CI', status: 'done' }]
+    })
+  })
 })
 
 describe('locate', () => {
@@ -328,6 +368,13 @@ describe('displayOrder', () => {
   it('ignores settled ids of todos that are gone', () => {
     expect(displayOrder([milk, taxes], new Set(['removed']))).toEqual([milk, taxes])
   })
+
+  it('leaves the steps of a todo as they are stored, done ones included', () => {
+    const part: Todo = { ...ci, steps: [finished(workflow), lint, finished(cache)] }
+    const shown = displayOrder([part, mum], new Set(['mum', 'workflow', 'cache']))
+    expect(shown).toStrictEqual([part, mum])
+    expect(shown[0]?.steps).toBe(part.steps)
+  })
 })
 
 describe('resolvedIds', () => {
@@ -335,6 +382,12 @@ describe('resolvedIds', () => {
     const mum: Todo = { id: 'mum', text: 'Call mum', status: 'done' }
     const shirts: Todo = { id: 'shirts', text: 'Iron shirts', status: 'done' }
     expect(resolvedIds([mum, milk, shirts])).toEqual(new Set(['mum', 'shirts']))
+  })
+
+  it('collects the top-level todos only, never their steps', () => {
+    const steps = [workflow, lint, cache].map(finished)
+    expect(resolvedIds([{ ...ci, steps }])).toEqual(new Set())
+    expect(resolvedIds([{ ...ci, status: 'done', steps }])).toEqual(new Set(['ci']))
   })
 })
 
