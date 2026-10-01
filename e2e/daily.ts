@@ -22,7 +22,12 @@ for (const [key, value] of Object.entries(process.env)) {
 
 export const today: DayKey = toDayKey(new Date())
 export const day = (offset: number): DayKey => addDays(today, offset)
-export const todo = (text: string, status: TodoStatus = 'open'): Todo => ({ id: randomUUID(), text, status })
+export const todo = (text: string, status: TodoStatus = 'open', steps?: readonly Todo[]): Todo => ({
+  id: randomUUID(),
+  text,
+  status,
+  ...(steps === undefined ? {} : { steps })
+})
 
 /** The built app, running from a data folder of its own that a test may seed, read and reopen. */
 export class Daily {
@@ -71,11 +76,29 @@ export class Daily {
     await this.input.press('Enter')
   }
 
-  /** A todo's row on the card in front. */
+  /** A todo's row on the card in front, with its steps under it; steps themselves are `step`. */
   row(text: string): Locator {
+    return this.page.locator('li[data-todo]:not([data-step])').filter({ has: this.editButton(text) })
+  }
+
+  /** A step's row, under its todo's on the card in front. */
+  step(text: string): Locator {
+    return this.page.locator('li[data-step]').filter({ has: this.editButton(text) })
+  }
+
+  /**
+   * The box of a todo or a step itself. A todo's row holds its steps' boxes too, so this is the box
+   * on the line that holds the text, not on the lines under it.
+   */
+  box(text: string): Locator {
     return this.page
-      .getByRole('listitem')
-      .filter({ has: this.page.getByRole('button', { name: `Edit ${text}`, exact: true }) })
+      .locator('[data-todo] > div')
+      .filter({ has: this.editButton(text) })
+      .getByRole('checkbox', { name: 'Done' })
+  }
+
+  private editButton(text: string): Locator {
+    return this.page.getByRole('button', { name: `Edit ${text}`, exact: true })
   }
 
   heading(name: string): Locator {

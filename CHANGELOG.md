@@ -6,6 +6,14 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+### Added
+
+- Steps on a todo. Click a todo's text and then `step` to write steps under it; Enter adds the
+  next one. A todo shows how many of its steps are done, like `1/3`. Checking the todo checks its
+  steps; checking every step leaves the todo for you to check. Steps are checked, edited, deleted
+  and reordered like todos, and move with their todo. Going back to an older version of Daily
+  loses the steps: it opens the todos without them, and saves them that way.
+
 ### Removed
 
 - Dropping a todo. A todo is open or done; one that will not be done is deleted or moved. Todos
