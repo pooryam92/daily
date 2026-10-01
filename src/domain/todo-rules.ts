@@ -3,7 +3,10 @@ import type { DayKey, DaysMap, Todo } from './todo'
 export type TodoAction =
   /** Adds the todo at the end of the day, or at the end of the steps of `parentId`. */
   | { type: 'added'; day: DayKey; todo: Todo; parentId?: string }
-  /** `id` is a todo or a step. Finishing a todo finishes its steps; reopening it leaves them done. */
+  /**
+   * `id` is a todo or a step. Finishing a todo finishes its steps and folds them; reopening it leaves
+   * them done, and folded. Reopening a step under a done todo reopens the todo.
+   */
   | { type: 'doneToggled'; day: DayKey; id: string }
   /** `id` is a todo or a step. A todo takes its steps with it. */
   | { type: 'removed'; day: DayKey; id: string }
@@ -12,6 +15,8 @@ export type TodoAction =
   /** Moves the todo to the place `targetId` has now, like dragging it there. Both are in the same list. */
   | { type: 'reordered'; day: DayKey; id: string; targetId: string }
   | { type: 'edited'; day: DayKey; id: string; text: string }
+  /** Hides the steps of the todo `id`, or shows them again. A step, or a todo without steps, has none. */
+  | { type: 'foldToggled'; day: DayKey; id: string }
   /**
    * Moves the todo, with its steps, to another day, at `index` there or at the end. Undo is a move back
    * with the old index. Steps never move on their own.
@@ -54,25 +59,31 @@ function withDay(days: DaysMap, day: DayKey, todos: readonly Todo[]): DaysMap {
 
 function withSteps(todo: Todo, steps: readonly Todo[]): Todo {
   if (steps.length > 0) return { ...todo, steps }
-  // Todos without steps have no key, so they are saved as they always were.
+  // Todos without steps have no key, so they are saved as they always were; nor is there anything to fold.
   const { steps: _removed, ...rest } = todo
+  return unfolded(rest)
+}
+
+function unfolded(todo: Todo): Todo {
+  const { folded: _removed, ...rest } = todo
   return rest
 }
 
 /** A list rewrite; `undefined` when it changes nothing, so the reducer can return `days` as it was. */
 type ListUpdate = (list: readonly Todo[], index: number, todo: Todo) => readonly Todo[] | undefined
 
-/** Rewrites the steps of the top-level todo `parentId`. */
+/** Rewrites the steps of the top-level todo `parentId`, and with `reshape`, the todo itself. */
 function updateSteps(
   todos: readonly Todo[],
   parentId: string,
-  update: (steps: readonly Todo[]) => readonly Todo[] | undefined
+  update: (steps: readonly Todo[]) => readonly Todo[] | undefined,
+  reshape: (parent: Todo) => Todo = (parent) => parent
 ): readonly Todo[] | undefined {
   const index = todos.findIndex((todo) => todo.id === parentId)
   const parent = todos[index]
   if (parent === undefined) return undefined
   const steps = update(parent.steps ?? [])
-  return steps === undefined ? undefined : todos.with(index, withSteps(parent, steps))
+  return steps === undefined ? undefined : todos.with(index, withSteps(reshape(parent), steps))
 }
 
 /** Rewrites the list that holds `id`, the day's own or its parent's steps, and returns the day's list. */
@@ -89,8 +100,23 @@ function toggled(todo: Todo): Todo {
   if (todo.status === 'done') return { ...todo, status: 'open' }
   // Done flows down, not up: finishing a todo finishes its steps, but finishing its steps leaves it open.
   if (todo.steps === undefined) return { ...todo, status: 'done' }
-  return { ...todo, status: 'done', steps: todo.steps.map((step) => ({ ...step, status: 'done' })) }
+  // A finished todo is one line until its steps are asked for.
+  return {
+    ...todo,
+    status: 'done',
+    steps: todo.steps.map((step) => ({ ...step, status: 'done' })),
+    folded: true
+  }
 }
+
+/**
+ * The parent `step` is put under, as it must be then: no done todo has an open step, so one that
+ * gets one is open again. Not done flows up, where done does not. Its fold stays as it was.
+ */
+const holding =
+  (step: Todo) =>
+  (parent: Todo): Todo =>
+    step.status === 'open' && parent.status === 'done' ? { ...parent, status: 'open' } : parent
 
 function moveTodo(days: DaysMap, { from, to, id, index }: Extract<TodoAction, { type: 'moved' }>): DaysMap {
   const source = days[from] ?? []
@@ -119,11 +145,23 @@ function nextTodos(
     case 'added': {
       const { todo, parentId } = action
       if (parentId === undefined) return [...todos, todo]
-      return updateSteps(todos, parentId, (steps) => [...steps, todo])
+      // A step is added to be seen: a folded todo opens for it.
+      return updateSteps(
+        todos,
+        parentId,
+        (steps) => [...steps, todo],
+        (parent) => holding(todo)(unfolded(parent))
+      )
     }
 
-    case 'doneToggled':
-      return updateListOf(todos, action.id, (list, index, todo) => list.with(index, toggled(todo)))
+    case 'doneToggled': {
+      const found = locate(todos, action.id)
+      if (found === undefined) return undefined
+      const { index, parentId } = found
+      const todo = toggled(found.todo)
+      if (parentId === undefined) return todos.with(index, todo)
+      return updateSteps(todos, parentId, (steps) => steps.with(index, todo), holding(todo))
+    }
 
     case 'removed':
       return updateListOf(todos, action.id, (list, index) => list.toSpliced(index, 1))
@@ -133,7 +171,7 @@ function nextTodos(
       // Restoring twice (two clicks on the same undo) must not duplicate the todo.
       if (locate(todos, todo.id) !== undefined) return undefined
       if (parentId === undefined) return todos.toSpliced(index, 0, todo)
-      return updateSteps(todos, parentId, (steps) => steps.toSpliced(index, 0, todo))
+      return updateSteps(todos, parentId, (steps) => steps.toSpliced(index, 0, todo), holding(todo))
     }
 
     case 'reordered': {
@@ -151,6 +189,14 @@ function nextTodos(
       return updateListOf(todos, action.id, (list, index, todo) =>
         todo.text === action.text ? undefined : list.with(index, { ...todo, text: action.text })
       )
+
+    case 'foldToggled': {
+      // Only the top level is searched: a step has no steps of its own.
+      const index = todos.findIndex((todo) => todo.id === action.id)
+      const todo = todos[index]
+      if (todo?.steps === undefined) return undefined
+      return todos.with(index, todo.folded === true ? unfolded(todo) : { ...todo, folded: true })
+    }
   }
 }
 

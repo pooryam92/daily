@@ -8,6 +8,8 @@ export interface Todo {
   readonly status: TodoStatus
   /** One level of todos under this one; `parseStoreData` enforces the depth. No key means none. */
   readonly steps?: readonly Todo[]
+  /** Its steps are hidden, by choice. No key means they show; only a todo with steps has it. */
+  readonly folded?: true
 }
 
 /** A calendar day in local time, formatted as `YYYY-MM-DD`. */
