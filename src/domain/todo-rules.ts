@@ -10,7 +10,10 @@ export type TodoAction =
   | { type: 'doneToggled'; day: DayKey; id: string }
   /** `id` is a todo or a step. A todo takes its steps with it. */
   | { type: 'removed'; day: DayKey; id: string }
-  /** Undoes a `removed`: puts the todo back where it was, a step into the steps of `parentId`. */
+  /**
+   * Undoes a `removed`: puts the todo back where it was, a step into the steps of `parentId`, which
+   * unfolds to show it again. A todo keeps its own fold.
+   */
   | { type: 'restored'; day: DayKey; todo: Todo; index: number; parentId?: string }
   /** Moves the todo to the place `targetId` has now, like dragging it there. Both are in the same list. */
   | { type: 'reordered'; day: DayKey; id: string; targetId: string }
@@ -171,7 +174,13 @@ function nextTodos(
       // Restoring twice (two clicks on the same undo) must not duplicate the todo.
       if (locate(todos, todo.id) !== undefined) return undefined
       if (parentId === undefined) return todos.toSpliced(index, 0, todo)
-      return updateSteps(todos, parentId, (steps) => steps.toSpliced(index, 0, todo), holding(todo))
+      // A step is deleted while it shows, so it comes back showing.
+      return updateSteps(
+        todos,
+        parentId,
+        (steps) => steps.toSpliced(index, 0, todo),
+        (parent) => holding(todo)(unfolded(parent))
+      )
     }
 
     case 'reordered': {
