@@ -7,11 +7,15 @@
 /*
  * A todo is its row and, while it is open, its steps under it. The todo is what is sorted, animated
  * and lifted, as a whole; everything that styles a line is on the row, so none of it reaches the
- * steps, which are rows of their own.
+ * steps, which are rows of their own. A step is sorted and lifted on its own, among its todo's steps.
  */
 .todo {
   /* The anchor its steps are positioned against while they fold away (AnimatePresence popLayout). */
   position: relative;
+  border-radius: var(--radius-md);
+}
+
+.step {
   border-radius: var(--radius-md);
 }
 
@@ -23,8 +27,8 @@
   border-radius: var(--radius-md);
 }
 
-/* A todo is picked up anywhere on its row. A step cannot be moved on its own. */
-.todo > .row {
+/* A todo, or a step, is picked up anywhere on its row. */
+:is(.todo, .step) > .row {
   cursor: grab;
 }
 
@@ -42,9 +46,9 @@
 /*
  * A todo that is being dragged is lifted off the card, steps and all: it gets the card's surface and
  * a shadow, since it now lies over other rows. The todo itself travels; what stays behind in the list
- * is its gap.
+ * is its gap. A dragged step is lifted the same way, alone, over its siblings.
  */
-.todo[data-dragging] {
+:is(.todo, .step)[data-dragging] {
   background: var(--surface);
   box-shadow: var(--shadow-drag);
 }
@@ -100,7 +104,7 @@
     opacity: 0;
   }
 
-  :is(.row:hover, .todo[data-dragging] > .row) .grip,
+  :is(.row:hover, :is(.todo, .step)[data-dragging] > .row) .grip,
   .handle:focus-visible .grip {
     opacity: 1;
   }

@@ -237,7 +237,8 @@ export function DayCard({
           {/* A dragged row moves up and down only, and stays on the list: there is nowhere else to
               drop it. While it is held the library moves the rows, so there is nothing to commit
               until it is let go: then the row has an index again, and the todo that was there
-              says where in the stored order that is. */}
+              says where in the stored order that is. A step is held in its todo's steps (its own
+              modifiers), and its group is that todo: its index is a place among those steps. */}
           <DragDropProvider
             plugins={(defaults) => [...defaults, ...DRAG_PLUGINS]}
             sensors={TODO_SENSORS}
@@ -247,11 +248,13 @@ export function DayCard({
             }}
             onDragEnd={({ operation: { source }, canceled }) => {
               setDragging(false)
-              if (canceled || !isSortable(source)) return
-              const target = ordered[source.index]
-              if (target !== undefined && source.index !== source.initialIndex) {
-                onReorder(String(source.id), target.id)
-              }
+              if (canceled || !isSortable(source) || source.index === source.initialIndex) return
+              // Todos have no group; a step's is its todo's id.
+              const parentId = source.group
+              const list =
+                parentId === undefined ? ordered : ordered.find((todo) => todo.id === parentId)?.steps
+              const target = list?.[source.index]
+              if (target !== undefined) onReorder(String(source.id), target.id)
             }}
           >
             {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
