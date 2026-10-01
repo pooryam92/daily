@@ -10,8 +10,8 @@ export interface TodoActions {
   readonly add: (day: DayKey, text: string) => void
   readonly toggleDone: (day: DayKey, id: string) => void
   readonly remove: (day: DayKey, id: string) => void
-  /** Puts a removed todo back at `index` of its day. */
-  readonly restore: (day: DayKey, todo: Todo, index: number) => void
+  /** Puts a removed todo back at `index` of its day, or a removed step at `index` of its parent's steps. */
+  readonly restore: (day: DayKey, todo: Todo, index: number, parentId?: string) => void
   /** Moves a todo to the place the todo it was dropped on has now. */
   readonly reorder: (day: DayKey, id: string, targetId: string) => void
   readonly edit: (day: DayKey, id: string, text: string) => void
@@ -96,8 +96,8 @@ export function useTodoStore(): TodoStore {
       remove: (day, id) => {
         dispatch({ type: 'removed', day, id })
       },
-      restore: (day, todo, index) => {
-        dispatch({ type: 'restored', day, todo, index })
+      restore: (day, todo, index, parentId) => {
+        dispatch({ type: 'restored', day, todo, index, parentId })
       },
       reorder: (day, id, targetId) => {
         dispatch({ type: 'reordered', day, id, targetId })
