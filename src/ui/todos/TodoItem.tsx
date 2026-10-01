@@ -1,9 +1,12 @@
+import type { Modifiers } from '@dnd-kit/abstract'
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers'
 import { KeyboardSensor, PointerActivationConstraints, PointerSensor } from '@dnd-kit/dom'
 import type { Sensors } from '@dnd-kit/dom'
+import { RestrictToElement } from '@dnd-kit/dom/modifiers'
 import { useSortable } from '@dnd-kit/react/sortable'
 import { GripVertical } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from 'react'
 import type { Todo } from '@/domain/todo'
 import { stepProgress } from '@/domain/todo-rules'
@@ -45,6 +48,9 @@ export const TODO_SENSORS: Sensors = [
   }),
   KeyboardSensor
 ]
+
+/** How a sorted row eases into its new place while another is dragged past it. */
+const SORT_TRANSITION = { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
 
 /**
  * Which way a moved row slides out, by id. `DayCard` fills it before a move and hands it to
@@ -167,7 +173,7 @@ export function TodoItem({
     accept: group,
     // dnd-kit animates its optimistic DOM moves; Motion handles changes outside a drag.
     // dnd-kit also disables this transition when reduced motion is requested.
-    transition: { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' },
+    transition: SORT_TRANSITION,
     disabled: editing || addingStep
   })
   const setItem = useItemRef(isNew(todo.id), ref, sortableRef)
@@ -177,6 +183,12 @@ export function TodoItem({
   const steps = open ? (todo.steps ?? []) : []
   const drafting = open && addingStep
   const actions = { onToggleDone, onRemove, onEdit }
+  // The list a dragged step is held in: its own todo's steps, and nowhere else on the card.
+  const [stepList, setStepList] = useState<HTMLUListElement | null>(null)
+  const stepModifiers = useMemo(
+    () => [RestrictToVerticalAxis, RestrictToElement.configure({ element: () => stepList })],
+    [stepList]
+  )
 
   return (
     <motion.li
@@ -219,16 +231,23 @@ export function TodoItem({
         {(steps.length > 0 || drafting) && (
           <motion.ul
             key="steps"
+            ref={setStepList}
             className={styles.steps}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: ROW_ENTER }}
             exit={{ opacity: 0, transition: ROW_EXIT }}
           >
             <AnimatePresence mode="popLayout" initial={false}>
-              {steps.map((step) => (
+              {steps.map((step, stepIndex) => (
                 <StepItem
                   key={step.id}
                   step={step}
+                  parentId={todo.id}
+                  index={stepIndex}
+                  modifiers={stepModifiers}
+                  // While a step is being written its field has the keyboard, and a press on a step
+                  // above would take it away mid-word: the steps hold still, as the todo does.
+                  disabled={drafting}
                   sorting={sorting}
                   order={order}
                   isNew={isNew}
@@ -264,13 +283,30 @@ export function TodoItem({
 
 interface StepItemProps extends RowActions, RowMotion {
   readonly step: Todo
+  /**
+   * The todo the step is under. It is the step's sortable group, type and accept: a step is sorted
+   * among its siblings only, and its index (its place in the todo's steps) is counted among them,
+   * apart from the todos', whose indexes it would otherwise collide with.
+   */
+  readonly parentId: string
+  readonly index: number
+  /** What holds a dragged step: the vertical axis and its todo's steps list. They replace the card's. */
+  readonly modifiers: Modifiers
+  readonly disabled: boolean
   /** Set by `AnimatePresence`, which takes the step out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
 
-/** A step: a row like its todo's, without a move word. Steps stay where they are when they are done. */
+/**
+ * A step: a row like its todo's, without a move word. Steps stay where they are when they are done,
+ * and are dragged among their todo's steps the way a todo is among the todos.
+ */
 function StepItem({
   step,
+  parentId,
+  index,
+  modifiers,
+  disabled,
   sorting,
   order,
   isNew,
@@ -282,15 +318,31 @@ function StepItem({
 }: StepItemProps) {
   const [editing, setEditing] = useState(false)
   const text = useRef<HTMLButtonElement>(null)
-  const setItem = useItemRef(isNew(step.id), ref)
+  const {
+    ref: sortableRef,
+    handleRef,
+    isDragging
+  } = useSortable({
+    id: step.id,
+    index,
+    group: parentId,
+    type: parentId,
+    accept: parentId,
+    modifiers,
+    transition: SORT_TRANSITION,
+    disabled: editing || disabled
+  })
+  const setItem = useItemRef(isNew(step.id), ref, sortableRef)
 
   return (
     <motion.li
       ref={setItem}
+      className={styles.step}
       data-todo
       data-step
       data-status={step.status}
       data-editing={editing || undefined}
+      data-dragging={isDragging || undefined}
       layout={sorting ? false : 'position'}
       layoutDependency={order}
       initial={isNew(step.id) && animateEnter ? { opacity: 0, y: -8 } : false}
@@ -303,6 +355,7 @@ function StepItem({
         editing={editing}
         setEditing={setEditing}
         textRef={text}
+        handleRef={handleRef}
         onToggleDone={onToggleDone}
         onRemove={onRemove}
         onEdit={onEdit}
@@ -374,8 +427,8 @@ interface TodoRowProps extends RowActions {
   readonly setEditing: (editing: boolean) => void
   /** The text button, which the keyboard goes back to when an edit, or the step editor, is done. */
   readonly textRef: RefObject<HTMLButtonElement | null>
-  /** The drag handle's ref. Without one the row is a step's, which cannot be reordered. */
-  readonly handleRef?: (element: Element | null) => void
+  /** The drag handle's ref. */
+  readonly handleRef: (element: Element | null) => void
   /** Where the move word sends the todo. Steps have none: they go wherever their todo goes. */
   readonly move?: { readonly target: MoveTarget; readonly onMove: (id: string) => void }
   /** Opens the step editor under the todo. Steps have none: a step cannot have steps. */
@@ -395,7 +448,7 @@ function TodoRow({
   onRemove,
   onEdit
 }: TodoRowProps) {
-  const step = handleRef === undefined
+  const step = move === undefined
 
   const onTextKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
     if (event.key !== 'Delete' && event.key !== 'Backspace') return
@@ -406,15 +459,14 @@ function TodoRow({
   return (
     <div className={styles.row} data-status={todo.status} data-editing={editing || undefined}>
       {/* The grip shows on hover. It is the keyboard's handle: Space or Enter picks the row up, the
-          arrow keys move it, Escape puts it back. A step's grip only keeps its box in line with the
-          others: it moves nothing, so it is inert, out of reach of the keyboard and of screen readers. */}
+          arrow keys move it, Space or Enter drops it, Escape puts it back. A step's grip moves the step
+          among its todo's steps. The deck leaves the arrow keys to a focused grip. */}
       <button
         ref={handleRef}
         type="button"
         className={styles.handle}
-        data-todo-handle={step ? undefined : true}
+        data-todo-handle
         aria-label={`Reorder ${todo.text}`}
-        inert={step}
       >
         <GripVertical className={styles.grip} size={14} aria-hidden="true" />
       </button>
