@@ -112,6 +112,9 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
             onReorder={(id, targetId) => {
               actions.reorder(day, id, targetId)
             }}
+            onToggleFold={(id) => {
+              actions.toggleFold(day, id)
+            }}
             onSelect={() => {
               goTo(day)
             }}

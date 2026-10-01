@@ -101,6 +101,14 @@ export class Daily {
     return this.page.getByRole('button', { name: `Edit ${text}`, exact: true })
   }
 
+  /**
+   * The toggle that folds and unfolds a todo's steps. It lies over the count, so a click on the count
+   * lands on it. The one place that knows its name.
+   */
+  chevron(text: string): Locator {
+    return this.row(text).getByRole('button', { name: `Steps of ${text}`, exact: true })
+  }
+
   heading(name: string): Locator {
     return this.page.getByRole('heading', { name, exact: true })
   }

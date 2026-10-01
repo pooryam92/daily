@@ -10,6 +10,23 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Folding steps (2026-10-01)
+
+- **The count is the toggle** (`todos/TodoItem.tsx`): `1/3 ⌄`, and `2/2 ›` when folded, on open
+  and done todos. It costs the row no width and needs no hover, so touch has it. A click on the
+  count no longer opens the editor; the text does.
+  - Not a chevron column before the grip: every row would lose 28px, and more todos wrap at 640×420.
+  - Not a chevron at the row's end: it would sit about 380px from its text at 1280.
+- **The fold is stored per todo** (`folded?: true` in `domain/todo.ts`, files still `version: 1`),
+  the way Apple's outline views remember theirs.
+  - Checking a todo folds it, and reopening it leaves the fold.
+  - Writing a step, or undoing a step's delete, unfolds it: a step is deleted only while it shows,
+    so Undo brings it back into view.
+  - Older versions of Daily drop the fold with the steps.
+- **No done todo has an open step** (`holding` in `domain/todo-rules.ts`). Unchecking a step,
+  restoring an open one, or adding one reopens its done todo. Done flows down, and not-done flows
+  up.
+
 ## Steps on a todo (2026-10-01)
 
 - **A step is a todo, one level down.** `Todo.steps` is optional, so files stay `version: 1`; the
@@ -27,14 +44,14 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
   (`todos/StepDraft.tsx`); Escape, or leaving an empty one, adds nothing. Not on a done todo: an
   open step under it would undo "done flows down".
 - **A count, not a bar:** `1/3` after the last word, inline, in tabular figures; counts read better
-  than percentages for a few items. A done todo folds to that one line; no fold state is stored.
+  than percentages for a few items. Checking a todo folds it to that one line (see the entry above).
   Its count there is faint, 3.5:1 at 13px, below AA, to match the `delete` word.
 - **The box and the words sit with the first line** of a wrapped row, todos and steps alike; before,
   they were centred on the whole text. Found at the 640×420 window, where a long todo with steps
   read as a column with its box adrift.
 - **A step drags within its todo only** (its sortable group and type are the todo's id, and its own
   modifiers hold it in the todo's list). Not across todos or to the top level: rows are locked to
-  the vertical axis, and nesting by drag is in the backlog with keyboard indent and a fold chevron.
+  the vertical axis, and nesting by drag is in the backlog with keyboard indent.
 
 ## Drop is gone, delete is back on the row (2026-09-25)
 
