@@ -55,12 +55,15 @@ Keep it current: a change to what the user can do changes this file in the same 
 - **Edit.** Click a todo's text, or activate it from the keyboard. The row becomes the field; the
   words and the grip step aside. Enter or clicking away saves, Escape cancels. A blank edit keeps
   the original text. The state is kept.
-- **Reorder.** Drag a todo by any part of its row, within the open part or the resolved part of
-  the day: the grip, left of the checkbox on hover, lifts it at once, the rest of the row after a
-  few pixels of movement, so a click on the text still edits it. On touch, hold the row for a
-  moment first. The checkbox and the words keep their presses. From the keyboard: focus the grip,
-  Space or Enter picks the todo up, the arrow keys move it, Space or Enter drops it, Escape cancels.
-  The order is saved.
+- **Reorder.** Drag a todo by any part of its row: the grip, left of the checkbox on hover, lifts it
+  at once, the rest of the row after a few pixels of movement, so a click on the text still edits
+  it. On touch, hold the row for a moment first. The checkbox and the words keep their presses.
+  Nothing moves while you drag: the row stays in place, dimmed, a small copy of it follows the
+  pointer, and a line shows where it will land. Over the top or bottom quarter of a row, the line
+  is above or below it. Open todos and done ones are dragged among their own kind. The list scrolls
+  while the pointer is held past its top or bottom edge, and letting go outside the list cancels.
+  From the keyboard: focus the grip, Space or Enter picks the todo up, the arrow keys move it, Space
+  or Enter drops it, Escape cancels. The order is saved.
 - **Delete.** `delete` is the last word on the row, set a little apart from `tomorrow`: that
   one says where the todo goes, this one says it was a mistake. From the keyboard,
   Delete (or Backspace) on the focused text does the same. It never asks: the todo is gone and
@@ -78,6 +81,8 @@ Keep it current: a change to what the user can do changes this file in the same 
   text and opens an empty step editor under the todo's steps. Enter adds the step and opens the
   next one; Enter on an empty one, or Escape, closes it and adds nothing, and the keyboard is back
   on the todo's text. A click elsewhere adds what was typed. A done todo has no `step`.
+- **"+ Add a step"** sits under the last step of an open todo whose steps show. Clicking it opens
+  the step editor in its place, which works as above.
 - **The count.** Right after the last word of a todo with steps, how many are done, like `1/3`,
   in figures of one width. It turns green when every step is done and the todo is still open. A
   screen reader hears "1 of 3 steps done".
@@ -95,8 +100,17 @@ Keep it current: a change to what the user can do changes this file in the same 
   `delete`. No `tomorrow`: a step goes wherever its todo goes.
 - **Delete.** `delete`, or Delete on the focused text. The toast says "Step deleted", and Undo puts
   the step back in its place. Deleting a todo deletes its steps, and Undo brings them all back.
-- **Reorder.** A step is dragged within its todo's steps only, the same ways as a todo, keyboard
-  included. Dragging or moving a todo takes its steps along.
+- **Drag between levels.** Steps are dragged like todos, by pointer or keyboard, and a todo takes
+  its steps along.
+  - Drop a todo on the middle of another: it becomes that todo's last step, and a folded todo
+    unfolds.
+  - Drop a row between steps, or just under a todo whose steps show: it becomes a step there.
+  - Drop a step between todos: it becomes a todo there.
+  - The line's indent shows which it will be, and the todo the row will belong to is tinted.
+  - From the keyboard, → makes the row a step of the todo above, and ← makes a step a todo, just
+    after the one it was under. After the drop the keyboard is on the row's grip.
+  - A todo with steps of its own stays a todo: the line keeps to the gaps between todos.
+  - A step keeps its status when it comes out. An open row put under a done todo reopens it.
 - **The ring and the sounds count todos only.** Checking a step ticks; it never clears the day.
 
 ## Progress and the cleared day
@@ -161,8 +175,11 @@ The installed app looks for a newer version when it starts and every four hours.
 - A screen reader hears a todo's box as "Done, checkbox", checked or not. The move word is
   "Move <the todo> to tomorrow" or "to today", `delete` is "Delete <the todo>", and the grip is
   "Reorder <the todo>". In the editor, `step` is "Add a step to <the todo>", and the step editor is
-  "New step". The count is "Steps of <the todo>", expanded or collapsed, and is described as
-  "1 of 3 steps done". Folded steps are neither focusable nor read out.
+  "New step", and "+ Add a step" is "Add a step to <the todo>" too. During a drag, a screen reader
+  hears the row's text and where it would land, like "Above Buy milk." or "Step of Plan the trip,
+  after Book flights."; an arrow key that can't move it says why. The count is "Steps of <the
+  todo>", expanded or collapsed, and is described as "1 of 3 steps done". Folded steps are neither
+  focusable nor read out.
 - `prefers-reduced-motion` keeps fades and drops movement: a flip is instant, though a drag still
   follows the hand; the cleared day cross-fades.
 - `prefers-contrast: more` gets solid borders. Forced colours keep the strike-through.

@@ -517,118 +517,213 @@ describe('daysReducer with a fold', () => {
   })
 })
 
-describe('daysReducer nesting and un-nesting', () => {
+describe('daysReducer placing', () => {
   const TOMORROW = '2026-09-20'
-  const nest = (id: string, parentId: string, day: DayKey = DAY): TodoAction => ({
-    type: 'nested',
+  const place = (
+    id: string,
+    at: { parentId?: string; beforeId?: string } = {},
+    day: DayKey = DAY
+  ): TodoAction => ({
+    type: 'placed',
     day,
     id,
-    parentId
+    ...at
   })
-  const unnest = (id: string, day: DayKey = DAY): TodoAction => ({ type: 'unnested', day, id })
 
-  it('nests a todo as the last step of another', () => {
-    expect(daysReducer({ [DAY]: [milk, ci, taxes] }, nest('taxes', 'ci'))).toStrictEqual({
+  it('moves a todo by its anchor, down past several, up past several, and to the end', () => {
+    const state: DaysMap = { [DAY]: [milk, taxes, plants, { ...ci, folded: true }] }
+    expect(daysReducer(state, place('milk', { beforeId: 'ci' }))).toStrictEqual({
+      [DAY]: [taxes, plants, milk, { ...ci, folded: true }]
+    })
+    // A todo takes its steps and its fold with it.
+    expect(daysReducer(state, place('ci', { beforeId: 'taxes' }))).toStrictEqual({
+      [DAY]: [milk, { ...ci, folded: true }, taxes, plants]
+    })
+    expect(daysReducer(state, place('milk'))).toStrictEqual({
+      [DAY]: [taxes, plants, { ...ci, folded: true }, milk]
+    })
+  })
+
+  it('places a todo among the steps of another at its anchor, and last without one', () => {
+    const state: DaysMap = { [DAY]: [milk, ci, taxes] }
+    // Below an unfolded todo with steps is its first step.
+    expect(daysReducer(state, place('taxes', { parentId: 'ci', beforeId: 'workflow' }))).toStrictEqual({
+      [DAY]: [milk, { ...ci, steps: [taxes, workflow, lint, cache] }]
+    })
+    expect(daysReducer(state, place('milk', { parentId: 'ci', beforeId: 'cache' }))).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [workflow, lint, milk, cache] }, taxes]
+    })
+    expect(daysReducer(state, place('taxes', { parentId: 'ci' }))).toStrictEqual({
       [DAY]: [milk, { ...ci, steps: [workflow, lint, cache, taxes] }]
     })
-    expect(daysReducer({ [DAY]: [milk, taxes] }, nest('taxes', 'milk'))).toStrictEqual({
-      [DAY]: [{ ...milk, steps: [taxes] }]
+    expect(daysReducer({ [DAY]: [milk, taxes] }, place('milk', { parentId: 'taxes' }))).toStrictEqual({
+      [DAY]: [{ ...taxes, steps: [milk] }]
     })
   })
 
-  it('unfolds the todo it nests under', () => {
-    expect(daysReducer({ [DAY]: [{ ...ci, folded: true }, taxes] }, nest('taxes', 'ci'))).toStrictEqual({
-      [DAY]: [{ ...ci, steps: [workflow, lint, cache, taxes] }]
-    })
-  })
-
-  it('reopens a done todo when an open one is nested under it', () => {
-    const done: Todo = { ...finished(ci), steps: ci.steps?.map(finished), folded: true }
-    expect(daysReducer({ [DAY]: [done, milk] }, nest('milk', 'ci'))).toStrictEqual({
-      [DAY]: [{ ...ci, steps: [finished(workflow), finished(lint), finished(cache), milk] }]
-    })
-  })
-
-  it('leaves the todo it nests under as it was when a done one is nested', () => {
-    expect(daysReducer({ [DAY]: [ci, finished(milk)] }, nest('milk', 'ci'))).toStrictEqual({
-      [DAY]: [{ ...ci, steps: [workflow, lint, cache, finished(milk)] }]
-    })
-    expect(daysReducer({ [DAY]: [finished(taxes), finished(milk)] }, nest('milk', 'taxes'))).toStrictEqual({
-      [DAY]: [{ ...finished(taxes), steps: [finished(milk)] }]
-    })
-  })
-
-  it('un-nests a step to just after its todo as stored, among settled todos', () => {
-    const state: DaysMap = { [DAY]: [finished(milk), ci, finished(taxes), plants] }
-    expect(daysReducer(state, unnest('lint'))).toStrictEqual({
-      [DAY]: [finished(milk), { ...ci, steps: [workflow, cache] }, lint, finished(taxes), plants]
-    })
-  })
-
-  it('takes the steps key and the fold away with the last step out', () => {
-    expect(
-      daysReducer({ [DAY]: [{ ...milk, steps: [plants], folded: true }, taxes] }, unnest('plants'))
-    ).toStrictEqual({ [DAY]: [milk, plants, taxes] })
+  it('unfolds the todo it places into', () => {
     expect(
       daysReducer(
-        { [DAY]: [{ ...finished(milk), steps: [finished(plants)], folded: true }] },
-        unnest('plants')
+        { [DAY]: [{ ...ci, folded: true }, taxes] },
+        place('taxes', { parentId: 'ci', beforeId: 'lint' })
       )
-    ).toStrictEqual({ [DAY]: [finished(milk), finished(plants)] })
+    ).toStrictEqual({ [DAY]: [{ ...ci, steps: [workflow, taxes, lint, cache] }] })
+    expect(
+      daysReducer({ [DAY]: [{ ...ci, folded: true }, taxes] }, place('taxes', { parentId: 'ci' }))
+    ).toStrictEqual({ [DAY]: [{ ...ci, steps: [workflow, lint, cache, taxes] }] })
   })
 
-  it('keeps the status of a step it un-nests, and leaves its todo as it was', () => {
-    const state: DaysMap = { [DAY]: [{ ...ci, steps: [finished(workflow), lint] }] }
-    expect(daysReducer(state, unnest('workflow'))).toStrictEqual({
-      [DAY]: [{ ...ci, steps: [lint] }, finished(workflow)]
+  it('moves a step within its todo by its anchor', () => {
+    const at = (id: string, beforeId?: string) =>
+      daysReducer(withSteps, place(id, { parentId: 'ci', ...(beforeId === undefined ? {} : { beforeId }) }))
+    expect(at('workflow', 'cache')).toStrictEqual({
+      [DAY]: [milk, { ...ci, steps: [lint, workflow, cache] }]
+    })
+    expect(at('cache', 'workflow')).toStrictEqual({
+      [DAY]: [milk, { ...ci, steps: [cache, workflow, lint] }]
+    })
+    expect(at('workflow')).toStrictEqual({ [DAY]: [milk, { ...ci, steps: [lint, cache, workflow] }] })
+  })
+
+  it('moves a step to another todo, and the todo it leaves keeps the rest, or loses its steps and fold', () => {
+    const state: DaysMap = { [DAY]: [{ ...milk, steps: [plants], folded: true }, ci] }
+    expect(daysReducer(state, place('lint', { parentId: 'milk', beforeId: 'plants' }))).toStrictEqual({
+      [DAY]: [
+        { ...milk, steps: [lint, plants] },
+        { ...ci, steps: [workflow, cache] }
+      ]
+    })
+    expect(daysReducer(state, place('plants', { parentId: 'ci', beforeId: 'lint' }))).toStrictEqual({
+      [DAY]: [milk, { ...ci, steps: [workflow, plants, lint, cache] }]
+    })
+  })
+
+  it('takes a step out to any top-level gap, before its own todo too', () => {
+    const state: DaysMap = { [DAY]: [milk, ci, taxes] }
+    const rest: Todo = { ...ci, steps: [workflow, cache] }
+    expect(daysReducer(state, place('lint', { beforeId: 'milk' }))).toStrictEqual({
+      [DAY]: [lint, milk, rest, taxes]
+    })
+    expect(daysReducer(state, place('lint', { beforeId: 'ci' }))).toStrictEqual({
+      [DAY]: [milk, lint, rest, taxes]
+    })
+    expect(daysReducer(state, place('lint', { beforeId: 'taxes' }))).toStrictEqual({
+      [DAY]: [milk, rest, lint, taxes]
+    })
+    expect(daysReducer(state, place('lint'))).toStrictEqual({ [DAY]: [milk, rest, taxes, lint] })
+    expect(
+      daysReducer(
+        { [DAY]: [{ ...milk, steps: [plants], folded: true }, taxes] },
+        place('plants', { beforeId: 'milk' })
+      )
+    ).toStrictEqual({ [DAY]: [plants, milk, taxes] })
+  })
+
+  it('keeps the status of a step it moves, and leaves the todo it leaves as it was', () => {
+    const state: DaysMap = { [DAY]: [{ ...ci, steps: [finished(workflow), lint] }, milk] }
+    expect(daysReducer(state, place('workflow', { beforeId: 'milk' }))).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [lint] }, finished(workflow), milk]
     })
     // Done flows down, not up: the open step leaving does not finish its todo.
-    expect(daysReducer(state, unnest('lint'))).toStrictEqual({
-      [DAY]: [{ ...ci, steps: [finished(workflow)] }, lint]
+    expect(daysReducer(state, place('lint'))).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [finished(workflow)] }, milk, lint]
+    })
+    expect(daysReducer(state, place('workflow', { parentId: 'milk' }))).toStrictEqual({
+      [DAY]: [
+        { ...ci, steps: [lint] },
+        { ...milk, steps: [finished(workflow)] }
+      ]
     })
   })
 
-  it('takes a nest back with an un-nest', () => {
+  it('reopens a done todo when an open row is placed into it, and leaves it done for a done one', () => {
+    const done: Todo = { ...finished(ci), steps: ci.steps?.map(finished), folded: true }
+    const doneSteps = [finished(workflow), finished(lint), finished(cache)]
+    expect(
+      daysReducer({ [DAY]: [done, milk] }, place('milk', { parentId: 'ci', beforeId: 'lint' }))
+    ).toStrictEqual({
+      [DAY]: [{ ...ci, steps: [finished(workflow), milk, finished(lint), finished(cache)] }]
+    })
+    expect(
+      daysReducer({ [DAY]: [{ ...taxes, steps: [plants] }, done] }, place('plants', { parentId: 'ci' }))
+    ).toStrictEqual({ [DAY]: [taxes, { ...ci, steps: [...doneSteps, plants] }] })
+    expect(daysReducer({ [DAY]: [done, finished(milk)] }, place('milk', { parentId: 'ci' }))).toStrictEqual({
+      [DAY]: [{ ...finished(ci), steps: [...doneSteps, finished(milk)] }]
+    })
+  })
+
+  it('places by stored order, blind to which todos have settled', () => {
+    // Keeping settled todos last is the display's work: a row placed before a done one goes just before it.
+    const state: DaysMap = { [DAY]: [milk, finished(taxes), plants] }
+    expect(daysReducer(state, place('plants', { beforeId: 'taxes' }))).toStrictEqual({
+      [DAY]: [milk, plants, finished(taxes)]
+    })
+    expect(daysReducer(state, place('milk', { beforeId: 'plants' }))).toStrictEqual({
+      [DAY]: [finished(taxes), milk, plants]
+    })
+  })
+
+  it('takes a placement back with the placement it came from', () => {
     const state: DaysMap = { [DAY]: [milk, ci, taxes] }
-    expect(daysReducer(daysReducer(state, nest('taxes', 'ci')), unnest('taxes'))).toStrictEqual(state)
+    const back = (action: TodoAction, undo: TodoAction) => daysReducer(daysReducer(state, action), undo)
+    expect(
+      back(place('lint', { parentId: 'milk' }), place('lint', { parentId: 'ci', beforeId: 'cache' }))
+    ).toStrictEqual(state)
+    expect(back(place('taxes', { parentId: 'ci', beforeId: 'lint' }), place('taxes'))).toStrictEqual(state)
+    expect(back(place('milk', { beforeId: 'taxes' }), place('milk', { beforeId: 'ci' }))).toStrictEqual(state)
   })
 
-  it('refuses a nest that is not one, and returns the days as they were', () => {
-    const state: DaysMap = { [DAY]: [milk, ci, taxes], [TOMORROW]: [plants] }
+  it('returns the days as they were when nothing moves', () => {
     for (const action of [
-      nest('gone', 'ci'),
-      nest('taxes', 'gone'),
-      nest('ci', 'ci'),
-      // A todo with steps of its own, and a step, are never put under another todo.
-      nest('ci', 'milk'),
-      nest('lint', 'milk'),
-      // Only a todo takes steps.
-      nest('milk', 'lint'),
-      nest('taxes', 'ci', TOMORROW),
-      nest('taxes', 'ci', '2026-09-21'),
-      nest('plants', 'ci'),
-      nest('taxes', 'plants')
-    ])
+      place('milk', { beforeId: 'ci' }),
+      place('ci', { beforeId: 'taxes' }),
+      place('taxes'),
+      place('lint', { parentId: 'ci', beforeId: 'cache' }),
+      place('workflow', { parentId: 'ci', beforeId: 'lint' }),
+      place('cache', { parentId: 'ci' })
+    ]) {
+      const state: DaysMap = { [DAY]: [milk, ci, taxes] }
       expect(daysReducer(state, action), JSON.stringify(action)).toBe(state)
+    }
   })
 
-  it('refuses an un-nest of anything but a step of that day, and returns the days as they were', () => {
-    const state: DaysMap = { [DAY]: [milk, ci], [TOMORROW]: [plants] }
+  it('refuses a placement that is not one, and returns the days as they were', () => {
+    const state: DaysMap = { [DAY]: [milk, ci, taxes], [TOMORROW]: [{ ...plants, steps: [finished(milk)] }] }
     for (const action of [
-      unnest('gone'),
-      unnest('milk'),
-      unnest('ci'),
-      unnest('lint', TOMORROW),
-      unnest('plants')
+      place('gone'),
+      place('milk', { beforeId: 'gone' }),
+      place('milk', { parentId: 'gone' }),
+      // A row is never placed relative to itself.
+      place('milk', { beforeId: 'milk' }),
+      place('lint', { parentId: 'ci', beforeId: 'lint' }),
+      place('milk', { parentId: 'milk' }),
+      place('ci', { parentId: 'ci' }),
+      // A todo with steps of its own is never put among steps; only a todo takes steps.
+      place('ci', { parentId: 'taxes' }),
+      place('ci', { parentId: 'taxes', beforeId: 'lint' }),
+      place('milk', { parentId: 'lint' }),
+      place('workflow', { parentId: 'lint' }),
+      // The anchor is in the list the row goes to.
+      place('milk', { beforeId: 'lint' }),
+      place('taxes', { parentId: 'ci', beforeId: 'milk' }),
+      place('lint', { parentId: 'taxes', beforeId: 'workflow' }),
+      // One day at a time.
+      place('taxes', { beforeId: 'plants' }),
+      place('taxes', { parentId: 'plants' }),
+      place('plants', {}, DAY),
+      place('taxes', {}, TOMORROW),
+      place('milk', {}, '2026-09-21')
     ])
       expect(daysReducer(state, action), JSON.stringify(action)).toBe(state)
   })
 
   it('does not mutate its input', () => {
-    const state: DaysMap = { [DAY]: [{ ...ci, folded: true }, taxes] }
+    const state: DaysMap = { [DAY]: [{ ...ci, folded: true }, finished(taxes), { ...milk, steps: [plants] }] }
     const snapshot = structuredClone(state)
-    daysReducer(state, nest('taxes', 'ci'))
-    daysReducer(state, unnest('lint'))
+    daysReducer(state, place('taxes', { parentId: 'ci', beforeId: 'lint' }))
+    daysReducer(state, place('plants', { parentId: 'ci' }))
+    daysReducer(state, place('lint', { beforeId: 'ci' }))
+    daysReducer(state, place('ci'))
     expect(state).toStrictEqual(snapshot)
   })
 })
@@ -683,8 +778,9 @@ describe('any run of actions', () => {
     const undos: TodoAction[] = []
     const done: string[] = []
     let made = 0
-    let nests = 0
-    let unnests = 0
+    let intos = 0
+    let places = 0
+    let outs = 0
 
     for (let i = 0; i < 400; i++) {
       const day = random() < 0.7 ? DAY : TOMORROW
@@ -694,7 +790,7 @@ describe('any run of actions', () => {
       const any = pick(every)
       const fresh = (): Todo => ({ id: `new${String(made++)}`, text: 'New', status: 'open' })
       let action: TodoAction | undefined
-      switch (Math.floor(random() * 12)) {
+      switch (Math.floor(random() * 13)) {
         case 0:
           action = { type: 'added', day, todo: fresh() }
           break
@@ -745,12 +841,30 @@ describe('any run of actions', () => {
           break
         case 10: {
           const parent = pick(todos)
-          if (top && parent) action = { type: 'nested', day, id: top.id, parentId: parent.id }
+          // A todo into another, as its last step.
+          if (top && parent) action = { type: 'placed', day, id: top.id, parentId: parent.id }
           break
         }
         case 11: {
-          const step = pick(todos.flatMap((todo) => todo.steps ?? []))
-          if (step) action = { type: 'unnested', day, id: step.id }
+          // A step out, just after its todo.
+          const parent = pick(todos.filter((todo) => todo.steps !== undefined))
+          const step = pick(parent?.steps ?? [])
+          const next = todos[todos.findIndex((todo) => todo.id === parent?.id) + 1]
+          if (step) action = { type: 'placed', day, id: step.id, ...(next ? { beforeId: next.id } : {}) }
+          break
+        }
+        case 12: {
+          // Anywhere at either level, so many of these are refused.
+          const parent = random() < 0.5 ? undefined : pick(todos)
+          const before = pick([undefined, ...(parent === undefined ? todos : (parent.steps ?? []))])
+          if (any)
+            action = {
+              type: 'placed',
+              day,
+              id: any.id,
+              ...(parent === undefined ? {} : { parentId: parent.id }),
+              ...(before === undefined ? {} : { beforeId: before.id })
+            }
           break
         }
       }
@@ -764,28 +878,88 @@ describe('any run of actions', () => {
         const parent = state[action.day]?.find((todo) => todo.id === action.parentId)
         if (parent?.folded === true) problems.push(`${parent.id} is folded over a restored step`)
       }
-      // A nested todo is its parent's last step, and shows; an un-nested step comes just after its todo.
-      if (action.type === 'nested' && state !== before) {
-        const parent = state[action.day]?.find((todo) => todo.id === action.parentId)
-        if (parent?.steps?.at(-1)?.id !== action.id) problems.push(`${action.id} is not the last step`)
-        if (parent?.folded === true) problems.push(`${action.parentId} is folded over a nested todo`)
-        nests++
-      }
-      if (action.type === 'unnested' && state !== before) {
-        const from = locate(before[action.day] ?? [], action.id)
+      // A placed row is just before its anchor, or last, in the list it was put in, which shows it.
+      if (action.type === 'placed' && state !== before) {
         const list = state[action.day] ?? []
-        const at = list.findIndex((todo) => todo.id === from?.parentId)
-        if (list[at + 1]?.id !== action.id)
-          problems.push(`${action.id} is not just after ${String(from?.parentId)}`)
-        unnests++
+        const found = locate(list, action.id)
+        const target =
+          action.parentId === undefined
+            ? list
+            : (list.find((todo) => todo.id === action.parentId)?.steps ?? [])
+        if (
+          found === undefined ||
+          found.parentId !== action.parentId ||
+          target[found.index + 1]?.id !== action.beforeId
+        )
+          problems.push(`${action.id} is not where it was placed`)
+        if (list.find((todo) => todo.id === action.parentId)?.folded === true)
+          problems.push(`${String(action.parentId)} is folded over a placed row`)
+        places++
+        const from = locate(before[action.day] ?? [], action.id)
+        if (from?.parentId === undefined && action.parentId !== undefined) intos++
+        if (from?.parentId !== undefined && action.parentId === undefined) outs++
       }
       expect(problems, `seed ${String(seed)}, after:\n${done.slice(-6).join('\n')}`).toEqual([])
     }
     // The run did reach the cases the rules are about.
     expect(done.filter((a) => a.includes('"restored"')).length).toBeGreaterThan(5)
     expect(done.filter((a) => a.includes('"foldToggled"')).length).toBeGreaterThan(5)
-    expect(nests).toBeGreaterThan(5)
-    expect(unnests).toBeGreaterThan(5)
+    expect(intos).toBeGreaterThan(5)
+    expect(outs).toBeGreaterThan(5)
+    expect(places).toBeGreaterThan(5)
+  })
+
+  it('keeps every rule when any row is placed at any place, and lands it there', () => {
+    const oats: Todo = { id: 'oats', text: 'Buy oats', status: 'open', steps: [{ ...plants, id: 'eggs' }] }
+    const settled: Todo = { ...finished(taxes), steps: [finished(plants)], folded: true }
+    const state: DaysMap = { [DAY]: [milk, ci, settled, oats] }
+    const todos = state[DAY] ?? []
+    const flat = (days: DaysMap) =>
+      (days[DAY] ?? []).flatMap((todo) => [todo, ...(todo.steps ?? [])]).map((t) => t.id)
+    const parents = [undefined, ...todos.map((todo) => todo.id)]
+    let moves = 0
+    for (const row of todos.flatMap((todo) => [todo, ...(todo.steps ?? [])])) {
+      for (const parentId of parents) {
+        const list =
+          parentId === undefined ? todos : (todos.find((todo) => todo.id === parentId)?.steps ?? [])
+        for (const beforeId of [undefined, ...list.map((entry) => entry.id)]) {
+          const action: TodoAction = {
+            type: 'placed',
+            day: DAY,
+            id: row.id,
+            ...(parentId === undefined ? {} : { parentId }),
+            ...(beforeId === undefined ? {} : { beforeId })
+          }
+          const next = daysReducer(state, action)
+          const what = JSON.stringify(action)
+          const moving = new Set([row, ...(row.steps ?? [])].map((each) => each.id))
+          const refused =
+            parentId === row.id || beforeId === row.id || (parentId !== undefined && row.steps !== undefined)
+          if (refused) {
+            expect(next, what).toBe(state)
+            continue
+          }
+          expect(broken(next), what).toEqual([])
+          // Nothing else moves: a todo takes its steps, and every other row keeps its order.
+          expect(
+            flat(next).filter((id) => !moving.has(id)),
+            what
+          ).toEqual(flat(state).filter((id) => !moving.has(id)))
+          const found = locate(next[DAY] ?? [], row.id)
+          expect(found?.todo, what).toStrictEqual(row)
+          expect(found?.parentId, what).toBe(parentId)
+          const target =
+            parentId === undefined ? (next[DAY] ?? []) : (locate(next[DAY] ?? [], parentId)?.todo.steps ?? [])
+          expect(target[(found?.index ?? -2) + 1]?.id, what).toBe(beforeId)
+          if (next === state) continue
+          moves++
+          // The todo it goes into shows it.
+          if (parentId !== undefined)
+            expect(locate(next[DAY] ?? [], parentId)?.todo.folded, what).toBeUndefined()
+        }
+      }
+    }
+    expect(moves).toBeGreaterThan(40)
   })
 })
 

@@ -52,6 +52,13 @@ export class Daily {
       env
     })
     this.page = await this.app.firstWindow()
+    // Under xvfb the X cursor rests at the screen's centre, where the window opens, and X sends the
+    // page real pointer events from it at odd moments, even mid-drag. The window goes below and to
+    // the right of the cursor, so it is never under it, whatever size a test gives it.
+    await this.app.evaluate(({ BrowserWindow, screen }) => {
+      const cursor = screen.getCursorScreenPoint()
+      BrowserWindow.getAllWindows()[0]?.setPosition(cursor.x + 1, cursor.y + 1)
+    })
     await this.input.waitFor()
   }
 

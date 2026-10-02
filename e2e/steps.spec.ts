@@ -1,11 +1,18 @@
 import { day, expect, test, todo, today } from './daily'
 import type { Daily } from './daily'
 
+/**
+ * The `step` at the end of a todo's editor. The row under a todo's steps does the same and has the same
+ * name, so this one is told by its word.
+ */
+const stepWord = (daily: Daily, text: string) =>
+  daily.page.getByRole('button', { name: `Add a step to ${text}`, exact: true }).filter({ hasText: /^step$/ })
+
 test('steps are added from the editor, one Enter after another', async ({ daily }) => {
   await daily.add('Set up CI')
 
   await daily.row('Set up CI').getByRole('button', { name: 'Edit Set up CI', exact: true }).click()
-  await daily.page.getByRole('button', { name: 'Add a step to Set up CI', exact: true }).click()
+  await stepWord(daily, 'Set up CI').click()
   const draft = daily.page.getByRole('textbox', { name: 'New step' })
   for (const step of ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies']) {
     await draft.fill(step)
@@ -269,11 +276,41 @@ test.describe('with three steps', () => {
     await expect(daily.heading('Today')).toBeVisible()
   })
 
+  test('Enter on a step being edited saves it, and opens no step after it', async ({ daily }) => {
+    await daily.page.getByRole('button', { name: 'Edit Fix the lint errors', exact: true }).click()
+    const editor = daily.page.getByRole('textbox', { name: 'Edit todo' })
+    await expect(editor).toHaveValue('Fix the lint errors')
+    // A step cannot have steps: its field has no `step`.
+    await expect(daily.page.getByRole('button', { name: 'Add a step to Fix the lint errors' })).toHaveCount(0)
+    await editor.fill('Fix the lint warnings')
+    await editor.press('Enter')
+
+    await expect(editor).toHaveCount(0)
+    await expect(daily.page.getByRole('textbox', { name: 'New step' })).toHaveCount(0)
+    await expect(daily.row('Set up CI').getByText('0/3', { exact: true })).toBeVisible()
+    await expect
+      .poll(() => daily.todos())
+      .toMatchObject({
+        [today]: [
+          {
+            text: 'Set up CI',
+            steps: [
+              { text: 'Add the workflow file' },
+              { text: 'Fix the lint warnings' },
+              { text: 'Cache the dependencies' }
+            ]
+          },
+          { text: 'Buy milk' }
+        ]
+      })
+    expect((await daily.todos())[today]?.[0]?.steps).toHaveLength(3)
+  })
+
   test('a step being written is added when left, and nothing is when it is blank', async ({ daily }) => {
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
     const openDraft = async () => {
       await daily.page.getByRole('button', { name: 'Edit Set up CI', exact: true }).click()
-      await daily.page.getByRole('button', { name: 'Add a step to Set up CI', exact: true }).click()
+      await stepWord(daily, 'Set up CI').click()
       await expect(draft).toBeFocused()
     }
     const before = await daily.file('todos.json')
@@ -360,7 +397,7 @@ test.describe('without steps', () => {
 
   test('Escape on a step being written adds nothing', async ({ daily }) => {
     await daily.row('Set up CI').getByRole('button', { name: 'Edit Set up CI', exact: true }).click()
-    await daily.page.getByRole('button', { name: 'Add a step to Set up CI', exact: true }).click()
+    await stepWord(daily, 'Set up CI').click()
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
     await draft.fill('Add the workflow file')
     await draft.press('Escape')
