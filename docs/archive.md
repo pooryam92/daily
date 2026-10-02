@@ -38,7 +38,9 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
   `todos/TodoItem.tsx`), and a mouse move with no button held is ignored: dnd-kit 0.5 takes any
   pointer's move or release.
 - **"+ Add a step" closes the steps of an unfolded open todo** (Poorya's pick, for the fewest
-  bugs): a button that turns into the step editor in place. It is never a drop target.
+  bugs): a button that turns into the step editor in place. It is never a drop target. With a
+  mouse it shows only while its todo is pointed at or focused (Poorya found a row on every todo
+  too busy); it keeps its line, so nothing shifts and the drag's zones hold.
 - **No undo, no sound,** as for reorder: dragging back reverses it.
 
 ## Folding steps (2026-10-01)

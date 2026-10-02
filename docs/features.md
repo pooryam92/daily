@@ -81,8 +81,10 @@ Keep it current: a change to what the user can do changes this file in the same 
   text and opens an empty step editor under the todo's steps. Enter adds the step and opens the
   next one; Enter on an empty one, or Escape, closes it and adds nothing, and the keyboard is back
   on the todo's text. A click elsewhere adds what was typed. A done todo has no `step`.
-- **"+ Add a step"** sits under the last step of an open todo whose steps show. Clicking it opens
-  the step editor in its place, which works as above.
+- **"+ Add a step"** sits under the last step of an open todo whose steps show. Where there is a
+  mouse it appears while the todo or one of its steps is pointed at or has the focus, and its line
+  is kept, so nothing moves; on touch it is always there. Clicking it opens the step editor in its
+  place, which works as above.
 - **The count.** Right after the last word of a todo with steps, how many are done, like `1/3`,
   in figures of one width. It turns green when every step is done and the todo is still open. A
   screen reader hears "1 of 3 steps done".

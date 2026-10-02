@@ -312,6 +312,8 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
   scrollbar-gutter: stable;
+  /* A row scrolled into view, new or dropped, stops clear of the faded edge rather than under it. */
+  scroll-padding-block: 24px;
   /*
    * Fade the list out at whichever edge has more to scroll to. The scroll timeline is inactive
    * while the list fits, so both fades stay at their registered 0px and nothing is masked.

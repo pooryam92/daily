@@ -134,6 +134,24 @@
 }
 
 /*
+ * Where there is a mouse the way to a step waits for its todo, or one of its steps, to be pointed at
+ * or to hold the focus, so a card at rest is not lined with offers. Its line is always kept, so
+ * nothing shifts and a drag's zones stay where they are. While a row is dragged it stays quiet.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .todo:not(:hover, :focus-within) .addStep > *,
+  [data-sorting] .addStep > * {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .addStep > * {
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+}
+
+/*
  * While a row is dragged nothing else on the card answers the pointer: no hover background, grip or
  * words over the line and the tint. The card says it is sorting (DayCard.tsx).
  */

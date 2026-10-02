@@ -1,11 +1,18 @@
+// The opacity of a row's parts is read in the page, which needs the DOM types.
+/// <reference lib="dom" />
+
 import { expect, test, todo, today } from './daily'
 import type { Daily } from './daily'
+import type { Locator } from '@playwright/test'
 import type { Todo } from '../src/domain/todo'
 
 /*
  * Add-step A (Poorya's pick): a row "+ Add a step" closes the steps of every unfolded open todo that
  * has steps. A click turns it into the step draft in place; Enter chains and Escape stops, as the
  * draft does. A todo without steps keeps `step` in its editor.
+ *
+ * Poorya's pick: the row shows only while its todo is pointed at or focused into. Only its opacity
+ * changes, so it is always there and nothing moves.
  */
 const workflow = todo('Add the workflow file', 'done')
 const lint = todo('Fix the lint errors')
@@ -30,8 +37,7 @@ test.describe('adding a step from under the steps', () => {
   test.use({ seed: { [today]: [milk, ci, offsite, notes, house] } })
 
   test('closes the steps of an unfolded open todo, and of no other todo', async ({ daily }) => {
-    // Always shown, not on hover.
-    await daily.page.mouse.move(0, 0)
+    // There, if not shown: it shows on hover or focus ('calm at rest' below).
     await expect(ghost(daily, 'Set up CI')).toBeVisible()
     await expect(ghosts(daily)).toHaveCount(1)
     const last = await daily.step('Fix the lint errors').boundingBox()
@@ -124,5 +130,72 @@ test.describe('adding a step from under the steps', () => {
       daily.page.locator('[role="status"], [aria-live]').filter({ hasText: /^Picked up / })
     ).toHaveText('Picked up Fix the lint errors, step 2 of 2 of Set up CI.')
     await daily.page.keyboard.press('Escape')
+  })
+})
+
+test.describe('shown on hover or focus', () => {
+  const fence = todo('Paint the fence', 'open', [todo('Buy paint', 'done'), todo('Sand it', 'done')])
+  test.use({ seed: { [today]: [milk, ci, offsite, fence, notes, house] } })
+
+  /** How opaque the most opaque part of `locator` looks, counting opacity on every element up from it. */
+  const seen = (locator: Locator) =>
+    locator.evaluate((element) => {
+      const shown = (at: Element) => {
+        let value = 1
+        for (let up: Element | null = at; up !== null; up = up.parentElement) {
+          value *= Number(getComputedStyle(up).opacity)
+        }
+        return value
+      }
+      const leaves = [element, ...element.querySelectorAll('*')].filter((at) => at.childElementCount === 0)
+      return Math.max(...leaves.map(shown))
+    })
+  const hidden = (locator: Locator) => expect.poll(() => seen(locator)).toBeLessThan(0.05)
+  const showing = (locator: Locator) => expect.poll(() => seen(locator)).toBeGreaterThan(0.95)
+
+  /** Every row's top, the rows that add a step too. */
+  const tops = (daily: Daily) =>
+    daily.page.evaluate(() =>
+      [...document.querySelectorAll('li[data-todo] > div, li[data-add-step]')].map((row) =>
+        Math.round(row.getBoundingClientRect().top)
+      )
+    )
+
+  /** The pointer off the card, and the focus in the field that adds a todo, as when nothing is done. */
+  async function rest(daily: Daily): Promise<void> {
+    await daily.page.mouse.move(0, 0)
+    await daily.input.focus()
+  }
+
+  test('the row is transparent at rest, shows while its todo is pointed at, and nothing moves', async ({
+    daily
+  }) => {
+    await rest(daily)
+    await hidden(ghost(daily, 'Set up CI'))
+    await hidden(ghost(daily, 'Paint the fence'))
+    const before = await tops(daily)
+
+    const text = await daily.row('Set up CI').locator('[data-todo-text]').first().boundingBox()
+    if (text === null) throw new Error('Set up CI is not shown')
+    await daily.page.mouse.move(text.x + 8, text.y + 10)
+    await showing(ghost(daily, 'Set up CI'))
+    // Only the todo pointed at.
+    await hidden(ghost(daily, 'Paint the fence'))
+    expect(await tops(daily)).toEqual(before)
+
+    await rest(daily)
+    await hidden(ghost(daily, 'Set up CI'))
+    expect(await tops(daily)).toEqual(before)
+  })
+
+  test('focus in a todo, or on the row, shows it as the pointer does', async ({ daily }) => {
+    await rest(daily)
+    await daily.page.getByRole('button', { name: 'Reorder Set up CI', exact: true }).focus()
+    await showing(ghost(daily, 'Set up CI'))
+    await hidden(ghost(daily, 'Paint the fence'))
+
+    await rest(daily)
+    await ghost(daily, 'Set up CI').focus()
+    await showing(ghost(daily, 'Set up CI'))
   })
 })

@@ -184,15 +184,17 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
   }
 
   // Scrolls the list, as little as it takes, to show the row `id`, a step or a todo, where it is
-  // laid out. Just after a drop the row that left its old level may still be there too.
+  // laid out, and clear of the list's scroll padding, as a new row is shown. Just after a drop the
+  // row that left its old level may still be there too.
   const showRow = useEffectEvent((id: string, step: boolean): void => {
     if (list === null) return
     const row = [...list.querySelectorAll<HTMLElement>(`[data-row="${CSS.escape(id)}"]`)].find(
       (element) => element.closest('li')?.hasAttribute('data-step') === step
     )
     if (row === undefined) return
-    const top = offsetIn(row, list)
-    const bottom = top + row.offsetHeight
+    const padding = getComputedStyle(list)
+    const top = offsetIn(row, list) - (parseFloat(padding.scrollPaddingTop) || 0)
+    const bottom = offsetIn(row, list) + row.offsetHeight + (parseFloat(padding.scrollPaddingBottom) || 0)
     if (top < list.scrollTop) list.scrollTo({ top })
     else if (bottom > list.scrollTop + list.clientHeight) list.scrollTo({ top: bottom - list.clientHeight })
   })
