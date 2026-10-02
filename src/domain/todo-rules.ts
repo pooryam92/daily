@@ -21,12 +21,13 @@ export type TodoAction =
   /** Hides the steps of the todo `id`, or shows them again. A step, or a todo without steps, has none. */
   | { type: 'foldToggled'; day: DayKey; id: string }
   /**
-   * Makes the todo `id` the last step of the todo `parentId`, which unfolds to show it. Steps go one
-   * level deep: a todo with steps of its own, or a step, is not nested.
+   * Puts the todo or step `id` just before `beforeId` in the steps of the todo `parentId`, or without
+   * `parentId`, among the day's todos; without `beforeId`, at the end. It is how a drag drops a row
+   * anywhere, at either level. The todo it goes under unfolds to show it, and one that loses its last
+   * step loses its fold. Steps go one level deep: a todo with steps of its own is not put under
+   * another.
    */
-  | { type: 'nested'; day: DayKey; id: string; parentId: string }
-  /** Makes the step `id` a todo of its own, just after the todo it was a step of. */
-  | { type: 'unnested'; day: DayKey; id: string }
+  | { type: 'placed'; day: DayKey; id: string; parentId?: string; beforeId?: string }
   /**
    * Moves the todo, with its steps, to another day, at `index` there or at the end. Undo is a move back
    * with the old index. Steps never move on their own.
@@ -214,30 +215,40 @@ function nextTodos(
       return todos.with(index, todo.folded === true ? unfolded(todo) : { ...todo, folded: true })
     }
 
-    case 'nested': {
-      const { id, parentId } = action
-      const index = todos.findIndex((todo) => todo.id === id)
-      const todo = todos[index]
-      if (todo === undefined || todo.steps !== undefined || parentId === id) return undefined
-      // Only a todo is searched for the parent, so a step cannot become one.
-      return updateSteps(
-        todos.toSpliced(index, 1),
-        parentId,
-        (steps) => [...steps, todo],
-        (parent) => holding(todo)(unfolded(parent))
-      )
-    }
-
-    case 'unnested': {
-      const found = locate(todos, action.id)
-      if (found?.parentId === undefined) return undefined
-      const { todo, parentId } = found
-      const rest = updateSteps(todos, parentId, (steps) => steps.toSpliced(found.index, 1))
-      if (rest === undefined) return undefined
-      // A done step becomes a done todo. Its parent keeps its status: done does not flow up.
-      return rest.toSpliced(rest.findIndex((entry) => entry.id === parentId) + 1, 0, todo)
-    }
+    case 'placed':
+      return place(todos, action)
   }
+}
+
+/** Where `placed` puts a row; `undefined` when it cannot go there, or would stay where it was. */
+function place(
+  todos: readonly Todo[],
+  { id, parentId, beforeId }: Extract<TodoAction, { type: 'placed' }>
+): readonly Todo[] | undefined {
+  const found = locate(todos, id)
+  if (found === undefined || parentId === id || beforeId === id) return undefined
+  const { todo } = found
+  if (parentId !== undefined && todo.steps !== undefined) return undefined
+  const rest =
+    found.parentId === undefined
+      ? todos.toSpliced(found.index, 1)
+      : updateSteps(todos, found.parentId, (steps) => steps.toSpliced(found.index, 1))
+  if (rest === undefined) return undefined
+  // Only a todo is searched for the parent, so a step cannot become one.
+  const parent = rest.find((entry) => entry.id === parentId)
+  if (parentId !== undefined && parent === undefined) return undefined
+  const list = parentId === undefined ? rest : (parent?.steps ?? [])
+  // The row it goes before has to still be there (another window may have deleted it), in that list.
+  const index = beforeId === undefined ? list.length : list.findIndex((entry) => entry.id === beforeId)
+  if (index === -1 || (parentId === found.parentId && index === found.index)) return undefined
+  // A done step comes out a done todo, and its todo keeps its status: done does not flow up.
+  if (parentId === undefined) return rest.toSpliced(index, 0, todo)
+  return updateSteps(
+    rest,
+    parentId,
+    (steps) => steps.toSpliced(index, 0, todo),
+    (parent) => holding(todo)(unfolded(parent))
+  )
 }
 
 export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
@@ -250,7 +261,7 @@ export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
  * The order a day is shown in: settled todos below the others, each group in the order the todos
  * are stored. `settled` is the resolved ids as they were a moment ago (see `useSettledTodos`), so a
  * todo that was only just marked, or reopened, stays under the pointer until the delay has passed.
- * Nothing but a drag (`reordered`) changes the stored order.
+ * Nothing but a drag (`placed`, `reordered`) changes the stored order.
  */
 export function displayOrder(todos: readonly Todo[], settled: ReadonlySet<string>): readonly Todo[] {
   return [...todos.filter((todo) => !settled.has(todo.id)), ...todos.filter((todo) => settled.has(todo.id))]

@@ -109,8 +109,8 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
             onMove={(id) => {
               moveWithUndo(day, moveTarget(day, today), id)
             }}
-            onReorder={(id, targetId) => {
-              actions.reorder(day, id, targetId)
+            onPlace={(id, parentId, beforeId) => {
+              actions.place(day, id, parentId, beforeId)
             }}
             onToggleFold={(id) => {
               actions.toggleFold(day, id)

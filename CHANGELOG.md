@@ -13,9 +13,11 @@ What changed for someone using Daily, newest first. The format is
   count to fold the steps away behind it, and again to show them. Each todo keeps its fold.
   Checking the todo checks its steps and folds them; checking every step leaves the todo for you to
   check, and unchecking a step reopens it. A checked step stays where it is. Steps are edited,
-  deleted with Undo, and dragged within their todo by mouse or keyboard, and they move with their
-  todo. Going back to an older version of Daily loses the steps and their folds: it opens the todos
-  without them, and saves them that way.
+  deleted with Undo, and dragged by mouse or keyboard, and they move with their todo. "+ Add a
+  step" under a todo's steps adds another. Drop a todo on another to make it a step, or between
+  steps to put it there; drop a step between todos to make it a todo again (→ and ← during a
+  keyboard drag). Going back to an older version of Daily loses the steps and their folds: it opens
+  the todos without them, and saves them that way.
 
 ### Removed
 
@@ -25,6 +27,9 @@ What changed for someone using Daily, newest first. The format is
 
 ### Changed
 
+- Dragging a todo no longer pushes the other rows aside. A small copy follows the pointer and a
+  line shows where it will land. The list scrolls while the pointer is held past its edge, and
+  letting go outside the list cancels.
 - A todo whose text runs over several lines keeps its box, grip and words beside its first line,
   instead of centred on the whole text.
 - `delete` is back on the row, as the last word, set a little apart from the move word. Delete on
@@ -32,6 +37,11 @@ What changed for someone using Daily, newest first. The format is
 - A row at rest shows only its box and its text. `tomorrow` and `delete` appear when the row is
   hovered; on touch they are always there.
 - The falling note for a drop is gone with it; a tick and the chord remain.
+
+### Fixed
+
+- A screen reader hears the todo's text while it is dragged, not an internal id.
+- A todo dragged with the pointer off to one side no longer jumps a place it was not moved to.
 
 ## [1.2.0] - 2026-09-24
 

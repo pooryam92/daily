@@ -143,3 +143,48 @@ test('in the smallest window, a wrapped row keeps its text wide, its box up and 
   expect((await geometry(daily, LONG)).lines.length).toBeGreaterThanOrEqual(3)
   expect((await geometry(daily, LONG_STEP)).lines.length).toBeGreaterThanOrEqual(3)
 })
+
+test('in the smallest window, the row that adds a step is one line, its + under the steps’ boxes and its words under their text', async ({
+  daily
+}) => {
+  await smallest(daily)
+
+  for (const [text, step] of [
+    ['Write the release notes', 'Draft'],
+    [LONG, 'Cache']
+  ] as const) {
+    const steps = await geometry(daily, step)
+    const button = daily.page.getByRole('button', { name: `Add a step to ${text}`, exact: true })
+    await button.scrollIntoViewIfNeeded()
+    const at = await button.evaluate((row) => {
+      const box = ({ left, right, top, bottom, width }: DOMRect): Box => ({ left, right, top, bottom, width })
+      const words = [...row.querySelectorAll('*')].find((el) => el.textContent.trim() === 'Add a step')
+      const plus = words?.previousElementSibling
+      if (!words || !plus) throw new Error('The row that adds a step is not as expected')
+      const range = document.createRange()
+      range.selectNodeContents(words)
+      const list = row.closest('li[data-todo]')?.parentElement
+      return {
+        row: box(row.getBoundingClientRect()),
+        plus: box(plus.getBoundingClientRect()),
+        lines: [...range.getClientRects()].map(box),
+        overflows: [document.documentElement, list].some((el) => el && el.scrollWidth > el.clientWidth)
+      }
+    })
+    const where = `${text}: ${JSON.stringify(at)}, its step: ${JSON.stringify(steps)}`
+    const first = steps.lines[0]
+    if (first === undefined) throw new Error(`${step} has no lines`)
+
+    expect(new Set(at.lines.map((line) => Math.round(line.top))).size, where).toBe(1)
+    expect(
+      Math.abs((at.plus.left + at.plus.right) / 2 - (steps.box.left + steps.box.right) / 2),
+      where
+    ).toBeLessThanOrEqual(1)
+    expect(Math.abs((at.lines[0]?.left ?? 0) - first.left), where).toBeLessThanOrEqual(1)
+    expect(
+      Math.abs(at.row.bottom - at.row.top - (steps.row.bottom - steps.row.top)),
+      where
+    ).toBeLessThanOrEqual(2)
+    expect(at.overflows, where).toBe(false)
+  }
+})

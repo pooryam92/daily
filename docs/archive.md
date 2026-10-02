@@ -10,6 +10,37 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Dragging onto a row (2026-10-02)
+
+- **Nothing moves while you drag** (`day/useRowDrag.ts`). The row stays in place, dimmed, a small
+  copy follows the pointer 16px right and 24px below it (above the finger on touch), and a line or
+  a tint shows where it will land. Poorya tried rows that slid aside and a sideways pull past 32px
+  to change level, and found them hard to land.
+  - Not a row-sized copy: it covers the row being aimed at, and the line.
+  - Not a sideways pull: a hidden threshold that fires in ordinary diagonal drags.
+  - Not Tab and Shift+Tab for the keyboard: Tab has to keep moving focus (WCAG 2.1.2). → and ←
+    during a keyboard drag change the level instead.
+- **Every row is a target in three zones** (`day/rowDrag.ts`): the top quarter means above, the
+  bottom quarter below, the middle into, so a gap and an "into" both get 18px of a 36px row. A
+  step splits at its centre. A zone changes only 2px past its edge, so the line doesn't flicker.
+  Thirds are the fallback (`ZONE_EDGE`) if quarters prove tight.
+- **The line's indent tells the level:** its dot sits on the box column the row will take. The
+  todo the row will belong to is tinted (`--drop-tint`, Poorya's pick), for "into" and for a line
+  among its steps.
+- **One domain action places a row anywhere** (`placed` in `domain/todo-rules.ts`), anchored to
+  the row it goes before, like `reordered`, so it holds when another window changes the list.
+- **A todo with steps can't become a step.** Not flattening: it would merge two lists in a way a
+  drag can't take back. Its line snaps to the nearest top-level gap. **Settled todos aren't a
+  target:** a drop under one would reopen it and pull it from under the pointer.
+- **The list scrolls only while the pointer is held past its edge,** never under a resting pointer
+  inside it: a list moving under a still pointer changed the place being aimed at.
+- **A drag follows only the pointer that started it** (`HeldPointerSensor` in
+  `todos/TodoItem.tsx`), and a mouse move with no button held is ignored: dnd-kit 0.5 takes any
+  pointer's move or release.
+- **"+ Add a step" closes the steps of an unfolded open todo** (Poorya's pick, for the fewest
+  bugs): a button that turns into the step editor in place. It is never a drop target.
+- **No undo, no sound,** as for reorder: dragging back reverses it.
+
 ## Folding steps (2026-10-01)
 
 - **The count is the toggle** (`todos/TodoItem.tsx`): `1/3 ⌄`, and `2/2 ›` when folded, on open
@@ -51,7 +82,7 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
   read as a column with its box adrift.
 - **A step drags within its todo only** (its sortable group and type are the todo's id, and its own
   modifiers hold it in the todo's list). Not across todos or to the top level: rows are locked to
-  the vertical axis, and nesting by drag is in the backlog with keyboard indent.
+  the vertical axis. Nesting by drag came later the same day (see above).
 
 ## Drop is gone, delete is back on the row (2026-09-25)
 
