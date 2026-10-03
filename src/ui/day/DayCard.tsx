@@ -17,6 +17,7 @@ import { ProgressRing } from './ProgressRing'
 import { dragWords } from './rowDrag'
 import { useRowDrag } from './useRowDrag'
 import { DraggedCopy, TODO_SENSORS, TodoItem } from '../todos/TodoItem'
+import { RowMenus } from '../todos/RowMenu'
 
 /**
  * The card's place in the deck once it is at rest: 0 is in front, ±1 sit behind it, the rest are
@@ -254,53 +255,58 @@ export function DayCard({
           {/* A dragged row stays in its place while a copy of it follows the pointer, and nothing
               else moves until it is let go (useRowDrag.ts): a line, or a tint on a todo, shows where
               it would land. */}
-          <DragDropProvider
-            // The card scrolls its list itself, only from the faded edges (useRowDrag.ts).
-            plugins={(defaults) => [...defaults.filter((plugin) => plugin !== AutoScroller), ...DRAG_PLUGINS]}
-            sensors={TODO_SENSORS}
-            {...handlers}
-          >
-            {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
-            <motion.ul ref={setList} className={styles.todos} layoutScroll>
-              {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
+          <RowMenus front={inFront}>
+            <DragDropProvider
+              // The card scrolls its list itself, only from the faded edges (useRowDrag.ts).
+              plugins={(defaults) => [
+                ...defaults.filter((plugin) => plugin !== AutoScroller),
+                ...DRAG_PLUGINS
+              ]}
+              sensors={TODO_SENSORS}
+              {...handlers}
+            >
+              {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
+              <motion.ul ref={setList} className={styles.todos} layoutScroll>
+                {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
                   while it fades instead of jumping up afterwards. */}
-              <AnimatePresence mode="popLayout" initial={false} custom={leaving}>
-                {ordered.map((todo) => (
-                  <TodoItem
-                    key={todo.id}
-                    todo={todo}
-                    order={order}
-                    isNew={isNew}
-                    animateEnter={animateEnter}
-                    moveTarget={target}
-                    onToggleDone={onToggleDone}
-                    onRemove={onRemove}
-                    onEdit={onEdit}
-                    onMove={move}
-                    onAddStep={add}
-                    addingStep={drafting === todo.id}
-                    onToggleFold={onToggleFold}
-                    dropTarget={tinted === todo.id}
-                    regrip={regrip}
-                    onAddingStep={(open) => {
-                      // Only the todo whose step editor is open closes it: another may have opened since.
-                      setDrafting((current) => (open ? todo.id : current === todo.id ? null : current))
-                    }}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.ul>
-            {line !== undefined && (
-              <div
-                className={styles.dropLine}
-                data-drop-line
-                data-depth={line.depth}
-                style={{ top: line.top, left: line.left, width: line.width }}
-                aria-hidden="true"
-              />
-            )}
-            <DraggedCopy ordered={ordered} bounds={list} />
-          </DragDropProvider>
+                <AnimatePresence mode="popLayout" initial={false} custom={leaving}>
+                  {ordered.map((todo) => (
+                    <TodoItem
+                      key={todo.id}
+                      todo={todo}
+                      order={order}
+                      isNew={isNew}
+                      animateEnter={animateEnter}
+                      moveTarget={target}
+                      onToggleDone={onToggleDone}
+                      onRemove={onRemove}
+                      onEdit={onEdit}
+                      onMove={move}
+                      onAddStep={add}
+                      addingStep={drafting === todo.id}
+                      onToggleFold={onToggleFold}
+                      dropTarget={tinted === todo.id}
+                      regrip={regrip}
+                      onAddingStep={(open) => {
+                        // Only the todo whose step editor is open closes it: another may have opened since.
+                        setDrafting((current) => (open ? todo.id : current === todo.id ? null : current))
+                      }}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.ul>
+              {line !== undefined && (
+                <div
+                  className={styles.dropLine}
+                  data-drop-line
+                  data-depth={line.depth}
+                  style={{ top: line.top, left: line.left, width: line.width }}
+                  aria-hidden="true"
+                />
+              )}
+              <DraggedCopy ordered={ordered} bounds={list} />
+            </DragDropProvider>
+          </RowMenus>
           {/* What a drag says. A region of its own, apart from the header's, which says "Cleared". */}
           <span role="status" className={styles.visuallyHidden}>
             {said}

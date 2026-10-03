@@ -10,6 +10,59 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Buttons at the row's end, one click each (2026-10-03)
+
+- **No ⋯: on hover or focus a row shows its actions as icon buttons** (`todos/TodoItem.tsx`):
+  a calendar for "Move to tomorrow" (or "to today"), a list with a + for "Add a step", the steps'
+  cell, a 16px gap, and a bin at the very end. One size (28px), one stroke icon set, one muted colour; a done todo
+  and a step get the bin only. Poorya, trying the menu: it "makes harder to do something", and the
+  plus and arrow in it "make it seem like the keys work for it". The room is kept at rest, so
+  nothing moves on hover: at 640×420 a todo's text gets 244px, 196 with steps (the menu gave 318,
+  the words 171).
+  - Each button names itself in a tip (`todos/RowTip.tsx`), after a moment's pointing or at once
+    from the keyboard, never on touch, and never in the way of a click.
+  - The menu's objection to icons no longer holds: they show only on hover or focus, in one muted
+    colour and one icon set, so the bin is no louder than its neighbours, and a calendar with a
+    clock reads as "later" at 16px.
+  - Not a sunrise for tomorrow: at 16px it reads as "upload".
+  - Not the buttons laid over the text's end: more text at rest, but they cover a long todo's
+    last words as the pointer passes.
+  - Not the word `tomorrow` beside icons: two visual languages again, and 48px less text at 640.
+  - The right-click menu stays, with the same icons and "Hide steps" or "Show steps", as a bonus.
+- **Folded, the pie gives way to `› 1/3`.** Poorya: the pie gave no hint it folds, and folded it
+  hid how many steps there are. Pointing at the row puts a ⌄ before the pie. The cell keeps one
+  width in both states, so folding never moves the buttons. The ⌄ is not shown at rest: too busy.
+- **The bin is always at the row's end, 16px clear of the rest** (Poorya, trying the first
+  build: "some distance between delete and other buttons", "delete always at the end or have
+  stable place"). It is in one column on every row, so the hand learns it; the pie's column sits
+  just inside it.
+  - With the bin in one column, the next row's bin slides up under a still pointer, and a
+    double-click deleted two todos. After a click on Move or Delete the buttons hide and ignore
+    clicks until the pointer moves 4px or leaves the card.
+- **The cost:** a todo's first step moves its add button one cell left, where the fold now sits.
+
+## One menu at the row's end (2026-10-02, replaced the next day, see above)
+
+- **A row ends in two marks at most: the pie, and a ⋯ on hover** (`todos/RowMenu.tsx`). The ⋯
+  opens "Add a step", "Move to tomorrow" (or "to today") and, below a rule, "Delete"; a done todo
+  or a step has only "Delete". Right-click on the row, Shift+F10 and the menu key open the same
+  menu. Poorya found `tomorrow`, `delete`, the + and the pie too busy, even on the wider card: four
+  marks in three visual languages. At 640×420 a todo's text now gets 318px, not 171, and none of
+  20 typical todos wrap there. Only the ⋯'s 30px is kept at rest, so the backlog's "text across
+  the whole row at rest" is closed: the last 30px would put the ⋯ over a long todo's words.
+  - The cost: adding a step and moving to tomorrow take two clicks. A word in a menu reads better
+    than a bare +, and touch, which shows everything, has two marks too.
+  - Not the four laid over the text's end on hover: still four.
+  - Not a ⋯ beside the +: three marks, and it keeps what it was meant to replace.
+  - Not icons for tomorrow and delete: tomorrow has no standard icon, and a bin draws the eye to
+    the least-wanted action.
+  - Not delete back in the editor: tried on 2026-09-23 and undone on 2026-09-25.
+  - Not a long-press menu: it collides with the touch drag.
+- **The menu is modal:** a click outside only closes it, so a slow second click never acts, and
+  ← and → in it do not change the day. An item acts only on a click of its own: a press on the ⋯
+  that slips onto an item and is let go there picks nothing (Base UI picks it by default). After Move or Delete the keyboard goes to the next row,
+  else the one before, else the input.
+
 ## A wider card, and the arrows on the days behind (2026-10-02)
 
 - **`--card-max` is 840px** (was 720), and the card leaves 160px for the days behind, not 200. At
@@ -21,7 +74,8 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 
 ## Adding a step (2026-10-02)
 
-- **One way in: a + at the end of every open todo's row** (`todos/TodoItem.tsx`), on hover or
+- **One way in: a + at the end of every open todo's row** (a menu item later the same day,
+  a button again since 2026-10-03, see above) (`todos/TodoItem.tsx`), on hover or
   focus, beside the pie when the todo has steps and in the pie's place when it has none. The
   editor's `step` word is gone. A first-time walk found the first step hidden behind a faint word
   inside the editor, and a slow second click on it landing on `delete`.

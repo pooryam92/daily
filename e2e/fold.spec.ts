@@ -96,11 +96,17 @@ test.describe('folding steps', () => {
     expect(path).toContain('Steps of Set up CI')
     expect(path).toContain('Steps of Plan the offsite')
     expect(path.filter((label) => /Pick a date|Book the venue/.test(label))).toEqual([])
-    // On a row the toggle comes after the text and before the words.
+    // On a row, in the order they stand: the text, Move, Add a step, the toggle, then the bin, which ends it.
     const at = (label: string) => path.indexOf(label)
-    expect(at('Edit Plan the offsite')).toBeLessThan(at('Steps of Plan the offsite'))
-    expect(at('Steps of Plan the offsite')).toBeLessThan(at('Move Plan the offsite to tomorrow'))
-    expect(at('Move Plan the offsite to tomorrow')).toBeLessThan(at('Delete Plan the offsite'))
+    expect(at('Edit Plan the offsite')).toBeGreaterThanOrEqual(0)
+    expect(
+      [
+        'Move Plan the offsite to tomorrow',
+        'Add a step to Plan the offsite',
+        'Steps of Plan the offsite',
+        'Delete Plan the offsite'
+      ].map(at)
+    ).toEqual([1, 2, 3, 4].map((after) => at('Edit Plan the offsite') + after))
   })
 
   test('a click on the pie folds the steps, and a click on the text still edits it', async ({ daily }) => {
@@ -148,10 +154,7 @@ test.describe('folding steps', () => {
     const editor = daily.page.getByRole('textbox', { name: 'Edit todo' })
     await editor.fill('Cache npm')
     await editor.press('Enter')
-    await daily
-      .step('Add the workflow file')
-      .getByRole('button', { name: 'Delete Add the workflow file' })
-      .click()
+    await daily.act('Add the workflow file', 'Delete Add the workflow file')
     await expect(shown(daily, 'Set up CI')).toHaveText(['Fix the lint errors', 'Cache npm'])
 
     await daily.box('Fix the lint errors').uncheck()
@@ -172,12 +175,8 @@ test.describe('folding steps', () => {
       })
   })
 
-  test('adding a step through the + unfolds the todo', async ({ daily }) => {
-    await daily
-      .row('Plan the offsite')
-      .locator(':scope > div')
-      .getByRole('button', { name: 'Add a step to Plan the offsite', exact: true })
-      .click()
+  test('adding a step through the row’s Add a step unfolds the todo', async ({ daily }) => {
+    await daily.act('Plan the offsite', 'Add a step to Plan the offsite')
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
     await draft.fill('Send the invite')
     await draft.press('Enter')
@@ -317,10 +316,15 @@ test.describe('the pie', () => {
   test('it counts in its own colour: green when every step is done and the todo is open, faint when done', async ({
     daily
   }) => {
-    const pie = (text: string) => line(daily, text).locator(':scope > [class*="_count_"]')
-    /** The pie's colour, and the colours of the tokens it may take, as the page computes them. */
+    /** The fold, which says how many steps are done, and the pie or the figures it shows. */
+    const pie = (text: string) => daily.chevron(text)
+    /** The pie's colour (or, folded, the figures'), and the tokens' it may take, as the page computes them. */
     const colours = (text: string) =>
-      pie(text).evaluate((element) => {
+      pie(text).evaluate((fold) => {
+        const element = fold.querySelector(
+          fold.hasAttribute('data-folded') ? '[class*="_figures_"]' : '[class*="_pie_"]'
+        )
+        if (element === null) throw new Error('The fold shows nothing')
         const token = (name: string) => {
           const probe = document.createElement('span')
           probe.style.color = `var(${name})`
@@ -349,8 +353,8 @@ test.describe('the pie', () => {
     await counted(LONG, 1, 2, false)
     await counted('Paint the fence', 2, 2, true)
     await counted('Clean the house', 2, 2, true)
-    await expect(daily.step('Buy paint').locator('[class*="_count_"]')).toHaveCount(0)
-    await expect(daily.row('Buy milk').locator('[class*="_count_"]')).toHaveCount(0)
+    await expect(daily.step('Buy paint').locator('[class*="_pie_"]')).toHaveCount(0)
+    await expect(daily.row('Buy milk').locator('[class*="_pie_"]')).toHaveCount(0)
 
     const part = await colours(LONG)
     expect(part.pie, JSON.stringify(part)).toBe(part.muted)
@@ -367,5 +371,19 @@ test.describe('the pie', () => {
     await counted('Set up CI', 3, 3, true)
     await expect.poll(async () => (await colours('Set up CI')).pie).toBe(part.done)
     expect(await boxOf(daily.chevron('Set up CI'))).toEqual(before)
+
+    // Folded, the figures take the same colours: muted, green when all are done on an open todo, faint when done.
+    for (const [text, colour] of [
+      [LONG, part.muted],
+      ['Paint the fence', part.done],
+      ['Clean the house', part.faint]
+    ] as const) {
+      await daily.chevron(text).click()
+      await expect(daily.chevron(text)).toHaveAttribute('data-folded')
+      // Pointed at, it takes the buttons' hover colour: away from it, its own.
+      await daily.page.mouse.move(0, 0)
+      await daily.input.focus()
+      await expect.poll(async () => (await colours(text)).pie, `${text} folded`).toBe(colour)
+    }
   })
 })

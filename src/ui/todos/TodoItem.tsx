@@ -9,15 +9,19 @@ import type {
 } from '@dnd-kit/dom'
 import { DragOverlay, useDragDropManager, useDraggable } from '@dnd-kit/react'
 import { useComputed } from '@dnd-kit/react/hooks'
-import { GripVertical, Plus } from 'lucide-react'
+import { CalendarClock, ChevronDown, ChevronRight, GripVertical, ListPlus, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'motion/react'
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { use, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from 'react'
 import type { Todo } from '@/domain/todo'
 import { locate, stepProgress } from '@/domain/todo-rules'
 import type { MoveDirection, MoveTarget } from '../day/copy'
 import { COPY_CANCEL, ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
+import { guardClicks, guarded } from './clickGuard'
 import { DoneCheckbox } from './DoneCheckbox'
+import { leaveRow, nextFocus, RowMenu, RowMenusFront } from './RowMenu'
+import type { RowMenuOpen } from './RowMenu'
+import { RowTip } from './RowTip'
 import { StepDraft } from './StepDraft'
 import styles from './TodoItem.module.css'
 import { TodoEditor } from './TodoEditor'
@@ -215,6 +219,8 @@ export function TodoItem({
     isDragging
   } = useDraggable({ id: todo.id, disabled: editing || addingStep })
   const setItem = useItemRef(isNew(todo.id), ref, draggableRef)
+  // A row that is fading out is no longer one the keyboard can go to (RowMenu.tsx, nextFocus).
+  const present = useIsPresent()
 
   // A folded todo is one line, and its count says how its steps went; checking a todo folds it. Only
   // an open todo takes new steps.
@@ -232,6 +238,7 @@ export function TodoItem({
       data-status={todo.status}
       data-editing={editing || undefined}
       data-dragging={isDragging || undefined}
+      data-leaving={!present || undefined}
       data-drop-target={dropTarget || undefined}
       layout="position"
       layoutDependency={order}
@@ -362,6 +369,7 @@ function StepItem({
     isDragging
   } = useDraggable({ id: step.id, disabled: editing || disabled })
   const setItem = useItemRef(isNew(step.id), ref, draggableRef)
+  const present = useIsPresent()
 
   return (
     <motion.li
@@ -372,6 +380,7 @@ function StepItem({
       data-status={step.status}
       data-editing={editing || undefined}
       data-dragging={isDragging || undefined}
+      data-leaving={!present || undefined}
       layout="position"
       layoutDependency={order}
       initial={isNew(step.id) && animateEnter ? { opacity: 0, y: -8 } : false}
@@ -558,29 +567,60 @@ function TodoRow({
   onEdit
 }: TodoRowProps) {
   const step = move === undefined
-  // The count is read out with the toggle that lies over it, as its description.
+  const open = todo.status === 'open'
+  // The count is read out with the toggle that shows it, as its description.
   const countId = useId()
-  const counted = stepProgress(todo).total > 0
+  const { done, total } = stepProgress(todo)
+  const counted = total > 0
   const grip = useRegrip(regrip, handleRef)
+  // The row itself: its menu opens at its end from the keyboard, and a row that goes away hands the
+  // keyboard on from it.
+  const [row, setRow] = useState<HTMLDivElement | null>(null)
+
+  // The row's menu, while it is open, and how it was opened. A card that leaves the front closes it.
+  const [menu, setMenu] = useState<RowMenuOpen | null>(null)
+  const front = use(RowMenusFront)
+  if (!front && menu !== null) setMenu(null)
 
   const onTextKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
     if (event.key !== 'Delete' && event.key !== 'Backspace') return
     event.preventDefault()
+    // The keyboard goes on to the next row, as after the delete button.
+    const next = event.currentTarget.closest<HTMLElement>('[data-row]')
+    const target = next === null ? null : nextFocus(next)
     onRemove(todo.id)
+    target?.focus()
+  }
+
+  // Shift+F10 and the context menu key open the row's menu, at its end.
+  const onRowKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (editing || drafting) return
+    if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+      event.preventDefault()
+      setMenu({ from: 'keys' })
+    }
   }
 
   return (
     <div
+      ref={setRow}
       className={styles.row}
       data-row={todo.id}
       data-status={todo.status}
       data-steps={counted || undefined}
       data-editing={editing || undefined}
       data-drafting={drafting || undefined}
-      // While a step is written, a press on the row's empty end, where the + and the words were,
-      // leaves the focus in the step editor: it is a slow second click on the +, not a way out.
+      // While a step is written, a press on the row's empty end, where its buttons are out of reach,
+      // leaves the focus in the step editor: it is a slow second click after "Add a step", not a way out.
       onMouseDown={(event) => {
         if (drafting && event.target === event.currentTarget) event.preventDefault()
+      }}
+      onKeyDown={onRowKeyDown}
+      // A right-click anywhere on the row opens its menu where the pointer is.
+      onContextMenu={(event) => {
+        if (editing || drafting) return
+        event.preventDefault()
+        setMenu({ from: 'point', x: event.clientX, y: event.clientY })
       }}
     >
       {/* The grip shows on hover. It is the keyboard's handle: Space or Enter picks the row up, the
@@ -633,58 +673,111 @@ function TodoRow({
           </button>
         )}
       </div>
-      {/* The one way to add a step, on any open todo: before the pie when there are steps, in its
-          place when there are none. A done todo takes no steps: an open step under it would undo
-          "done flows down". */}
-      {onStep !== undefined && todo.status === 'open' && (
-        <button
-          type="button"
-          className={styles.add}
-          aria-label={`Add a step to ${todo.text}`}
-          title="Add a step"
-          onClick={onStep}
-        >
-          <Plus size={14} aria-hidden="true" />
-        </button>
+      {/* What else the row does, at its end, where the pointer or the keyboard brings it into view
+          (TodoItem.module.css): only an open todo moves and takes steps (an open step under a done
+          todo would undo "done flows down"). Their room is always kept. */}
+      {open && (move !== undefined || onStep !== undefined) && (
+        <div className={styles.actions} data-actions inert={drafting}>
+          {move !== undefined && (
+            <RowTip tip={`Move to ${move.target.name}`}>
+              <button
+                type="button"
+                className={styles.action}
+                aria-label={`Move ${todo.text} to ${move.target.name}`}
+                onClick={(event) => {
+                  if (guarded(event)) return
+                  guardClicks(event)
+                  leaveRow(row, () => {
+                    move.onMove(todo.id)
+                  })
+                }}
+              >
+                <CalendarClock size={16} aria-hidden="true" />
+              </button>
+            </RowTip>
+          )}
+          {onStep !== undefined && (
+            <RowTip tip="Add a step">
+              <button
+                type="button"
+                className={styles.action}
+                aria-label={`Add a step to ${todo.text}`}
+                // The step editor takes the keyboard itself.
+                onClick={(event) => {
+                  if (!guarded(event)) onStep()
+                }}
+              >
+                <ListPlus size={16} aria-hidden="true" />
+              </button>
+            </RowTip>
+          )}
+        </div>
       )}
-      <StepCount todo={todo} id={countId} />
-      {/* The pie is the toggle: this button lies over it at the row's end (TodoItem.module.css, .fold).
-          It comes after the text, so the keyboard reaches it there. Folded steps are not on the page,
-          so there is nothing to control. */}
+      {/* How far along the steps are, just before the bin, so that every todo's lines up: a pie while
+          they show, the figures while they are folded away. The whole of it folds and unfolds them. Folded
+          steps are not on the page, so there is nothing to control. */}
       {fold !== undefined && counted && (
-        <button
-          type="button"
-          className={styles.fold}
-          aria-label={`Steps of ${todo.text}`}
-          aria-expanded={!fold.folded}
-          aria-controls={fold.folded ? undefined : fold.stepsId}
-          aria-describedby={countId}
-          title={fold.folded ? 'Show steps' : 'Hide steps'}
-          onClick={fold.onToggle}
-        />
+        <RowTip tip={fold.folded ? 'Show steps' : 'Hide steps'}>
+          <button
+            type="button"
+            className={styles.fold}
+            data-folded={fold.folded || undefined}
+            data-done={done}
+            data-total={total}
+            data-complete={done === total || undefined}
+            aria-label={`Steps of ${todo.text}`}
+            aria-expanded={!fold.folded}
+            aria-controls={fold.folded ? undefined : fold.stepsId}
+            aria-describedby={countId}
+            onClick={(event) => {
+              if (!guarded(event)) fold.onToggle()
+            }}
+          >
+            <StepCell done={done} total={total} />
+          </button>
+        </RowTip>
       )}
-      {move !== undefined && todo.status === 'open' && (
-        <button
-          type="button"
-          className={styles.move}
-          aria-label={`Move ${todo.text} to ${move.target.name}`}
-          onClick={() => {
-            move.onMove(todo.id)
-          }}
-        >
-          {move.target.name}
-        </button>
-      )}
-      <button
-        type="button"
-        className={styles.remove}
-        aria-label={`Delete ${todo.text}`}
-        onClick={() => {
+      {/* Any row is deleted, from the very end, the same place on every row, set apart from the rest. */}
+      <div className={[styles.actions, styles.bin].join(' ')} data-actions inert={drafting}>
+        <RowTip tip="Delete">
+          <button
+            type="button"
+            className={styles.action}
+            aria-label={`Delete ${todo.text}`}
+            onClick={(event) => {
+              if (guarded(event)) return
+              guardClicks(event)
+              leaveRow(row, () => {
+                onRemove(todo.id)
+              })
+            }}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+          </button>
+        </RowTip>
+      </div>
+      {counted && <StepWords id={countId} done={done} total={total} />}
+      <RowMenu
+        text={todo.text}
+        row={row}
+        open={menu}
+        onOpen={setMenu}
+        onStep={open ? onStep : undefined}
+        move={
+          move !== undefined && open
+            ? {
+                name: move.target.name,
+                onMove: () => {
+                  move.onMove(todo.id)
+                }
+              }
+            : undefined
+        }
+        fold={fold !== undefined && counted ? { folded: fold.folded, onToggle: fold.onToggle } : undefined}
+        onDelete={() => {
           onRemove(todo.id)
         }}
-      >
-        delete
-      </button>
+      />
     </div>
   )
 }
@@ -829,11 +922,6 @@ function CopyChip({
   )
 }
 
-/**
- * How many of a todo's steps are done, as a pie that fills as they are: no figures to read at a
- * glance, since the steps themselves are a click away. Screen readers hear it in words, from the
- * element `id`; nothing is shown for a todo without steps.
- */
 /** The pie's size, and the radius of its filled part, inside a ring that is half its colour. */
 const PIE_PX = 16
 const PIE_RADIUS = PIE_PX / 2 - 2.5
@@ -874,21 +962,59 @@ function StepPie({ done, total }: { readonly done: number; readonly total: numbe
   )
 }
 
+/**
+ * How many of a todo's steps are done, as a pie that fills as they are, on the copy that follows the
+ * pointer in a drag. Screen readers hear it in words, from the element `id`; nothing is shown for a
+ * todo without steps.
+ */
 function StepCount({ todo, id }: { readonly todo: Todo; readonly id: string }) {
   const { done, total } = stepProgress(todo)
   if (total === 0) return null
   return (
-    <span
-      className={styles.count}
-      data-done={done}
-      data-total={total}
-      data-complete={done === total || undefined}
-    >
+    <span className={styles.count}>
       <StepPie done={done} total={total} />
-      <span
-        id={id}
-        className={styles.visuallyHidden}
-      >{`${String(done)} of ${String(total)} ${total === 1 ? 'step' : 'steps'} done`}</span>
+      <StepWords id={id} done={done} total={total} />
     </span>
+  )
+}
+
+/**
+ * The steps' cell on a row: the pie, with an arrow down to fold them that shows with the row's
+ * buttons, or, while they are folded, an arrow along and the figures, since nothing else on the page
+ * then says how many there are. Both are laid in the same place, the one not shown keeping its room,
+ * so folding never moves the row's text.
+ */
+function StepCell({ done, total }: { readonly done: number; readonly total: number }) {
+  return (
+    <span className={styles.cell} aria-hidden="true">
+      <span className={styles.shut}>
+        <ChevronRight size={14} />
+        <span className={styles.figures}>{`${String(done)}/${String(total)}`}</span>
+      </span>
+      <span className={styles.shown}>
+        <ChevronDown className={styles.chevron} size={14} />
+        <span className={styles.pie}>
+          <StepPie done={done} total={total} />
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/** Read out, not shown: "1 of 3 steps done" instead of "1 slash 3". */
+function StepWords({
+  id,
+  done,
+  total
+}: {
+  readonly id: string
+  readonly done: number
+  readonly total: number
+}) {
+  return (
+    <span
+      id={id}
+      className={styles.visuallyHidden}
+    >{`${String(done)} of ${String(total)} ${total === 1 ? 'step' : 'steps'} done`}</span>
   )
 }
