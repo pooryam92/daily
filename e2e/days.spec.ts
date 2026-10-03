@@ -19,7 +19,7 @@ test('the deck opens on today with the other days behind it', async ({ daily }) 
 
 test("yesterday's leftover is moved to today", async ({ daily }) => {
   await daily.page.getByRole('button', { name: 'Previous day' }).click()
-  await daily.page.getByRole('button', { name: 'Move Return the library book to today', exact: true }).click()
+  await daily.act('Return the library book', 'Move Return the library book to today')
 
   await expect(daily.page.getByText('Moved to today')).toBeVisible()
   await expect(daily.row('Return the library book')).toBeHidden()
@@ -44,8 +44,11 @@ test('a todo is planned for tomorrow', async ({ daily }) => {
   await daily.add('Dentist, 9:30')
 
   await expect(daily.row('Dentist, 9:30')).toBeVisible()
-  await expect(
-    daily.page.getByRole('button', { name: 'Move Dentist, 9:30 to today', exact: true })
-  ).toBeVisible()
+  // Any day but today moves its todos to today.
+  expect(await daily.actions('Dentist, 9:30')).toEqual([
+    'Move Dentist, 9:30 to today',
+    'Add a step to Dentist, 9:30',
+    'Delete Dentist, 9:30'
+  ])
   await expect.poll(() => daily.todos()).toMatchObject({ [day(1)]: [{ text: 'Dentist, 9:30' }] })
 })

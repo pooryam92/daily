@@ -40,7 +40,7 @@ test('a deleted todo comes back with Undo', async ({ daily }) => {
   const row = daily.row('Buy milk')
   await expect.poll(async () => (await daily.todos())[today]?.length).toBe(1)
 
-  await row.getByRole('button', { name: 'Delete Buy milk', exact: true }).click()
+  await daily.act('Buy milk', 'Delete Buy milk')
 
   await expect(row).toBeHidden()
   await expect.poll(() => daily.todos()).not.toHaveProperty(today)

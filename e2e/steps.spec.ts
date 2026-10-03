@@ -1,14 +1,7 @@
 import { day, expect, test, todo, today } from './daily'
 import type { Daily } from './daily'
 
-/** The + on an open todo's own line, the only way to add a step. */
-const plus = (daily: Daily, text: string) =>
-  daily
-    .row(text)
-    .locator(':scope > div')
-    .getByRole('button', { name: `Add a step to ${text}`, exact: true })
-
-test('steps are added from the +, one Enter after another, and the editor has no way to add one', async ({
+test('steps are added from the row’s menu, one Enter after another, and the editor has no way to add one', async ({
   daily
 }) => {
   await daily.add('Set up CI')
@@ -20,7 +13,7 @@ test('steps are added from the +, one Enter after another, and the editor has no
   )
   await daily.page.keyboard.press('Escape')
 
-  await plus(daily, 'Set up CI').click()
+  await daily.act('Set up CI', 'Add a step to Set up CI')
   const draft = daily.page.getByRole('textbox', { name: 'New step' })
   await expect(draft).toHaveAttribute('placeholder', 'First step…')
   for (const step of ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies']) {
@@ -84,7 +77,7 @@ test.describe('with steps', () => {
   test('a deleted todo comes back with its steps on Undo', async ({ daily }) => {
     const row = daily.row('Set up CI')
 
-    await row.getByRole('button', { name: 'Delete Set up CI', exact: true }).click()
+    await daily.act('Set up CI', 'Delete Set up CI')
 
     await expect(row).toBeHidden()
     await expect.poll(() => daily.todos()).not.toHaveProperty(today)
@@ -120,10 +113,7 @@ test.describe('with three steps', () => {
     ])
 
   test('a deleted step comes back in its place on Undo', async ({ daily }) => {
-    await daily
-      .step('Fix the lint errors')
-      .getByRole('button', { name: 'Delete Fix the lint errors' })
-      .click()
+    await daily.act('Fix the lint errors', 'Delete Fix the lint errors')
 
     await expect(daily.page.getByText('Step deleted')).toBeVisible()
     await expect(shown(daily)).toHaveText(['Add the workflow file', 'Cache the dependencies'])
@@ -143,10 +133,7 @@ test.describe('with three steps', () => {
   })
 
   test('a done todo is open again when an open step is put back under it', async ({ daily }) => {
-    await daily
-      .step('Fix the lint errors')
-      .getByRole('button', { name: 'Delete Fix the lint errors' })
-      .click()
+    await daily.act('Fix the lint errors', 'Delete Fix the lint errors')
     await daily.box('Set up CI').check()
     await expect.poll(async () => (await daily.todos())[today]?.[0]?.status).toBe('done')
 
@@ -169,15 +156,12 @@ test.describe('with three steps', () => {
       })
   })
 
-  test('a step has no move word: it goes to tomorrow with its todo', async ({ daily }) => {
+  test('a step’s only action is Delete: it goes to tomorrow with its todo', async ({ daily }) => {
     for (const step of ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies']) {
-      await expect(daily.step(step).getByRole('button', { name: `Delete ${step}`, exact: true })).toHaveCount(
-        1
-      )
-      await expect(daily.page.getByRole('button', { name: `Move ${step} to tomorrow` })).toHaveCount(0)
+      expect(await daily.actions(step), step).toEqual([`Delete ${step}`])
     }
 
-    await daily.page.getByRole('button', { name: 'Move Set up CI to tomorrow', exact: true }).click()
+    await daily.act('Set up CI', 'Move Set up CI to tomorrow')
 
     await expect(daily.row('Set up CI')).toBeHidden()
     await expect.poll(() => daily.todos()).toStrictEqual({ [today]: [milk], [day(1)]: [ci] })
@@ -318,7 +302,7 @@ test.describe('with three steps', () => {
   test('a step being written is added when left, and nothing is when it is blank', async ({ daily }) => {
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
     const openDraft = async () => {
-      await plus(daily, 'Set up CI').click()
+      await daily.act('Set up CI', 'Add a step to Set up CI')
       await expect(draft).toBeFocused()
     }
     const before = await daily.file('todos.json')
@@ -368,10 +352,7 @@ test.describe('the file', () => {
   test.use({ seed: { [today]: [ci, milk] } })
 
   test('keeps version 1, and a todo whose last step is gone has no steps key', async ({ daily }) => {
-    await daily
-      .step('Add the workflow file')
-      .getByRole('button', { name: 'Delete Add the workflow file' })
-      .click()
+    await daily.act('Add the workflow file', 'Delete Add the workflow file')
 
     await expect
       .poll(() => daily.todos())
@@ -404,7 +385,7 @@ test.describe('without steps', () => {
   test.use({ seed: { [today]: [todo('Set up CI')] } })
 
   test('Escape on a step being written adds nothing', async ({ daily }) => {
-    await plus(daily, 'Set up CI').click()
+    await daily.act('Set up CI', 'Add a step to Set up CI')
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
     await draft.fill('Add the workflow file')
     await draft.press('Escape')

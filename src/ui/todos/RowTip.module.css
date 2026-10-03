@@ -1,0 +1,35 @@
+/* Over everything, the undo toast (Sonner's 999999999) included, as the row's menu is. */
+.positioner {
+  z-index: 1000000000;
+}
+
+/* The page's own colours turned around: a small label, not a card. */
+.tip {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--text);
+  color: var(--surface);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tip {
+    transition: opacity 100ms var(--ease-out);
+  }
+
+  .tip:is([data-starting-style], [data-ending-style]) {
+    opacity: 0;
+  }
+
+  /* One tip after another along the row comes at once. */
+  .tip[data-instant] {
+    transition: none;
+  }
+}
+
+/* While a row is dragged, or clicks are held off (clickGuard.ts), nothing on the card answers the pointer. */
+:global(body:has(:is([data-sorting], [data-guard]))) .positioner {
+  display: none;
+}

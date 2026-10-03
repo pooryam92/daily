@@ -12,7 +12,10 @@ test.use({
   seed: {
     [today]: [
       todo('Write the release notes', 'open', [todo('Draft'), todo('Proofread', 'done')]),
-      todo(LONG, 'open', [todo(LONG_STEP), todo('Fix the lint errors', 'done'), todo('Cache')])
+      todo(LONG, 'open', [todo(LONG_STEP), todo('Fix the lint errors', 'done'), todo('Cache')]),
+      todo('Buy milk'),
+      todo('Return the library book', 'done'),
+      todo('Clean the house', 'done', [todo('Dust the shelves', 'done')])
     ]
   }
 })
@@ -26,13 +29,15 @@ interface Box {
 }
 
 /**
- * Where a row's parts are: the label slot, the text button in it, the text's lines, the pie, the box,
- * and the toggle that lies over the pie.
+ * Where a row's parts are: the row, the label slot, the text button in it and where its words may go,
+ * the text's lines, the box, the pie, the fold that holds it, and the buttons at the row's end.
  */
 interface Geometry {
   readonly row: Box
   readonly label: Box
   readonly text: Box
+  /** The right edge of the room the words have: the text's content box, inside every padding. */
+  readonly textEnd: number
   readonly box: Box
   readonly lines: readonly Box[]
   /** The pie that counts a todo's steps. */
@@ -40,11 +45,9 @@ interface Geometry {
   readonly toggle: Box | null
   /** Whether a click on the middle of the pie lands on the toggle. */
   readonly countHitsToggle: boolean
-  /** The first word after the label, `tomorrow` or `delete`, hidden or not. */
-  readonly word: Box
-  /** The + that adds a step, on an open todo with steps. */
-  readonly plus: Box | null
-  /** Where the row's parts other than the pie, its toggle and the + end, the words included. */
+  /** Move, Delete and Add a step, those the row has, shown or not, left to right. */
+  readonly actions: readonly Box[]
+  /** Where the row's parts other than the fold and the buttons end. */
   readonly end: number
 }
 
@@ -55,18 +58,23 @@ function geometry(daily: Daily, text: string): Promise<Geometry> {
     const row = label?.parentElement
     const strike = button.querySelector(':scope > span')
     const check = row?.querySelector(':scope > label')
-    const toggle =
-      [...(row?.querySelectorAll(':scope > button') ?? [])].find(
-        (el) => el.getAttribute('aria-label') === `Steps of ${text}`
-      ) ?? null
-    const count = row?.querySelector(':scope > [class*="_count_"]') ?? null
-    const plus = row?.querySelector(`:scope > button[aria-label="Add a step to ${text}"]`) ?? null
-    let word = label?.nextElementSibling
-    while (word && (word === toggle || word === count || word === plus)) word = word.nextElementSibling
-    if (!label || !row || !strike || !check || !word) throw new Error(`The row of ${text} is not as expected`)
-    const rest = [...row.children].filter((el) => el !== toggle && el !== count && el !== plus)
+    const toggle = row?.querySelector(`button[aria-label="Steps of ${text}"]`) ?? null
+    const count = row?.querySelector('[class*="_pie_"]') ?? null
+    const actions = [...(row?.querySelectorAll('button[aria-label]') ?? [])].filter((el) =>
+      /^(Move|Delete|Add a step) /.test(el.getAttribute('aria-label') ?? '')
+    )
+    if (!label || !row || !strike || !check) throw new Error(`The row of ${text} is not as expected`)
+    const ending = [toggle, count, ...actions].filter((el) => el !== null)
+    const rest = [...row.children].filter((el) => !ending.some((end) => el === end || el.contains(end)))
+    // The words end where the innermost content box does, whichever element holds the padding.
+    const inner = (el: Element) => {
+      const style = getComputedStyle(el)
+      return (
+        el.getBoundingClientRect().right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth)
+      )
+    }
     // In so small a window the add input may lie over the last lines until the list is scrolled.
-    count?.scrollIntoView({ block: 'center', behavior: 'instant' })
+    row.scrollIntoView({ block: 'center', behavior: 'instant' })
     const middle = count?.getBoundingClientRect()
     const hit =
       middle === undefined
@@ -76,13 +84,13 @@ function geometry(daily: Daily, text: string): Promise<Geometry> {
       row: box(row.getBoundingClientRect()),
       label: box(label.getBoundingClientRect()),
       text: box(button.getBoundingClientRect()),
+      textEnd: Math.min(inner(button), inner(label), inner(row)),
       box: box(check.getBoundingClientRect()),
       lines: [...strike.getClientRects()].map(box),
       count: count === null ? null : box(count.getBoundingClientRect()),
       toggle: toggle === null ? null : box(toggle.getBoundingClientRect()),
       countHitsToggle: toggle !== null && hit !== null && toggle.contains(hit),
-      word: box(word.getBoundingClientRect()),
-      plus: plus === null ? null : box(plus.getBoundingClientRect()),
+      actions: actions.map((el) => box(el.getBoundingClientRect())).sort((a, b) => a.left - b.left),
       end: Math.max(...rest.map((el) => el.getBoundingClientRect().right))
     }
   }, text)
@@ -98,66 +106,80 @@ async function smallest(daily: Daily): Promise<void> {
 }
 
 /**
- * At the smallest window a long text wraps over several lines in a narrow column. It must still take
- * the whole slot between the box and the words, and the box must sit by its first line. A todo with
- * steps has its pie at the row's top right, with the toggle over it, and an open one its + just left
- * of the toggle; the text and the words end before them.
+ * At the smallest window a long text wraps over several lines in a narrow column. Its words run up to
+ * the room kept for the row's end, which nothing at rest or on hover takes from them, and the box sits
+ * by the first line. Past the words only the 28px buttons (Move, Add a step, by the first line), the
+ * fold (its pie 16px, by the first line) and, 16px on, the bin at the row's end may be.
  */
-test('in the smallest window, a wrapped row keeps its text wide, its box up and its pie at its end', async ({
+test('in the smallest window, a wrapped row keeps its text wide, its box up, and its buttons and pie at its end', async ({
   daily
 }) => {
   await smallest(daily)
 
-  for (const [text, counted] of [
-    [LONG, true],
-    [LONG_STEP, false],
-    ['Write the release notes', true],
-    ['Draft', false]
+  // The room kept at the end, besides the fold: Move, Add a step, the gap and the bin on an open todo;
+  // the bin alone on any other row, and the gap too when a fold stands before it.
+  for (const [text, counted, buttons, room] of [
+    [LONG, true, 3, 108],
+    [LONG_STEP, false, 1, 36],
+    ['Write the release notes', true, 3, 108],
+    ['Draft', false, 1, 36],
+    ['Buy milk', false, 3, 108],
+    ['Return the library book', false, 1, 36],
+    ['Clean the house', true, 1, 52]
   ] as const) {
     const at = await geometry(daily, text)
     const first = at.lines[0]
-    const last = at.lines.at(-1)
-    if (first === undefined || last === undefined) throw new Error(`${text} has no lines`)
+    if (first === undefined) throw new Error(`${text} has no lines`)
     const where = `${text}: ${JSON.stringify(at)}`
+    const middle = (part: Box) => (part.top + part.bottom) / 2
+    const firstMiddle = middle(first)
 
-    // The slot is what the box and the words leave, and the text takes all of it. The gaps are 4px
-    // after the box and before `tomorrow`, and 12px before `delete`, which a step's row starts with.
-    const slot = at.word.left - at.box.right
-    expect(at.label.width, where).toBeGreaterThanOrEqual(slot - 16)
-    expect(Math.abs(at.text.width - at.label.width), where).toBeLessThanOrEqual(1)
-    for (const line of at.lines) expect(Math.abs(line.left - at.text.left), where).toBeLessThanOrEqual(1)
-    // The box and the words are on the first line, not centred on the block.
+    // The words have everything from the box to the room kept for the end, and nothing else takes any.
+    const ends = [...at.actions, ...(at.toggle === null ? [] : [at.toggle])]
+    const firstEnd = Math.min(...ends.map((part) => part.left))
+    expect(at.textEnd, where).toBeLessThanOrEqual(firstEnd - 2 + 1)
+    const cell = at.toggle === null ? 0 : at.toggle.width
+    expect.soft(Math.abs(at.row.right - room - cell - at.textEnd), where).toBeLessThanOrEqual(2)
+    for (const line of at.lines) {
+      expect(Math.abs(line.left - first.left), where).toBeLessThanOrEqual(1)
+      expect(line.right, where).toBeLessThanOrEqual(at.textEnd + 1)
+    }
+    expect(at.end, where).toBeLessThanOrEqual(firstEnd + 1)
+    // The box is on the first line, not centred on the block.
     expect(Math.abs(at.box.top - (first.top - 4)), where).toBeLessThanOrEqual(1)
-    expect(Math.abs(at.word.top - at.box.top), where).toBeLessThanOrEqual(1)
+
+    // The buttons: 28px, by the first line, and the last thing on the row is at its end.
+    expect(at.actions, where).toHaveLength(buttons)
+    // From the end: the bin 4px in on every row; Add a step 48px in, or against the fold; Move before it.
+    const fromEnd = buttons === 3 ? [76 + cell, 48 + cell, 4] : [4]
+    for (const [index, part] of at.actions.entries()) {
+      expect(Math.abs(part.width - 28), where).toBeLessThanOrEqual(1)
+      expect(Math.abs(part.top - (at.row.top + 4)), where).toBeLessThanOrEqual(1)
+      expect.soft(Math.abs(at.row.right - part.right - (fromEnd[index] ?? 0)), where).toBeLessThanOrEqual(1)
+    }
+    const last = Math.max(...ends.map((part) => part.right))
+    expect(last, where).toBeLessThanOrEqual(at.row.right + 1)
+    expect(last, where).toBeGreaterThanOrEqual(at.row.right - 12)
+
     if (counted) {
       if (at.count === null) throw new Error(`${text} has no pie`)
-      // A 16px pie 10px in from the row's top right, by the first line however many lines the text takes.
+      if (at.toggle === null) throw new Error(`${text} has no fold`)
+      // A 16px pie by the first line however many lines the text takes, inside the fold, which is last.
       expect(Math.abs(at.count.width - 16), where).toBeLessThanOrEqual(1)
-      expect(Math.abs(at.row.right - 10 - at.count.right), where).toBeLessThanOrEqual(1)
-      expect(Math.abs(at.count.top - (at.row.top + 10)), where).toBeLessThanOrEqual(1)
-      expect(at.end, where).toBeLessThanOrEqual(at.row.right - 34 + 1)
-      expect(at.count.left, where).toBeGreaterThanOrEqual(at.end)
-      // The 28px toggle lies over the pie, centred on it, inside the row.
-      if (at.toggle === null) throw new Error(`${text} has no toggle`)
+      // The fold 48px from the end, 16px before the bin, 48px wide for one figure on each side of the slash.
+      expect(Math.abs(at.row.right - 48 - at.toggle.right), where).toBeLessThanOrEqual(1)
+      expect(Math.abs(at.toggle.width - 48), where).toBeLessThanOrEqual(1)
+      expect(Math.abs(middle(at.count) - firstMiddle), where).toBeLessThanOrEqual(3)
       expect(at.countHitsToggle, where).toBe(true)
-      expect(Math.abs(at.toggle.width - 28), where).toBeLessThanOrEqual(1)
-      expect(
-        Math.abs((at.toggle.left + at.toggle.right) / 2 - (at.count.left + at.count.right) / 2),
-        where
-      ).toBeLessThanOrEqual(1)
-      expect(
-        Math.abs((at.toggle.top + at.toggle.bottom) / 2 - (at.count.top + at.count.bottom) / 2),
-        where
-      ).toBeLessThanOrEqual(1)
-      expect(at.toggle.right, where).toBeLessThanOrEqual(at.row.right + 1)
-      // An open todo's + is 28px, just left of the toggle, and the text and the words end before it.
-      if (at.plus === null) throw new Error(`${text} has no +`)
-      expect(Math.abs(at.plus.width - 28), where).toBeLessThanOrEqual(1)
-      expect(Math.abs(at.plus.right - at.toggle.left), where).toBeLessThanOrEqual(1)
-      expect(Math.abs(at.plus.top - at.toggle.top), where).toBeLessThanOrEqual(1)
-      expect(at.end, where).toBeLessThanOrEqual(at.plus.left + 1)
+      expect(at.count.left, where).toBeGreaterThanOrEqual(at.toggle.left - 0.5)
+      expect(at.count.right, where).toBeLessThanOrEqual(at.toggle.right + 0.5)
+      const bin = at.actions.at(-1)
+      if (bin === undefined) throw new Error(`${text} has no bin`)
+      for (const part of at.actions.slice(0, -1)) {
+        expect(part.right, where).toBeLessThanOrEqual(at.toggle.left + 1)
+      }
+      expect(Math.abs(bin.left - at.toggle.right - 16), where).toBeLessThanOrEqual(1)
     } else {
-      expect(at.plus, where).toBeNull()
       expect(at.count, where).toBeNull()
       expect(at.toggle, where).toBeNull()
     }

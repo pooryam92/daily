@@ -8,9 +8,10 @@ What changed for someone using Daily, newest first. The format is
 
 ### Added
 
-- Steps on a todo. Point at a todo and click the + at the end of its row to write steps under it;
-  Enter adds the next one, and Escape stops. A small pie at the end of a todo's row fills as its
-  steps are done; click it to fold the steps away, and again to show them. Each todo keeps its fold.
+- Steps on a todo. Click "Add a step" at a todo's end to write steps under it; Enter adds the
+  next one, and Escape stops. A small pie at the end of a todo's row fills as its steps are done;
+  click it to fold the steps away, and again to show them. Folded, it shows how many are done, like
+  `› 1/3`. Each todo keeps its fold.
   Checking the todo checks its steps and folds them; checking every step leaves the todo for you to
   check, and unchecking a step reopens it. A checked step stays where it is. Steps are edited,
   deleted with Undo, and dragged by mouse or keyboard, and they move with their todo. Drop a todo on
@@ -22,22 +23,23 @@ What changed for someone using Daily, newest first. The format is
 
 - Dropping a todo. A todo is open or done; one that will not be done is deleted or moved. Todos
   dropped in an older version show as done.
-- The arrow on the move word: it reads `tomorrow` or `today`.
 
 ### Changed
 
 - Dragging a todo no longer pushes the other rows aside. A small copy follows the pointer and a
   line shows where it will land. The list scrolls while the pointer is held past its edge, and
   letting go outside the list cancels.
-- A todo whose text runs over several lines keeps its box, grip and words beside its first line,
+- A todo whose text runs over several lines keeps its box, grip and buttons beside its first line,
   instead of centred on the whole text.
-- `delete` is back on the row, as the last word, set a little apart from the move word. Delete on
-  a focused todo does the same. The editor no longer has a `delete` of its own.
-- A row at rest shows only its box and its text. `tomorrow` and `delete` appear when the row is
-  hovered; on touch they are always there.
-- The falling note for a drop is gone with it; a tick and the chord remain.
+- A row at rest shows only its box and its text. Pointing at it, or focusing it, shows its buttons
+  at the end, one click each: move to tomorrow (or to today) and add a step, then delete, always
+  last and set apart, in the same place on every row. Each is named in a small tip. Nothing moves
+  when they appear. On touch they are always there, and right-click on a
+  row opens the same actions as a menu. The `tomorrow` and `delete` words are no longer on the row,
+  and the editor no longer has a `delete`: Delete on a focused todo deletes it.
 - The card is wider, up to 840px, so a todo's text has more room. The arrow buttons sit on the day
   before and the day after, the days they go to.
+- The falling note for a drop is gone with it; a tick and the chord remain.
 
 ### Fixed
 

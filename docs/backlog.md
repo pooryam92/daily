@@ -13,12 +13,9 @@ off: steps `w, l, c`, delete `w` then `c`, undo `w` then `c`, gives `w, c, l`. T
 the same (`restored` in `domain/todo-rules.ts`). A fix would put it back next to the todo it
 followed, not at an index.
 
-## The text across the whole row at rest
+## Drop a row on the next day to move it
 
-A design item, older than steps. Where there is a mouse, `tomorrow`, `delete` and the + are hidden
-at rest but keep their width, so nothing shifts on hover. At the 640×420 window that is about 177px
-of a 412px row: a todo's text wraps at about 171px instead of about 348px. At the 840px card it is
-177 of 812px, so it matters below a card of about 580px. Of 20 typical todos given steps, 12 wrap at
-640×420 and none at 1000 or wider. The proposal: on fine pointers the text takes the whole row at
-rest, and the words lay over its end on hover or focus, on a fade of the row's background; touch
-keeps them in the row, since there is no hover there.
+Moving a todo to tomorrow is a click on the calendar at its row's end. Dropping a dragged row on
+the strip of the day after, or before, would move it there in the same gesture as a reorder. The
+deck knows no todos (deck and card are content-blind), so the drop has to be handed in from the
+page.
