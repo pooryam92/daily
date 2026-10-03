@@ -77,23 +77,23 @@ Keep it current: a change to what the user can do changes this file in the same 
 
 - **What.** A todo can hold steps: one level of todos under it, indented so each step's box sits
   under the todo's text, with a smaller box. A step cannot have steps.
-- **Add.** Click an open todo's text: the word `step` sits at the end of the field. It saves the
-  text and opens an empty step editor under the todo's steps. Enter adds the step and opens the
-  next one; Enter on an empty one, or Escape, closes it and adds nothing, and the keyboard is back
-  on the todo's text. A click elsewhere adds what was typed. A done todo has no `step`.
-- **"+ Add a step"** sits under the last step of an open todo whose steps show. Where there is a
-  mouse it appears while the todo or one of its steps is pointed at or has the focus, and its line
-  is kept, so nothing moves; on touch it is always there. Clicking it opens the step editor in its
-  place, which works as above.
-- **The count.** Right after the last word of a todo with steps, how many are done, like `1/3`,
-  in figures of one width. It turns green when every step is done and the todo is still open. A
-  screen reader hears "1 of 3 steps done".
-- **Fold.** The count is also a button: click it, or press Enter or Space on it, to hide the
-  steps behind it, and again to show them. `1/3 ⌄` shows them, `2/2 ›` hides them. Open or done,
-  each todo keeps its fold, across restarts too. Clicking the text still opens the editor.
+- **Add.** Point at an open todo, or Tab to it, and a + shows at the end of its row, with "Add a
+  step" as its tooltip; on touch it is always there. Click it, or press Enter on it: an empty step
+  editor opens under the todo's steps, "First step…" or "Next step…". Enter adds the step and
+  opens the next one; Enter on an empty one, or Escape, closes it and adds nothing, and the
+  keyboard is back on the todo's text. Leaving it, by click or by Tab, adds what was typed. A
+  folded todo unfolds first. While it is open, the row's +, `tomorrow` and `delete` step aside. A
+  done todo has no +.
+- **The pie.** A todo with steps has a small pie at the right end of its row, in a column that
+  lines up from todo to todo. It fills as steps are done, turns green when every step is done and
+  the todo is still open, and is faint on a done todo. The + sits just left of it. A screen reader
+  hears "1 of 3 steps done".
+- **Fold.** The pie is also a button, "Hide steps" or "Show steps": click it, or press Enter or
+  Space on it, to hide the steps, and again to show them. Open or done, each todo keeps its fold,
+  across restarts too. Clicking the text still opens the editor.
 - **Done flows down, not up.** Checking a todo checks all its steps. Checking every step leaves the
   todo open: checking it is still yours to do. Reopening a todo leaves its steps done.
-- **Checking a todo folds it** to one line, with its count; reopening it leaves the fold as it is.
+- **Checking a todo folds it** to one line, with its pie; reopening it leaves the fold as it is.
   Writing a new step, or undoing a step's delete, unfolds it.
 - **A done todo never has an open step.** Unfold it, and its steps can be checked, edited and
   deleted. Unchecking one reopens the todo, as does putting an open step back under it with Undo.
@@ -106,7 +106,8 @@ Keep it current: a change to what the user can do changes this file in the same 
   its steps along.
   - Drop a todo on the middle of another: it becomes that todo's last step, and a folded todo
     unfolds.
-  - Drop a row between steps, or just under a todo whose steps show: it becomes a step there.
+  - Drop a row between steps, or just under a todo whose steps show: it becomes a step there. A
+    short gap under an open todo's steps leaves room to drop just after the last one.
   - Drop a step between todos: it becomes a todo there.
   - The line's indent shows which it will be, and the todo the row will belong to is tinted.
   - From the keyboard, → makes the row a step of the todo above, and ← makes a step a todo, just
@@ -174,14 +175,13 @@ The installed app looks for a newer version when it starts and every four hours.
 
 - Everything works from the keyboard, including reordering. Every focusable control shows a focus
   ring.
-- A screen reader hears a todo's box as "Done, checkbox", checked or not. The move word is
-  "Move <the todo> to tomorrow" or "to today", `delete` is "Delete <the todo>", and the grip is
-  "Reorder <the todo>". In the editor, `step` is "Add a step to <the todo>", and the step editor is
-  "New step", and "+ Add a step" is "Add a step to <the todo>" too. During a drag, a screen reader
-  hears the row's text and where it would land, like "Above Buy milk." or "Step of Plan the trip,
-  after Book flights."; an arrow key that can't move it says why. The count is "Steps of <the
-  todo>", expanded or collapsed, and is described as "1 of 3 steps done". Folded steps are neither
-  focusable nor read out.
+- A screen reader hears a todo's box as "Done, checkbox", checked or not. The move word is "Move
+  <the todo> to tomorrow" or "to today", `delete` is "Delete <the todo>", and the grip is "Reorder
+  <the todo>". The + is "Add a step to <the todo>", and the step editor is "New step". During a
+  drag, a screen reader hears the row's text and where it would land, like "Above Buy milk." or
+  "Step of Plan the trip, after Book flights."; an arrow key that can't move it says why. The pie is
+  "Steps of <the todo>", expanded or collapsed, and is described as "1 of 3 steps done". Folded
+  steps are neither focusable nor read out.
 - `prefers-reduced-motion` keeps fades and drops movement: a flip is instant, though a drag still
   follows the hand; the cleared day cross-fades.
 - `prefers-contrast: more` gets solid borders. Forced colours keep the strike-through.

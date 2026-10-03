@@ -20,9 +20,8 @@
 }
 
 .row {
-  /* What the fold toggle is placed against; the scope keeps each row's toggle on its own count. */
+  /* What the steps' pie and its toggle are placed against, at the row's end. */
   position: relative;
-  anchor-scope: --fold;
   display: flex;
   align-items: flex-start;
   gap: var(--space-1);
@@ -97,58 +96,19 @@
   background-size: 100% 1px;
 }
 
-/* Only the count's figures: no toggle lies over it here. */
+/* Only the pie, after the text: no toggle lies over it here. */
 .chip .count {
+  position: static;
   margin-inline-start: var(--space-2);
-  padding-inline-end: var(--space-1);
 }
 
 /*
- * The way to another step, under a todo's last one: the row is the button. A + on the boxes' column
- * and the words on the text's, muted, so it reads as a place for a step rather than a step.
+ * The room under a todo's last step: empty, short of a step's height, so the steps end before the
+ * next todo begins. The step editor opens in its place, and a row dragged over it goes to the end of
+ * the steps or after the todo, by the half it is over.
  */
-:is(.todo, .step) > .addStep {
-  width: 100%;
-  color: var(--text-muted);
-  text-align: start;
-  cursor: default;
-}
-
-/* Pressing the row does not squeeze it. */
-.addStep:active {
-  scale: none;
-}
-
-/* Only the grip's room: a finger that lands there scrolls the list, as anywhere else on the row. */
-.addStep .handle {
-  cursor: inherit;
-  touch-action: auto;
-}
-
-.addBox {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 28px;
-  height: 28px;
-}
-
-/*
- * Where there is a mouse the way to a step waits for its todo, or one of its steps, to be pointed at
- * or to hold the focus, so a card at rest is not lined with offers. Its line is always kept, so
- * nothing shifts and a drag's zones stay where they are. While a row is dragged it stays quiet.
- */
-@media (hover: hover) and (pointer: fine) {
-  .todo:not(:hover, :focus-within) .addStep > *,
-  [data-sorting] .addStep > * {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .addStep > * {
-    transition: opacity var(--duration-fast) var(--ease-out);
-  }
+.stepSpace {
+  height: 20px;
 }
 
 /*
@@ -156,7 +116,7 @@
  * words over the line and the tint. The card says it is sorting (DayCard.tsx).
  */
 [data-sorting] .row:hover,
-[data-sorting] .row :is(label, .fold):hover {
+[data-sorting] .row :is(label, .fold, .add):hover {
   background: none;
 }
 
@@ -240,8 +200,17 @@
   visibility: hidden;
 }
 
-.row[data-editing] :is(.move, .remove, .fold) {
+.row[data-editing] :is(.move, .remove, .fold, .count, .add) {
   display: none;
+}
+
+/*
+ * While a step is written under the todo, its row offers nothing that could end the draft by
+ * accident, such as a slow second click on the +. Their room is kept, so the text does not reflow.
+ */
+.row[data-drafting] :is(.move, .remove, .add) {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /*
@@ -299,17 +268,28 @@
   }
 }
 
-/* How many of the steps are done, in figures of one width so the count does not shift as it rises. */
+/*
+ * How many of the steps are done, as a pie that fills as they are: in a column of its own at the
+ * row's end, so that every todo's pie lines up, centred on the first line as the box is. A todo with
+ * steps keeps the column even while its text is edited, so nothing shifts; its words, when they
+ * show, come before it.
+ */
+.row[data-steps] {
+  padding-inline-end: 34px;
+}
+
 .count {
-  /* Far enough from the last letter for the toggle's focus ring, with room at the end for its chevron. */
-  margin-inline-start: var(--space-3);
-  padding-inline-end: 16px;
-  anchor-name: --fold;
-  white-space: nowrap;
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: block;
   color: var(--text-muted);
   transition: color var(--duration-base) var(--ease-out);
+}
+
+/* The pie alone, without a line's height around it. */
+.count svg {
+  display: block;
 }
 
 /* Every step is done and the todo is still open: what is left is to check it. */
@@ -322,43 +302,88 @@
 }
 
 /*
- * The toggle that folds a todo's steps: a 28px target laid over the count, the chevron at its end.
- * It is placed by anchor, since the count moves with the text's last word. The 28px are centred on
- * the 24px line; the count's smaller inline box sits a pixel low. Unlike the words, it is always
- * there: it says that there are steps, and whether they show.
+ * The toggle that folds a todo's steps: the pie is the toggle, this 28px target lies over it, centred
+ * on it. Unlike the words, it is always there: it says that there are steps, and how far along they
+ * are. Folded or not, the pie looks the same: the steps showing below, or not, say which.
  */
 .fold {
   position: absolute;
-  position-anchor: --fold;
-  top: calc(anchor(center) - 15px);
-  left: calc(anchor(left) - 4px);
-  width: calc(anchor-size(width) + 8px);
+  top: var(--space-1);
+  right: var(--space-1);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
+}
+
+.fold:hover {
+  background: var(--hover-strong);
+}
+
+/*
+ * The way to a step, on every open todo: just before the pie when there are steps, in the pie's
+ * place when there are none. Its column is kept, so nothing shifts when it shows.
+ */
+.row:has(> .add) {
+  padding-inline-end: 34px;
+}
+
+.row[data-steps]:has(> .add) {
+  padding-inline-end: 62px;
+}
+
+.add {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  width: 28px;
   height: 28px;
   display: grid;
-  place-items: center end;
-  padding: 0 var(--space-1) 0 0;
+  place-items: center;
   border-radius: var(--radius-sm);
-  color: var(--text-faint);
+  color: var(--text-muted);
   transition:
     color var(--duration-fast) var(--ease-out),
     background-color var(--duration-fast) var(--ease-out),
     scale var(--duration-fast) var(--ease-out);
 }
 
-.fold:hover {
+@media (prefers-reduced-motion: no-preference) {
+  .add {
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out),
+      opacity var(--duration-fast) var(--ease-out),
+      scale var(--duration-fast) var(--ease-out);
+  }
+}
+
+.row[data-steps] > .add {
+  right: 32px;
+}
+
+.add:hover {
   color: var(--text);
   background: var(--hover-strong);
 }
 
-/* Folded, the chevron points along the line (›); unfolded, down to the steps. */
-.fold[aria-expanded='true'] svg {
-  rotate: 90deg;
+/*
+ * Where there is a mouse it waits, as the words do, for its row to be pointed at or to hold the
+ * keyboard's focus; a click's focus is not kept, so it does not linger once the pointer has left.
+ * While a row is dragged it stays quiet.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .row:not(:hover, :has(:focus-visible)) > .add,
+  [data-sorting] .add {
+    opacity: 0;
+  }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .fold svg {
-    transition: rotate var(--duration-base) var(--ease-out);
-  }
+/* The pie under the toggle answers its hover, as the words do theirs; not while a row is dragged. */
+.row:has(> .fold:hover):not([data-sorting] *) > .count {
+  color: var(--text);
 }
 
 /* Read out, not shown: "1 of 3 steps done" instead of "1 slash 3". */

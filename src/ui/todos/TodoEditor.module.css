@@ -26,29 +26,3 @@
 .editor::placeholder {
   color: var(--text-muted);
 }
-
-/*
- * Styled like the row's words, but always there while editing: it is how steps are added. It sits
- * with the first line like the row's words; the negative margin lays its 28px over the 24px line and
- * the label's padding, so it does not make the line taller than the text it edits.
- */
-.step {
-  flex: none;
-  align-self: flex-start;
-  margin-block: -2px;
-  height: 28px;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-  color: var(--text-muted);
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out),
-    scale var(--duration-fast) var(--ease-out);
-}
-
-.step:hover {
-  color: var(--text);
-  background: var(--hover-strong);
-}

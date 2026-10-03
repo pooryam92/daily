@@ -1,19 +1,28 @@
 import { day, expect, test, todo, today } from './daily'
 import type { Daily } from './daily'
 
-/**
- * The `step` at the end of a todo's editor. The row under a todo's steps does the same and has the same
- * name, so this one is told by its word.
- */
-const stepWord = (daily: Daily, text: string) =>
-  daily.page.getByRole('button', { name: `Add a step to ${text}`, exact: true }).filter({ hasText: /^step$/ })
+/** The + on an open todo's own line, the only way to add a step. */
+const plus = (daily: Daily, text: string) =>
+  daily
+    .row(text)
+    .locator(':scope > div')
+    .getByRole('button', { name: `Add a step to ${text}`, exact: true })
 
-test('steps are added from the editor, one Enter after another', async ({ daily }) => {
+test('steps are added from the +, one Enter after another, and the editor has no way to add one', async ({
+  daily
+}) => {
   await daily.add('Set up CI')
 
   await daily.row('Set up CI').getByRole('button', { name: 'Edit Set up CI', exact: true }).click()
-  await stepWord(daily, 'Set up CI').click()
+  await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toBeFocused()
+  await expect(daily.page.getByRole('button', { name: 'Add a step to Set up CI', exact: true })).toHaveCount(
+    0
+  )
+  await daily.page.keyboard.press('Escape')
+
+  await plus(daily, 'Set up CI').click()
   const draft = daily.page.getByRole('textbox', { name: 'New step' })
+  await expect(draft).toHaveAttribute('placeholder', 'First step…')
   for (const step of ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies']) {
     await draft.fill(step)
     await draft.press('Enter')
@@ -24,7 +33,7 @@ test('steps are added from the editor, one Enter after another', async ({ daily 
   const steps = () => daily.row('Set up CI').locator('li[data-step] [data-todo-text] > span:first-child')
   await expect(steps()).toHaveText(['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies'])
   await expect(draft).toBeHidden()
-  await expect(daily.row('Set up CI').getByText('0/3', { exact: true })).toBeVisible()
+  await expect(daily.chevron('Set up CI')).toHaveAccessibleDescription('0 of 3 steps done')
   await expect(daily.page.getByRole('button', { name: 'Edit Set up CI', exact: true })).toBeFocused()
   const saved = {
     [today]: [
@@ -56,7 +65,7 @@ test.describe('with steps', () => {
   test('done flows down from a todo to its steps, not up', async ({ daily }) => {
     await daily.box('Add the workflow file').check()
 
-    await expect(daily.row('Set up CI').getByText('1/2', { exact: true })).toBeVisible()
+    await expect(daily.chevron('Set up CI')).toHaveAccessibleDescription('1 of 2 steps done')
     await expect(daily.box('Set up CI')).not.toBeChecked()
     await expect
       .poll(() => daily.todos())
@@ -66,7 +75,7 @@ test.describe('with steps', () => {
 
     await expect(daily.step('Add the workflow file')).toBeHidden()
     await expect(daily.step('Fix the lint errors')).toBeHidden()
-    await expect(daily.row('Set up CI').getByText('2/2', { exact: true })).toBeVisible()
+    await expect(daily.chevron('Set up CI')).toHaveAccessibleDescription('2 of 2 steps done')
     await expect
       .poll(() => daily.todos())
       .toMatchObject({ [today]: [{ status: 'done', steps: [{ status: 'done' }, { status: 'done' }] }] })
@@ -118,7 +127,7 @@ test.describe('with three steps', () => {
 
     await expect(daily.page.getByText('Step deleted')).toBeVisible()
     await expect(shown(daily)).toHaveText(['Add the workflow file', 'Cache the dependencies'])
-    await expect(daily.row('Set up CI').getByText('0/2', { exact: true })).toBeVisible()
+    await expect(daily.chevron('Set up CI')).toHaveAccessibleDescription('0 of 2 steps done')
     await expect
       .poll(() => saved(daily))
       .toEqual([['Set up CI', 'Add the workflow file', 'Cache the dependencies'], ['Buy milk']])
@@ -151,7 +160,7 @@ test.describe('with three steps', () => {
       'Cache the dependencies'
     ])
     await expect(daily.box('Fix the lint errors')).not.toBeChecked()
-    await expect(daily.row('Set up CI').getByText('2/3', { exact: true })).toBeVisible()
+    await expect(daily.chevron('Set up CI')).toHaveAccessibleDescription('2 of 3 steps done')
     await expect
       .poll(async () => (await daily.todos())[today]?.[0])
       .toStrictEqual({
@@ -199,7 +208,7 @@ test.describe('with three steps', () => {
       'Fix the lint errors',
       'Cache the dependencies'
     ])
-    await expect(daily.row('Set up CI').getByText('3/3', { exact: true })).toBeVisible()
+    await expect(daily.chevron('Set up CI')).toHaveAccessibleDescription('3 of 3 steps done')
     await expect(daily.box('Set up CI')).not.toBeChecked()
 
     await daily.box('Set up CI').check()
@@ -212,7 +221,7 @@ test.describe('with three steps', () => {
     )
     await expect(todos).toHaveText(['Buy milk', 'Set up CI'])
     await expect(daily.row('Set up CI').locator('li[data-step]')).toHaveCount(0)
-    await expect(daily.row('Set up CI').getByText('3/3', { exact: true })).toBeVisible()
+    await expect(daily.chevron('Set up CI')).toHaveAccessibleDescription('3 of 3 steps done')
   })
 
   test('a step is reordered from the keyboard, within its todo, and Escape puts it back', async ({
@@ -280,14 +289,14 @@ test.describe('with three steps', () => {
     await daily.page.getByRole('button', { name: 'Edit Fix the lint errors', exact: true }).click()
     const editor = daily.page.getByRole('textbox', { name: 'Edit todo' })
     await expect(editor).toHaveValue('Fix the lint errors')
-    // A step cannot have steps: its field has no `step`.
+    // A step cannot have steps: it has no +.
     await expect(daily.page.getByRole('button', { name: 'Add a step to Fix the lint errors' })).toHaveCount(0)
     await editor.fill('Fix the lint warnings')
     await editor.press('Enter')
 
     await expect(editor).toHaveCount(0)
     await expect(daily.page.getByRole('textbox', { name: 'New step' })).toHaveCount(0)
-    await expect(daily.row('Set up CI').getByText('0/3', { exact: true })).toBeVisible()
+    await expect(daily.chevron('Set up CI')).toHaveAccessibleDescription('0 of 3 steps done')
     await expect
       .poll(() => daily.todos())
       .toMatchObject({
@@ -309,8 +318,7 @@ test.describe('with three steps', () => {
   test('a step being written is added when left, and nothing is when it is blank', async ({ daily }) => {
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
     const openDraft = async () => {
-      await daily.page.getByRole('button', { name: 'Edit Set up CI', exact: true }).click()
-      await stepWord(daily, 'Set up CI').click()
+      await plus(daily, 'Set up CI').click()
       await expect(draft).toBeFocused()
     }
     const before = await daily.file('todos.json')
@@ -396,8 +404,7 @@ test.describe('without steps', () => {
   test.use({ seed: { [today]: [todo('Set up CI')] } })
 
   test('Escape on a step being written adds nothing', async ({ daily }) => {
-    await daily.row('Set up CI').getByRole('button', { name: 'Edit Set up CI', exact: true }).click()
-    await stepWord(daily, 'Set up CI').click()
+    await plus(daily, 'Set up CI').click()
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
     await draft.fill('Add the workflow file')
     await draft.press('Escape')

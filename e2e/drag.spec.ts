@@ -574,17 +574,15 @@ test.describe('dropping a row onto a row', () => {
       )
     })
 
-    test('the row that adds a step is never a target: its upper half is a step at the end, its lower half the todo after', async ({
+    test('the spacer under the steps is never a target: its upper half is a step at the end, its lower half the todo after', async ({
       daily
     }) => {
       const adds = daily.page.locator('li[data-add-step]')
-      const ciAdds = adds.filter({
-        has: daily.page.getByRole('button', { name: 'Add a step to Set up CI', exact: true })
-      })
+      const ciAdds = daily.row('Set up CI').locator('li[data-add-step]')
       const heard = await listen(daily)
       const half = async (held: Held, at: number) => {
         const box = await ciAdds.boundingBox()
-        if (box === null) throw new Error('No row adds a step to Set up CI')
+        if (box === null) throw new Error('Set up CI has no spacer under its steps')
         await glide(daily, held, { x: box.x + box.width * 0.3, y: box.y + box.height * at })
         await expect(adds.locator('[data-drop-line]')).toHaveCount(0)
         await expect(daily.page.locator('li[data-add-step][data-drop-target]')).toHaveCount(0)

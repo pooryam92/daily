@@ -8,16 +8,15 @@ What changed for someone using Daily, newest first. The format is
 
 ### Added
 
-- Steps on a todo. Click a todo's text and then `step` to write steps under it; Enter adds the
-  next one, and Escape stops. A todo shows how many of its steps are done, like `1/3`; click the
-  count to fold the steps away behind it, and again to show them. Each todo keeps its fold.
+- Steps on a todo. Point at a todo and click the + at the end of its row to write steps under it;
+  Enter adds the next one, and Escape stops. A small pie at the end of a todo's row fills as its
+  steps are done; click it to fold the steps away, and again to show them. Each todo keeps its fold.
   Checking the todo checks its steps and folds them; checking every step leaves the todo for you to
   check, and unchecking a step reopens it. A checked step stays where it is. Steps are edited,
-  deleted with Undo, and dragged by mouse or keyboard, and they move with their todo. "+ Add a
-  step" under a todo's steps adds another. Drop a todo on another to make it a step, or between
-  steps to put it there; drop a step between todos to make it a todo again (→ and ← during a
-  keyboard drag). Going back to an older version of Daily loses the steps and their folds: it opens
-  the todos without them, and saves them that way.
+  deleted with Undo, and dragged by mouse or keyboard, and they move with their todo. Drop a todo on
+  another to make it a step, or between steps to put it there; drop a step between todos to make it
+  a todo again (→ and ← during a keyboard drag). Going back to an older version of Daily loses the
+  steps and their folds: it opens the todos without them, and saves them that way.
 
 ### Removed
 

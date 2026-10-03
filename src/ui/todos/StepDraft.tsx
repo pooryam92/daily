@@ -5,6 +5,8 @@ import type { EditorClose } from './TodoEditor'
 import styles from './TodoEditor.module.css'
 
 interface StepDraftProps {
+  /** Whether it would be the todo's first step. */
+  readonly first: boolean
   /** Adds the step. After Enter the draft stays open: the parent gives it a new key, so it starts empty. */
   readonly onAdd: (text: string) => void
   readonly onClose: (how: EditorClose) => void
@@ -16,7 +18,7 @@ interface StepDraftProps {
  * adds what was written, like everywhere else in the app, and Escape adds nothing. Unlike the
  * editor (`TodoEditor`), there is no old text to fall back on: an empty draft is no step at all.
  */
-export function StepDraft({ onAdd, onClose }: StepDraftProps) {
+export function StepDraft({ first, onAdd, onClose }: StepDraftProps) {
   const [draft, setDraft] = useState('')
   const field = useRef<HTMLTextAreaElement>(null)
   // Whatever ends the draft takes the field away, which can blur it: one ending per draft.
@@ -51,7 +53,7 @@ export function StepDraft({ onAdd, onClose }: StepDraftProps) {
       className={styles.editor}
       rows={1}
       aria-label="New step"
-      placeholder="Next step…"
+      placeholder={first ? 'First step…' : 'Next step…'}
       value={draft}
       onChange={(event) => {
         setDraft(event.target.value)

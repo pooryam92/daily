@@ -26,8 +26,8 @@ interface Box {
 }
 
 /**
- * Where a row's parts are: the label slot, the text button in it, the text's lines, the count, the box,
- * and the toggle that lies over the count.
+ * Where a row's parts are: the label slot, the text button in it, the text's lines, the pie, the box,
+ * and the toggle that lies over the pie.
  */
 interface Geometry {
   readonly row: Box
@@ -35,12 +35,17 @@ interface Geometry {
   readonly text: Box
   readonly box: Box
   readonly lines: readonly Box[]
+  /** The pie that counts a todo's steps. */
   readonly count: Box | null
   readonly toggle: Box | null
-  /** Whether a click on the middle of the count lands on the toggle. */
+  /** Whether a click on the middle of the pie lands on the toggle. */
   readonly countHitsToggle: boolean
   /** The first word after the label, `tomorrow` or `delete`, hidden or not. */
   readonly word: Box
+  /** The + that adds a step, on an open todo with steps. */
+  readonly plus: Box | null
+  /** Where the row's parts other than the pie, its toggle and the + end, the words included. */
+  readonly end: number
 }
 
 function geometry(daily: Daily, text: string): Promise<Geometry> {
@@ -54,10 +59,12 @@ function geometry(daily: Daily, text: string): Promise<Geometry> {
       [...(row?.querySelectorAll(':scope > button') ?? [])].find(
         (el) => el.getAttribute('aria-label') === `Steps of ${text}`
       ) ?? null
+    const count = row?.querySelector(':scope > [class*="_count_"]') ?? null
+    const plus = row?.querySelector(`:scope > button[aria-label="Add a step to ${text}"]`) ?? null
     let word = label?.nextElementSibling
-    if (word === toggle) word = word?.nextElementSibling
+    while (word && (word === toggle || word === count || word === plus)) word = word.nextElementSibling
     if (!label || !row || !strike || !check || !word) throw new Error(`The row of ${text} is not as expected`)
-    const count = button.querySelector(':scope > span + span')
+    const rest = [...row.children].filter((el) => el !== toggle && el !== count && el !== plus)
     // In so small a window the add input may lie over the last lines until the list is scrolled.
     count?.scrollIntoView({ block: 'center', behavior: 'instant' })
     const middle = count?.getBoundingClientRect()
@@ -74,7 +81,9 @@ function geometry(daily: Daily, text: string): Promise<Geometry> {
       count: count === null ? null : box(count.getBoundingClientRect()),
       toggle: toggle === null ? null : box(toggle.getBoundingClientRect()),
       countHitsToggle: toggle !== null && hit !== null && toggle.contains(hit),
-      word: box(word.getBoundingClientRect())
+      word: box(word.getBoundingClientRect()),
+      plus: plus === null ? null : box(plus.getBoundingClientRect()),
+      end: Math.max(...rest.map((el) => el.getBoundingClientRect().right))
     }
   }, text)
 }
@@ -90,10 +99,11 @@ async function smallest(daily: Daily): Promise<void> {
 
 /**
  * At the smallest window a long text wraps over several lines in a narrow column. It must still take
- * the whole slot between the box and the words, the box must sit by its first line, and the count
- * must follow its last word, with the toggle over it and clear of the words.
+ * the whole slot between the box and the words, and the box must sit by its first line. A todo with
+ * steps has its pie at the row's top right, with the toggle over it, and an open one its + just left
+ * of the toggle; the text and the words end before them.
  */
-test('in the smallest window, a wrapped row keeps its text wide, its box up and its count after it', async ({
+test('in the smallest window, a wrapped row keeps its text wide, its box up and its pie at its end', async ({
   daily
 }) => {
   await smallest(daily)
@@ -120,21 +130,34 @@ test('in the smallest window, a wrapped row keeps its text wide, its box up and 
     expect(Math.abs(at.box.top - (first.top - 4)), where).toBeLessThanOrEqual(1)
     expect(Math.abs(at.word.top - at.box.top), where).toBeLessThanOrEqual(1)
     if (counted) {
-      if (at.count === null) throw new Error(`${text} has no count`)
-      expect(Math.abs(at.count.left - (last.right + 12)), where).toBeLessThanOrEqual(1)
-      expect(at.count.top, where).toBeGreaterThanOrEqual(last.top)
-      expect(at.count.bottom, where).toBeLessThanOrEqual(last.bottom)
-      // The toggle lies over the count on the last line, after the text and short of the words.
+      if (at.count === null) throw new Error(`${text} has no pie`)
+      // A 16px pie 10px in from the row's top right, by the first line however many lines the text takes.
+      expect(Math.abs(at.count.width - 16), where).toBeLessThanOrEqual(1)
+      expect(Math.abs(at.row.right - 10 - at.count.right), where).toBeLessThanOrEqual(1)
+      expect(Math.abs(at.count.top - (at.row.top + 10)), where).toBeLessThanOrEqual(1)
+      expect(at.end, where).toBeLessThanOrEqual(at.row.right - 34 + 1)
+      expect(at.count.left, where).toBeGreaterThanOrEqual(at.end)
+      // The 28px toggle lies over the pie, centred on it, inside the row.
       if (at.toggle === null) throw new Error(`${text} has no toggle`)
       expect(at.countHitsToggle, where).toBe(true)
-      expect(at.toggle.top, where).toBeLessThanOrEqual(last.top)
-      expect(at.toggle.bottom, where).toBeGreaterThanOrEqual(last.bottom)
-      expect(at.toggle.left, where).toBeGreaterThanOrEqual(last.right)
-      expect(at.toggle.left, where).toBeLessThanOrEqual(at.count.left)
-      expect(at.toggle.right, where).toBeGreaterThanOrEqual(at.count.right)
-      expect(at.toggle.right, where).toBeLessThanOrEqual(at.word.left + 1)
+      expect(Math.abs(at.toggle.width - 28), where).toBeLessThanOrEqual(1)
+      expect(
+        Math.abs((at.toggle.left + at.toggle.right) / 2 - (at.count.left + at.count.right) / 2),
+        where
+      ).toBeLessThanOrEqual(1)
+      expect(
+        Math.abs((at.toggle.top + at.toggle.bottom) / 2 - (at.count.top + at.count.bottom) / 2),
+        where
+      ).toBeLessThanOrEqual(1)
       expect(at.toggle.right, where).toBeLessThanOrEqual(at.row.right + 1)
+      // An open todo's + is 28px, just left of the toggle, and the text and the words end before it.
+      if (at.plus === null) throw new Error(`${text} has no +`)
+      expect(Math.abs(at.plus.width - 28), where).toBeLessThanOrEqual(1)
+      expect(Math.abs(at.plus.right - at.toggle.left), where).toBeLessThanOrEqual(1)
+      expect(Math.abs(at.plus.top - at.toggle.top), where).toBeLessThanOrEqual(1)
+      expect(at.end, where).toBeLessThanOrEqual(at.plus.left + 1)
     } else {
+      expect(at.plus, where).toBeNull()
       expect(at.count, where).toBeNull()
       expect(at.toggle, where).toBeNull()
     }
@@ -144,7 +167,7 @@ test('in the smallest window, a wrapped row keeps its text wide, its box up and 
   expect((await geometry(daily, LONG_STEP)).lines.length).toBeGreaterThanOrEqual(3)
 })
 
-test('in the smallest window, the row that adds a step is one line, its + under the steps’ boxes and its words under their text', async ({
+test('in the smallest window, the spacer under the steps is 20px high and as wide as a step’s row', async ({
   daily
 }) => {
   await smallest(daily)
@@ -154,37 +177,21 @@ test('in the smallest window, the row that adds a step is one line, its + under 
     [LONG, 'Cache']
   ] as const) {
     const steps = await geometry(daily, step)
-    const button = daily.page.getByRole('button', { name: `Add a step to ${text}`, exact: true })
-    await button.scrollIntoViewIfNeeded()
-    const at = await button.evaluate((row) => {
+    const spacer = daily.row(text).locator('li[data-add-step]')
+    await spacer.scrollIntoViewIfNeeded()
+    const at = await spacer.evaluate((row) => {
       const box = ({ left, right, top, bottom, width }: DOMRect): Box => ({ left, right, top, bottom, width })
-      const words = [...row.querySelectorAll('*')].find((el) => el.textContent.trim() === 'Add a step')
-      const plus = words?.previousElementSibling
-      if (!words || !plus) throw new Error('The row that adds a step is not as expected')
-      const range = document.createRange()
-      range.selectNodeContents(words)
       const list = row.closest('li[data-todo]')?.parentElement
       return {
         row: box(row.getBoundingClientRect()),
-        plus: box(plus.getBoundingClientRect()),
-        lines: [...range.getClientRects()].map(box),
         overflows: [document.documentElement, list].some((el) => el && el.scrollWidth > el.clientWidth)
       }
     })
     const where = `${text}: ${JSON.stringify(at)}, its step: ${JSON.stringify(steps)}`
-    const first = steps.lines[0]
-    if (first === undefined) throw new Error(`${step} has no lines`)
 
-    expect(new Set(at.lines.map((line) => Math.round(line.top))).size, where).toBe(1)
-    expect(
-      Math.abs((at.plus.left + at.plus.right) / 2 - (steps.box.left + steps.box.right) / 2),
-      where
-    ).toBeLessThanOrEqual(1)
-    expect(Math.abs((at.lines[0]?.left ?? 0) - first.left), where).toBeLessThanOrEqual(1)
-    expect(
-      Math.abs(at.row.bottom - at.row.top - (steps.row.bottom - steps.row.top)),
-      where
-    ).toBeLessThanOrEqual(2)
+    expect(Math.abs(at.row.left - steps.row.left), where).toBeLessThanOrEqual(1)
+    expect(Math.abs(at.row.right - steps.row.right), where).toBeLessThanOrEqual(1)
+    expect(Math.abs(at.row.bottom - at.row.top - 20), where).toBeLessThanOrEqual(1)
     expect(at.overflows, where).toBe(false)
   }
 })
