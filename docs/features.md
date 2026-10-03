@@ -14,7 +14,7 @@ Keep it current: a change to what the user can do changes this file in the same 
   weekday. The line under it has the date, and for a day titled by its weekday also how far from
   today it is. Only "Today" is in the accent colour.
 - **The day before and the day after peek out** behind the front card, as a tab with the date and
-  one wordless bar per todo. Their text is not readable on purpose.
+  one wordless bar per todo. Their text is not readable on purpose. The arrow buttons sit on them.
 - **Midnight.** While the app shows today, it follows the date: after midnight the front card is the
   new day. A day that was navigated to stays where it is. The date is checked every minute and
   whenever the window gets focus.

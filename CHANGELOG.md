@@ -36,6 +36,8 @@ What changed for someone using Daily, newest first. The format is
 - A row at rest shows only its box and its text. `tomorrow` and `delete` appear when the row is
   hovered; on touch they are always there.
 - The falling note for a drop is gone with it; a tick and the chord remain.
+- The card is wider, up to 840px, so a todo's text has more room. The arrow buttons sit on the day
+  before and the day after, the days they go to.
 
 ### Fixed
 
