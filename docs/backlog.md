@@ -18,6 +18,8 @@ followed, not at an index.
 A design item, older than steps. Where there is a mouse, `tomorrow` and `delete` are hidden at rest
 but keep their width, so nothing shifts on hover. At the 640×420 window that is about 147px of a
 372px row: a todo's text wraps at about 161px instead of about 308px. At a 720px card it is 147 of
-692px, so it matters most below a card of about 600px. The proposal: on fine pointers the text takes
-the whole row at rest, and the words lay over its end on hover or focus, on a fade of the row's
-background; touch keeps them in the row, since there is no hover there.
+692px, so it matters most below a card of about 600px. Of 20 typical todos given steps, 13 wrap
+at 640×420 with the steps pie at the row end (17 with the count after the text), and none at 1280.
+The proposal: on fine pointers the text takes the whole row at rest, and the words lay over its end
+on hover or focus, on a fade of the row's background; touch keeps them in the row, since there is
+no hover there.

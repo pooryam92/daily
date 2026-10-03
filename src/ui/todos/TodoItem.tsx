@@ -9,8 +9,8 @@ import type {
 } from '@dnd-kit/dom'
 import { DragOverlay, useDragDropManager, useDraggable } from '@dnd-kit/react'
 import { useComputed } from '@dnd-kit/react/hooks'
-import { ChevronRight, GripVertical, Plus } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { GripVertical, Plus } from 'lucide-react'
+import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from 'react'
 import type { Todo } from '@/domain/todo'
@@ -202,6 +202,9 @@ export function TodoItem({
   const [editing, setEditing] = useState(false)
   // Which step is being written, while one is: each step added starts a new draft.
   const [draft, setDraft] = useState(0)
+  // Each time the step editor opens it is a new one, even while the last one still fades out: that
+  // one has ended, and a new one takes the focus.
+  const [opened, setOpened] = useState(0)
   const text = useRef<HTMLButtonElement>(null)
   // Under reduced motion a moved row only fades, like a deleted one.
   const still = useReducedMotion() === true
@@ -252,10 +255,12 @@ export function TodoItem({
         textRef={text}
         handleRef={handleRef}
         regrip={regrip === todo.id}
+        drafting={drafting}
         move={{ target: moveTarget, onMove }}
         onStep={() => {
           // The step is written among the steps, so they have to show.
           if (folded) onToggleFold(todo.id)
+          if (!drafting) setOpened((count) => count + 1)
           onAddingStep(true)
         }}
         fold={{
@@ -295,21 +300,15 @@ export function TodoItem({
                   {...actions}
                 />
               ))}
-              {/* The way to another step, under the last one, where the step editor opens in its place. */}
+              {/* The line under the last step, where the step editor opens in its place. */}
               {!drafting && todo.status === 'open' && steps.length > 0 && (
-                <AddStepItem
-                  key="add"
-                  todo={todo}
-                  order={order}
-                  onClick={() => {
-                    onAddingStep(true)
-                  }}
-                />
+                <StepSpace key="add" order={order} />
               )}
               {drafting && (
                 <StepDraftItem
-                  key="draft"
+                  key={`draft-${String(opened)}`}
                   draft={draft}
+                  first={(todo.steps?.length ?? 0) === 0}
                   order={order}
                   onAdd={(next) => {
                     onAddStep(next, todo.id)
@@ -398,6 +397,8 @@ function StepItem({
 interface StepDraftItemProps {
   /** Which draft this is: each step added starts a new one, empty. */
   readonly draft: number
+  /** Whether the todo has no steps yet: the field then asks for the first. */
+  readonly first: boolean
   readonly order: string
   readonly onAdd: (text: string) => void
   readonly onClose: (how: EditorClose) => void
@@ -410,12 +411,14 @@ interface StepDraftItemProps {
  * text, and an empty box that can be checked once it is a step. The row itself stays while one step
  * after another is added: it slides down under each new step, and only the field starts afresh.
  */
-function StepDraftItem({ draft, order, onAdd, onClose, ref }: StepDraftItemProps) {
+function StepDraftItem({ draft, first, order, onAdd, onClose, ref }: StepDraftItemProps) {
   const item = useRef<HTMLLIElement | null>(null)
   const attach = useCallback((node: HTMLLIElement | null) => {
     item.current = node
   }, [])
   const setItem = useItemRef(true, ref, attach)
+  // Once the draft has ended it only fades out: its field takes no focus and no typing then.
+  const present = useIsPresent()
 
   // The row moves down with every step added, so it is brought into view again each time.
   useEffect(() => {
@@ -432,6 +435,7 @@ function StepDraftItem({ draft, order, onAdd, onClose, ref }: StepDraftItemProps
       ref={setItem}
       data-step
       data-draft
+      inert={!present}
       layout="position"
       layoutDependency={order}
       initial={{ opacity: 0, y: -8 }}
@@ -444,54 +448,36 @@ function StepDraftItem({ draft, order, onAdd, onClose, ref }: StepDraftItemProps
         <span className={styles.handle} aria-hidden="true" />
         <DoneCheckbox checked={false} size="sm" />
         <div className={styles.label}>
-          <StepDraft key={draft} onAdd={onAdd} onClose={onClose} />
+          <StepDraft key={draft} first={first} onAdd={onAdd} onClose={onClose} />
         </div>
       </div>
     </motion.li>
   )
 }
 
-interface AddStepItemProps {
-  readonly todo: Todo
+interface StepSpaceProps {
   readonly order: string
-  readonly onClick: () => void
   /** Set by `AnimatePresence`, which takes the row out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
 
 /**
- * The last line of an open todo's steps: a + on the boxes' column and "Add a step" on the text's,
- * quiet until it is pointed at. A click opens the step editor where it is. It is not a row: nothing
- * is dropped on it, and a row dragged over it goes to the end of the steps above or before the todo
+ * The last line of an open todo's steps: empty and shorter than a step, so the steps end before the
+ * next todo, and the step editor opens there. The + on the todo's row opens it. It is not a row: nothing is
+ * dropped on it, and a row dragged over it goes to the end of the steps above or before the todo
  * below, by the half it is over (rowDrag.ts).
  */
-function AddStepItem({ todo, order, onClick, ref }: AddStepItemProps) {
+function StepSpace({ order, ref }: StepSpaceProps) {
   return (
     <motion.li
       ref={ref}
-      className={styles.step}
+      className={[styles.step, styles.stepSpace].join(' ')}
       data-add-step
+      aria-hidden="true"
       layout="position"
       layoutDependency={order}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1, transition: ROW_ENTER }}
-      exit={{ opacity: 0, transition: ROW_EXIT }}
       transition={{ layout: ROW_LAYOUT }}
-    >
-      <button
-        type="button"
-        className={[styles.row, styles.addStep].join(' ')}
-        aria-label={`Add a step to ${todo.text}`}
-        onClick={onClick}
-      >
-        {/* The grip's slot and the box's, so the + and the words line up with the steps above. */}
-        <span className={styles.handle} aria-hidden="true" />
-        <span className={styles.addBox} aria-hidden="true">
-          <Plus size={12} />
-        </span>
-        <span className={styles.label}>Add a step</span>
-      </button>
-    </motion.li>
+    />
   )
 }
 
@@ -505,6 +491,8 @@ interface TodoRowProps extends RowActions {
   readonly handleRef: (element: Element | null) => void
   /** Whether the grip takes the focus: see `useRegrip`. */
   readonly regrip?: boolean
+  /** Whether a step is being written under the todo. */
+  readonly drafting?: boolean
   /** Where the move word sends the todo. Steps have none: they go wherever their todo goes. */
   readonly move?: { readonly target: MoveTarget; readonly onMove: (id: string) => void }
   /** Opens the step editor under the todo. Steps have none: a step cannot have steps. */
@@ -561,6 +549,7 @@ function TodoRow({
   textRef: text,
   handleRef,
   regrip = false,
+  drafting = false,
   move,
   onStep,
   fold,
@@ -585,7 +574,14 @@ function TodoRow({
       className={styles.row}
       data-row={todo.id}
       data-status={todo.status}
+      data-steps={counted || undefined}
       data-editing={editing || undefined}
+      data-drafting={drafting || undefined}
+      // While a step is written, a press on the row's empty end, where the + and the words were,
+      // leaves the focus in the step editor: it is a slow second click on the +, not a way out.
+      onMouseDown={(event) => {
+        if (drafting && event.target === event.currentTarget) event.preventDefault()
+      }}
     >
       {/* The grip shows on hover. It is the keyboard's handle: Space or Enter picks the row up, the
           arrow keys move where it would land (up and down, and right and left between a todo and a
@@ -611,17 +607,13 @@ function TodoRow({
         {editing ? (
           <TodoEditor
             text={todo.text}
-            // A done todo takes no steps: an open step under it would undo "done flows down".
-            canStep={onStep !== undefined && todo.status === 'open'}
             onCommit={(next) => {
               onEdit(todo.id, next)
             }}
             onClose={(how) => {
               setEditing(false)
-              // Escape and Enter leave the keyboard where it was; after a click elsewhere, it has moved
-              // on, and after `step` it is in the step editor.
-              if (how === 'step') onStep?.()
-              else if (how !== 'blur') requestAnimationFrame(() => text.current?.focus())
+              // Escape and Enter leave the keyboard where it was; after a click elsewhere, it has moved on.
+              if (how !== 'blur') requestAnimationFrame(() => text.current?.focus())
             }}
           />
         ) : (
@@ -637,15 +629,28 @@ function TodoRow({
             }}
             onKeyDown={onTextKeyDown}
           >
-            {/* No space between them: the count goes with the last word, and never onto a line alone. */}
             <span className={styles.strike}>{todo.text}</span>
-            <StepCount todo={todo} id={countId} />
           </button>
         )}
       </div>
-      {/* The count is the toggle: this button lies over it (TodoItem.module.css, .fold), so a click on
-          the count folds the steps and a click on the text still edits it. It comes after the text, so
-          the keyboard reaches it there. Folded steps are not on the page, so there is nothing to control. */}
+      {/* The one way to add a step, on any open todo: before the pie when there are steps, in its
+          place when there are none. A done todo takes no steps: an open step under it would undo
+          "done flows down". */}
+      {onStep !== undefined && todo.status === 'open' && (
+        <button
+          type="button"
+          className={styles.add}
+          aria-label={`Add a step to ${todo.text}`}
+          title="Add a step"
+          onClick={onStep}
+        >
+          <Plus size={14} aria-hidden="true" />
+        </button>
+      )}
+      <StepCount todo={todo} id={countId} />
+      {/* The pie is the toggle: this button lies over it at the row's end (TodoItem.module.css, .fold).
+          It comes after the text, so the keyboard reaches it there. Folded steps are not on the page,
+          so there is nothing to control. */}
       {fold !== undefined && counted && (
         <button
           type="button"
@@ -654,10 +659,9 @@ function TodoRow({
           aria-expanded={!fold.folded}
           aria-controls={fold.folded ? undefined : fold.stepsId}
           aria-describedby={countId}
+          title={fold.folded ? 'Show steps' : 'Hide steps'}
           onClick={fold.onToggle}
-        >
-          <ChevronRight size={12} aria-hidden="true" />
-        </button>
+        />
       )}
       {move !== undefined && todo.status === 'open' && (
         <button
@@ -675,14 +679,7 @@ function TodoRow({
         type="button"
         className={styles.remove}
         aria-label={`Delete ${todo.text}`}
-        // The second click of a double click is never meant for this word. It lands here when the
-        // first one was on the editor's `step`, which sits where this word is once the edit is over:
-        // it neither deletes nor takes the focus from the step editor that `step` opened.
-        onMouseDown={(event) => {
-          if (event.detail > 1) event.preventDefault()
-        }}
-        onClick={(event) => {
-          if (event.detail > 1) return
+        onClick={() => {
           onRemove(todo.id)
         }}
       >
@@ -833,18 +830,61 @@ function CopyChip({
 }
 
 /**
- * How many of a todo's steps are done, as `1/3`: a count rather than a percentage, since the steps
- * are few. Screen readers hear it in words, from the element `id`; nothing is shown for a todo
- * without steps.
+ * How many of a todo's steps are done, as a pie that fills as they are: no figures to read at a
+ * glance, since the steps themselves are a click away. Screen readers hear it in words, from the
+ * element `id`; nothing is shown for a todo without steps.
  */
+/** The pie's size, and the radius of its filled part, inside a ring that is half its colour. */
+const PIE_PX = 16
+const PIE_RADIUS = PIE_PX / 2 - 2.5
+
+function StepPie({ done, total }: { readonly done: number; readonly total: number }) {
+  const centre = PIE_PX / 2
+  const part = done / total
+  // The filled part starts at the top and goes clockwise.
+  const angle = 2 * Math.PI * part - Math.PI / 2
+  const end = `${String(centre + PIE_RADIUS * Math.cos(angle))} ${String(centre + PIE_RADIUS * Math.sin(angle))}`
+  return (
+    <svg
+      width={PIE_PX}
+      height={PIE_PX}
+      viewBox={`0 0 ${String(PIE_PX)} ${String(PIE_PX)}`}
+      aria-hidden="true"
+    >
+      <circle
+        cx={centre}
+        cy={centre}
+        r={PIE_RADIUS + 0.75}
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity={0.5}
+        strokeWidth={1.5}
+      />
+      {part >= 1 ? (
+        <circle cx={centre} cy={centre} r={PIE_RADIUS} fill="currentColor" />
+      ) : (
+        part > 0 && (
+          <path
+            d={`M${String(centre)} ${String(centre)} V${String(centre - PIE_RADIUS)} A${String(PIE_RADIUS)} ${String(PIE_RADIUS)} 0 ${part > 0.5 ? '1' : '0'} 1 ${end} Z`}
+            fill="currentColor"
+          />
+        )
+      )}
+    </svg>
+  )
+}
+
 function StepCount({ todo, id }: { readonly todo: Todo; readonly id: string }) {
   const { done, total } = stepProgress(todo)
   if (total === 0) return null
   return (
-    <span className={styles.count} data-complete={done === total || undefined}>
-      <span aria-hidden="true">
-        {done}/{total}
-      </span>
+    <span
+      className={styles.count}
+      data-done={done}
+      data-total={total}
+      data-complete={done === total || undefined}
+    >
+      <StepPie done={done} total={total} />
       <span
         id={id}
         className={styles.visuallyHidden}

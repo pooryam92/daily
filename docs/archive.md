@@ -10,6 +10,38 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Adding a step (2026-10-02)
+
+- **One way in: a + at the end of every open todo's row** (`todos/TodoItem.tsx`), on hover or
+  focus, beside the pie when the todo has steps and in the pie's place when it has none. The
+  editor's `step` word is gone. A first-time walk found the first step hidden behind a faint word
+  inside the editor, and a slow second click on it landing on `delete`.
+  - Not a line of its own under the steps, with a + or with words: Poorya found it untidy.
+  - Not a `step` word with `tomorrow` and `delete`: 47px of text width, against 28.
+  - The cost: at 640×420 an open todo's text column is 131px, not 161.
+- **The step editor says "First step…" or "Next step…",** and while it is open the row's +,
+  `tomorrow` and `delete` step aside. Leaving it, by click or by Tab, adds what was typed.
+- **A 20px gap closes an unfolded open todo's steps,** never a target itself. Without it the top
+  level after a todo's last step is a 9px band; with it, 19px.
+- **The pie's tooltip says "Hide steps" or "Show steps".** No pointer cursor, as for every button
+  in Daily.
+
+## A pie at the row's end (2026-10-02)
+
+- **A todo's steps show as a pie** (`StepPie` in `todos/TodoItem.tsx`), 16px, in a column at the
+  row's right edge, and the pie is the fold toggle. Poorya found `0/2 ⌄` after the text, with
+  "+ Add a step" on every todo, too busy, and picked this place over three others. The text line
+  stays clean, and progress lines up as a column to scan or ignore. It keeps the count's colours:
+  green when every step is done on an open todo, faint on a done one.
+  - Not dots, one per step: they grow with the list.
+  - Not the todo's own box filling: a part-filled box reads as "half done".
+  - Not a thin ring like the day's: at 1/3 it read as a loading spinner.
+  - Not in the grip's slot: the grip takes it on hover, just when the pie is wanted.
+  - Not a thread down the steps or a caption under the text: new rows to keep out of the drag, or
+    a taller todo.
+- **Only todos with steps reserve the column** (30px), so other todos keep their width. At
+  1280 the pie sits far from short text, about 456px.
+
 ## Dragging onto a row (2026-10-02)
 
 - **Nothing moves while you drag** (`day/useRowDrag.ts`). The row stays in place, dimmed, a small
@@ -37,17 +69,13 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 - **A drag follows only the pointer that started it** (`HeldPointerSensor` in
   `todos/TodoItem.tsx`), and a mouse move with no button held is ignored: dnd-kit 0.5 takes any
   pointer's move or release.
-- **"+ Add a step" closes the steps of an unfolded open todo** (Poorya's pick, for the fewest
-  bugs): a button that turns into the step editor in place. It is never a drop target. With a
-  mouse it shows only while its todo is pointed at or focused (Poorya found a row on every todo
-  too busy); it keeps its line, so nothing shifts and the drag's zones hold.
 - **No undo, no sound,** as for reorder: dragging back reverses it.
 
 ## Folding steps (2026-10-01)
 
-- **The count is the toggle** (`todos/TodoItem.tsx`): `1/3 ⌄`, and `2/2 ›` when folded, on open
-  and done todos. It costs the row no width and needs no hover, so touch has it. A click on the
-  count no longer opens the editor; the text does.
+- **The count is the toggle** (`todos/TodoItem.tsx`; a pie since 2026-10-02, see above): `1/3 ⌄`,
+  and `2/2 ›` when folded, on open and done todos. It costs the row no width and needs no hover,
+  so touch has it. A click on the count no longer opens the editor; the text does.
   - Not a chevron column before the grip: every row would lose 28px, and more todos wrap at 640×420.
   - Not a chevron at the row's end: it would sit about 380px from its text at 1280.
 - **The fold is stored per todo** (`folded?: true` in `domain/todo.ts`, files still `version: 1`),
@@ -72,10 +100,10 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
   checkbox: that is select-all semantics in WAI-ARIA, not a task's state.
 - **The ring and the settling count todos only.** Steps stay where they are when done, and a step
   ticks but never clears the day (`ui/sound/sound.ts`).
-- **The one way in is the editor's `step`,** where `delete` lived until 2026-09-25: every app puts
-  "add a step" inside the opened task, and the row keeps its two words. Enter chains steps
-  (`todos/StepDraft.tsx`); Escape, or leaving an empty one, adds nothing. Not on a done todo: an
-  open step under it would undo "done flows down".
+- **The one way in is the editor's `step`** (a + on the row since 2026-10-02, see above), where
+  `delete` lived until 2026-09-25: every app puts "add a step" inside the opened task, and the row
+  keeps its two words. Enter chains steps (`todos/StepDraft.tsx`); Escape, or leaving an empty one,
+  adds nothing. Not on a done todo: an open step under it would undo "done flows down".
 - **A count, not a bar:** `1/3` after the last word, inline, in tabular figures; counts read better
   than percentages for a few items. Checking a todo folds it to that one line (see the entry above).
   Its count there is faint, 3.5:1 at 13px, below AA, to match the `delete` word.
