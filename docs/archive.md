@@ -10,6 +10,15 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## A wider card, and the arrows on the days behind (2026-10-02)
+
+- **`--card-max` is 840px** (was 720), and the card leaves 160px for the days behind, not 200. At
+  1268×656 a todo's text gets 571px, not 451.
+- **The arrows sit on the day they go to,** centred on its strip (`deck/DayStack.module.css`),
+  which is itself a click to that day. Parked 8px outside it, they read as stuck on it. The strip
+  is at least 64px (was 56), so the 48px arrow keeps 8px each side at 640×420. The peek is worked
+  out from the card's real width, and the arrows take the card's focus ring.
+
 ## Adding a step (2026-10-02)
 
 - **One way in: a + at the end of every open todo's row** (`todos/TodoItem.tsx`), on hover or
