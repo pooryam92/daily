@@ -21,3 +21,8 @@
   user-select: text;
   cursor: text;
 }
+
+/* A step editor's hint, as muted as the add-todo input's. */
+.editor::placeholder {
+  color: var(--text-muted);
+}

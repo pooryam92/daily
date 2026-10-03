@@ -7,14 +7,22 @@ import { createTodo, daysReducer } from '@/domain/todo-rules'
 import type { TodoAction } from '@/domain/todo-rules'
 
 export interface TodoActions {
-  readonly add: (day: DayKey, text: string) => void
+  /** Adds a todo at the end of its day, or a step at the end of the steps of `parentId`. */
+  readonly add: (day: DayKey, text: string, parentId?: string) => void
   readonly toggleDone: (day: DayKey, id: string) => void
   readonly remove: (day: DayKey, id: string) => void
-  /** Puts a removed todo back at `index` of its day. */
-  readonly restore: (day: DayKey, todo: Todo, index: number) => void
+  /** Puts a removed todo back at `index` of its day, or a removed step at `index` of its parent's steps. */
+  readonly restore: (day: DayKey, todo: Todo, index: number, parentId?: string) => void
   /** Moves a todo to the place the todo it was dropped on has now. */
   readonly reorder: (day: DayKey, id: string, targetId: string) => void
   readonly edit: (day: DayKey, id: string, text: string) => void
+  /** Hides a todo's steps, or shows them again. */
+  readonly toggleFold: (day: DayKey, id: string) => void
+  /**
+   * Puts a todo or a step just before `beforeId`, or at the end: among the steps of `parentId`, or
+   * without it, among the day's todos.
+   */
+  readonly place: (day: DayKey, id: string, parentId?: string, beforeId?: string) => void
   /** Moves a todo to another day: to `index` there, or to the end when none is given. */
   readonly move: (from: DayKey, to: DayKey, id: string, index?: number) => void
 }
@@ -87,8 +95,8 @@ export function useTodoStore(): TodoStore {
 
   const actions = useMemo<TodoActions>(
     () => ({
-      add: (day, text) => {
-        dispatch({ type: 'added', day, todo: createTodo(text) })
+      add: (day, text, parentId) => {
+        dispatch({ type: 'added', day, todo: createTodo(text), parentId })
       },
       toggleDone: (day, id) => {
         dispatch({ type: 'doneToggled', day, id })
@@ -96,14 +104,20 @@ export function useTodoStore(): TodoStore {
       remove: (day, id) => {
         dispatch({ type: 'removed', day, id })
       },
-      restore: (day, todo, index) => {
-        dispatch({ type: 'restored', day, todo, index })
+      restore: (day, todo, index, parentId) => {
+        dispatch({ type: 'restored', day, todo, index, parentId })
       },
       reorder: (day, id, targetId) => {
         dispatch({ type: 'reordered', day, id, targetId })
       },
       edit: (day, id, text) => {
         dispatch({ type: 'edited', day, id, text })
+      },
+      toggleFold: (day, id) => {
+        dispatch({ type: 'foldToggled', day, id })
+      },
+      place: (day, id, parentId, beforeId) => {
+        dispatch({ type: 'placed', day, id, parentId, beforeId })
       },
       move: (from, to, id, index) => {
         dispatch({ type: 'moved', from, to, id, index })

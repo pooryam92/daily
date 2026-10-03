@@ -21,6 +21,14 @@
   --on-danger: #ffffff;
   --hover: rgb(128 128 128 / 0.1);
   --hover-strong: rgb(128 128 128 / 0.18);
+  /*
+   * The todo a dragged row will belong to on drop. The accent is mixed in thinner in the dark, so that
+   * the faintest text under it (a count, a done step) keeps 3:1 in both themes.
+   */
+  --drop-tint: light-dark(
+    color-mix(in srgb, var(--accent) 10%, transparent),
+    color-mix(in srgb, var(--accent) 8%, transparent)
+  );
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
   --focus-ring-on-bg: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 
@@ -68,7 +76,7 @@
   --radius-md: 8px;
   --radius-lg: 14px;
   --radius-full: 999px;
-  --card-max: 720px;
+  --card-max: 840px;
   --card-max-height: 860px;
 
   /* motion */

@@ -146,6 +146,12 @@ The app loads no remote content, which makes the rules simple to hold.
   starting.
 - **`version: 1` is in the file and not yet read.** It is there so that the first format change can
   tell old files from new ones.
+- **Steps are todos in an optional `steps` list on their todo,** so the file stays `version: 1` and
+  older files load unchanged: no key means none, and an empty list is not written. The depth of one
+  is a rule of `parseStoreData`, which rejects a step with steps, not of the `Todo` type: lifting it
+  changes the parser, not the file. The cost: an older version drops the `steps` it does not know
+  and saves without them, and its backup does not help when that version has run before on the
+  machine, since a backup per version is made only once.
 - **A deleted todo is really deleted** during its undo window, and saved as gone. Undo is a new
   action that puts it back. Closing the app mid-window cannot bring it back by accident.
 - **Settings are read synchronously at start,** on purpose: the theme has to be known before the

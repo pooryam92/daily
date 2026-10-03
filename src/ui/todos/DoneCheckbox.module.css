@@ -41,6 +41,12 @@
   pointer-events: none;
 }
 
+/* A step's box: the drawing scales down with it, the 28px target around it does not. */
+.check[data-size='sm'] .box {
+  width: 14px;
+  height: 14px;
+}
+
 .outline {
   stroke: currentColor;
   stroke-width: 1.5;
@@ -70,4 +76,9 @@
   .tick {
     stroke: HighlightText;
   }
+}
+
+/* A box that cannot be checked yet, on a step still being written: it does not answer the pointer. */
+.check:has(.input:disabled) {
+  pointer-events: none;
 }

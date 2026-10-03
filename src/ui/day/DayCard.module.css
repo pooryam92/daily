@@ -13,7 +13,7 @@
   inset: 0;
   margin: auto;
   /* Leave room at the sides for the neighbours to peek out. */
-  width: min(100% - 200px, var(--card-max));
+  width: min(100% - 160px, var(--card-max));
   height: min(100%, var(--card-max-height));
   background: var(--surface);
   border: 1px solid var(--border);
@@ -241,6 +241,53 @@
 }
 
 /*
+ * Where a dragged row would land: a line in the gap, from a dot on the box of the depth the row will
+ * take, a todo's or a step's, to the row's right edge (left and width are set by the card,
+ * useRowDrag.ts). It is drawn over the list, not in it, so it takes no room and nothing moves for
+ * it, and the list's faded edges, where the list scrolls during a drag, leave it whole. The box is
+ * as tall as the dot and centred on the gap.
+ */
+.dropLine {
+  position: absolute;
+  height: 8px;
+  margin-top: -4px;
+  pointer-events: none;
+}
+
+.dropLine::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.dropLine::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 8px;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+/* Read out, not shown: what a drag does, in the rows' own words. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
  * Where the first todo will go, in the colour of something that is not a todo. It is out of the
  * flow, so it can fade while the first row arrives, or the last one leaves, in the same place.
  */
@@ -265,6 +312,8 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
   scrollbar-gutter: stable;
+  /* A row scrolled into view, new or dropped, stops clear of the faded edge rather than under it. */
+  scroll-padding-block: 24px;
   /*
    * Fade the list out at whichever edge has more to scroll to. The scroll timeline is inactive
    * while the list fits, so both fades stay at their registered 0px and nothing is masked.

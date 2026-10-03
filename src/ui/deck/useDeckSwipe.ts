@@ -24,6 +24,8 @@ export function useDeckSwipe(stack: RefObject<HTMLElement | null>, onFlip: (amou
     let flipped = false
     gestures.on('wheel', ({ isStart, isMomentum, axisMovement: [x, y] }) => {
       if (isStart) flipped = false
+      // While a card drags something of its own sideways, the deck stays where it is.
+      if (element.querySelector('[data-sorting]') !== null) return
       if (flipped || isMomentum) return
       if (Math.abs(x) < SWIPE_DISTANCE_PX || Math.abs(x) < Math.abs(y) * SIDEWAYS_RATIO) return
       flipped = true

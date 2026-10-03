@@ -5,7 +5,10 @@ import styles from './DoneCheckbox.module.css'
 
 interface DoneCheckboxProps {
   readonly checked: boolean
-  readonly onChange: () => void
+  /** Left out for a box that cannot be checked yet, which is then disabled. */
+  readonly onChange?: () => void
+  /** A step's box is drawn smaller than a todo's, in a hit area of the same size. */
+  readonly size?: 'md' | 'sm'
 }
 
 /**
@@ -13,7 +16,7 @@ interface DoneCheckboxProps {
  * the SVG on top of it is decoration. Only opacity and `pathLength` are animated, from wherever
  * they are right now, so a second click mid-animation simply turns it around.
  */
-export function DoneCheckbox({ checked, onChange }: DoneCheckboxProps) {
+export function DoneCheckbox({ checked, onChange, size = 'md' }: DoneCheckboxProps) {
   const phase = checked ? 'on' : 'off'
   // Drawing the check is motion; the fade is not. Under reduced motion the check appears with the fill.
   const draw: Transition = useReducedMotion() === true ? { duration: 0 } : CHECK.draw[phase]
@@ -21,12 +24,13 @@ export function DoneCheckbox({ checked, onChange }: DoneCheckboxProps) {
   const reveal: Transition = { duration: 0.01, delay: (checked ? draw.delay : draw.duration) ?? 0 }
 
   return (
-    <label className={styles.check}>
+    <label className={styles.check} data-size={size}>
       <input
         type="checkbox"
         className={styles.input}
         aria-label="Done"
         checked={checked}
+        disabled={onChange === undefined}
         onChange={onChange}
       />
       <svg className={styles.box} viewBox="0 0 18 18" aria-hidden="true">

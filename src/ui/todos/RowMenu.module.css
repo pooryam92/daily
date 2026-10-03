@@ -1,0 +1,72 @@
+/*
+ * Portalled to the body, so the menu, and the guard Base UI lays over the window while it is open
+ * (so that a click elsewhere only closes it), need telling where they go: over everything, the undo
+ * toast (Sonner's 999999999) included, the guard just under the menu.
+ */
+.positioner,
+.portal [data-base-ui-inert] {
+  z-index: 1000000000;
+}
+
+.popup {
+  width: 184px;
+  padding: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  outline: 0;
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popup[data-starting-style],
+  .popup[data-ending-style] {
+    transform: none;
+  }
+}
+
+/* The cursor stays an arrow, as on every other control in the app. */
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 30px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  color: var(--text);
+  outline: 0;
+  user-select: none;
+}
+
+/* Only the item pointed at, or reached by key: a menu opened by a click highlights nothing yet. */
+.item[data-highlighted] {
+  background: var(--hover);
+}
+
+.icon {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.rule {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}
+
+/* Deleting is never dressed up as dangerous: the toast brings the row back. */
+.delete {
+  color: var(--text-muted);
+}

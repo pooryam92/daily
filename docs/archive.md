@@ -10,6 +10,173 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Buttons at the row's end, one click each (2026-10-03)
+
+- **No ⋯: on hover or focus a row shows its actions as icon buttons** (`todos/TodoItem.tsx`):
+  a calendar for "Move to tomorrow" (or "to today"), a list with a + for "Add a step", the steps'
+  cell, a 16px gap, and a bin at the very end. One size (28px), one stroke icon set, one muted colour; a done todo
+  and a step get the bin only. Poorya, trying the menu: it "makes harder to do something", and the
+  plus and arrow in it "make it seem like the keys work for it". The room is kept at rest, so
+  nothing moves on hover: at 640×420 a todo's text gets 244px, 196 with steps (the menu gave 318,
+  the words 171).
+  - Each button names itself in a tip (`todos/RowTip.tsx`), after a moment's pointing or at once
+    from the keyboard, never on touch, and never in the way of a click.
+  - The menu's objection to icons no longer holds: they show only on hover or focus, in one muted
+    colour and one icon set, so the bin is no louder than its neighbours, and a calendar with a
+    clock reads as "later" at 16px.
+  - Not a sunrise for tomorrow: at 16px it reads as "upload".
+  - Not the buttons laid over the text's end: more text at rest, but they cover a long todo's
+    last words as the pointer passes.
+  - Not the word `tomorrow` beside icons: two visual languages again, and 48px less text at 640.
+  - The right-click menu stays, with the same icons and "Hide steps" or "Show steps", as a bonus.
+- **Folded, the pie gives way to `› 1/3`.** Poorya: the pie gave no hint it folds, and folded it
+  hid how many steps there are. Pointing at the row puts a ⌄ before the pie. The cell keeps one
+  width in both states, so folding never moves the buttons. The ⌄ is not shown at rest: too busy.
+- **The bin is always at the row's end, 16px clear of the rest** (Poorya, trying the first
+  build: "some distance between delete and other buttons", "delete always at the end or have
+  stable place"). It is in one column on every row, so the hand learns it; the pie's column sits
+  just inside it.
+  - With the bin in one column, the next row's bin slides up under a still pointer, and a
+    double-click deleted two todos. After a click on Move or Delete the buttons hide and ignore
+    clicks until the pointer moves 4px or leaves the card.
+- **The cost:** a todo's first step moves its add button one cell left, where the fold now sits.
+
+## One menu at the row's end (2026-10-02, replaced the next day, see above)
+
+- **A row ends in two marks at most: the pie, and a ⋯ on hover** (`todos/RowMenu.tsx`). The ⋯
+  opens "Add a step", "Move to tomorrow" (or "to today") and, below a rule, "Delete"; a done todo
+  or a step has only "Delete". Right-click on the row, Shift+F10 and the menu key open the same
+  menu. Poorya found `tomorrow`, `delete`, the + and the pie too busy, even on the wider card: four
+  marks in three visual languages. At 640×420 a todo's text now gets 318px, not 171, and none of
+  20 typical todos wrap there. Only the ⋯'s 30px is kept at rest, so the backlog's "text across
+  the whole row at rest" is closed: the last 30px would put the ⋯ over a long todo's words.
+  - The cost: adding a step and moving to tomorrow take two clicks. A word in a menu reads better
+    than a bare +, and touch, which shows everything, has two marks too.
+  - Not the four laid over the text's end on hover: still four.
+  - Not a ⋯ beside the +: three marks, and it keeps what it was meant to replace.
+  - Not icons for tomorrow and delete: tomorrow has no standard icon, and a bin draws the eye to
+    the least-wanted action.
+  - Not delete back in the editor: tried on 2026-09-23 and undone on 2026-09-25.
+  - Not a long-press menu: it collides with the touch drag.
+- **The menu is modal:** a click outside only closes it, so a slow second click never acts, and
+  ← and → in it do not change the day. An item acts only on a click of its own: a press on the ⋯
+  that slips onto an item and is let go there picks nothing (Base UI picks it by default). After Move or Delete the keyboard goes to the next row,
+  else the one before, else the input.
+
+## A wider card, and the arrows on the days behind (2026-10-02)
+
+- **`--card-max` is 840px** (was 720), and the card leaves 160px for the days behind, not 200. At
+  1268×656 a todo's text gets 571px, not 451.
+- **The arrows sit on the day they go to,** centred on its strip (`deck/DayStack.module.css`),
+  which is itself a click to that day. Parked 8px outside it, they read as stuck on it. The strip
+  is at least 64px (was 56), so the 48px arrow keeps 8px each side at 640×420. The peek is worked
+  out from the card's real width, and the arrows take the card's focus ring.
+
+## Adding a step (2026-10-02)
+
+- **One way in: a + at the end of every open todo's row** (a menu item later the same day,
+  a button again since 2026-10-03, see above) (`todos/TodoItem.tsx`), on hover or
+  focus, beside the pie when the todo has steps and in the pie's place when it has none. The
+  editor's `step` word is gone. A first-time walk found the first step hidden behind a faint word
+  inside the editor, and a slow second click on it landing on `delete`.
+  - Not a line of its own under the steps, with a + or with words: Poorya found it untidy.
+  - Not a `step` word with `tomorrow` and `delete`: 47px of text width, against 28.
+  - The cost: at 640×420 an open todo's text column is 131px, not 161.
+- **The step editor says "First step…" or "Next step…",** and while it is open the row's +,
+  `tomorrow` and `delete` step aside. Leaving it, by click or by Tab, adds what was typed.
+- **A 20px gap closes an unfolded open todo's steps,** never a target itself. Without it the top
+  level after a todo's last step is a 9px band; with it, 19px.
+- **The pie's tooltip says "Hide steps" or "Show steps".** No pointer cursor, as for every button
+  in Daily.
+
+## A pie at the row's end (2026-10-02)
+
+- **A todo's steps show as a pie** (`StepPie` in `todos/TodoItem.tsx`), 16px, in a column at the
+  row's right edge, and the pie is the fold toggle. Poorya found `0/2 ⌄` after the text, with
+  "+ Add a step" on every todo, too busy, and picked this place over three others. The text line
+  stays clean, and progress lines up as a column to scan or ignore. It keeps the count's colours:
+  green when every step is done on an open todo, faint on a done one.
+  - Not dots, one per step: they grow with the list.
+  - Not the todo's own box filling: a part-filled box reads as "half done".
+  - Not a thin ring like the day's: at 1/3 it read as a loading spinner.
+  - Not in the grip's slot: the grip takes it on hover, just when the pie is wanted.
+  - Not a thread down the steps or a caption under the text: new rows to keep out of the drag, or
+    a taller todo.
+- **Only todos with steps reserve the column** (30px), so other todos keep their width. At
+  1280 the pie sits far from short text, about 456px.
+
+## Dragging onto a row (2026-10-02)
+
+- **Nothing moves while you drag** (`day/useRowDrag.ts`). The row stays in place, dimmed, a small
+  copy follows the pointer 16px right and 24px below it (above the finger on touch), and a line or
+  a tint shows where it will land. Poorya tried rows that slid aside and a sideways pull past 32px
+  to change level, and found them hard to land.
+  - Not a row-sized copy: it covers the row being aimed at, and the line.
+  - Not a sideways pull: a hidden threshold that fires in ordinary diagonal drags.
+  - Not Tab and Shift+Tab for the keyboard: Tab has to keep moving focus (WCAG 2.1.2). → and ←
+    during a keyboard drag change the level instead.
+- **Every row is a target in three zones** (`day/rowDrag.ts`): the top quarter means above, the
+  bottom quarter below, the middle into, so a gap and an "into" both get 18px of a 36px row. A
+  step splits at its centre. A zone changes only 2px past its edge, so the line doesn't flicker.
+  Thirds are the fallback (`ZONE_EDGE`) if quarters prove tight.
+- **The line's indent tells the level:** its dot sits on the box column the row will take. The
+  todo the row will belong to is tinted (`--drop-tint`, Poorya's pick), for "into" and for a line
+  among its steps.
+- **One domain action places a row anywhere** (`placed` in `domain/todo-rules.ts`), anchored to
+  the row it goes before, like `reordered`, so it holds when another window changes the list.
+- **A todo with steps can't become a step.** Not flattening: it would merge two lists in a way a
+  drag can't take back. Its line snaps to the nearest top-level gap. **Settled todos aren't a
+  target:** a drop under one would reopen it and pull it from under the pointer.
+- **The list scrolls only while the pointer is held past its edge,** never under a resting pointer
+  inside it: a list moving under a still pointer changed the place being aimed at.
+- **A drag follows only the pointer that started it** (`HeldPointerSensor` in
+  `todos/TodoItem.tsx`), and a mouse move with no button held is ignored: dnd-kit 0.5 takes any
+  pointer's move or release.
+- **No undo, no sound,** as for reorder: dragging back reverses it.
+
+## Folding steps (2026-10-01)
+
+- **The count is the toggle** (`todos/TodoItem.tsx`; a pie since 2026-10-02, see above): `1/3 ⌄`,
+  and `2/2 ›` when folded, on open and done todos. It costs the row no width and needs no hover,
+  so touch has it. A click on the count no longer opens the editor; the text does.
+  - Not a chevron column before the grip: every row would lose 28px, and more todos wrap at 640×420.
+  - Not a chevron at the row's end: it would sit about 380px from its text at 1280.
+- **The fold is stored per todo** (`folded?: true` in `domain/todo.ts`, files still `version: 1`),
+  the way Apple's outline views remember theirs.
+  - Checking a todo folds it, and reopening it leaves the fold.
+  - Writing a step, or undoing a step's delete, unfolds it: a step is deleted only while it shows,
+    so Undo brings it back into view.
+  - Older versions of Daily drop the fold with the steps.
+- **No done todo has an open step** (`holding` in `domain/todo-rules.ts`). Unchecking a step,
+  restoring an open one, or adding one reopens its done todo. Done flows down, and not-done flows
+  up.
+
+## Steps on a todo (2026-10-01)
+
+- **A step is a todo, one level down.** `Todo.steps` is optional, so files stay `version: 1`; the
+  depth of one is enforced in `domain/store-schema.ts`, not in the type. Breaking a goal into
+  specific steps is the plan that stops it intruding (Masicampo & Baumeister 2011), and each one is
+  a small win. Not deeper: Google Tasks, Microsoft To Do and Things stop at one level too.
+- **Done flows down, not up** (`toggled` in `domain/todo-rules.ts`): checking a todo checks its
+  steps, as Reminders does; every step done leaves the todo open, as Microsoft To Do does, with its
+  count in green. Reopening leaves the steps done: nothing records which were open. Not a mixed
+  checkbox: that is select-all semantics in WAI-ARIA, not a task's state.
+- **The ring and the settling count todos only.** Steps stay where they are when done, and a step
+  ticks but never clears the day (`ui/sound/sound.ts`).
+- **The one way in is the editor's `step`** (a + on the row since 2026-10-02, see above), where
+  `delete` lived until 2026-09-25: every app puts "add a step" inside the opened task, and the row
+  keeps its two words. Enter chains steps (`todos/StepDraft.tsx`); Escape, or leaving an empty one,
+  adds nothing. Not on a done todo: an open step under it would undo "done flows down".
+- **A count, not a bar:** `1/3` after the last word, inline, in tabular figures; counts read better
+  than percentages for a few items. Checking a todo folds it to that one line (see the entry above).
+  Its count there is faint, 3.5:1 at 13px, below AA, to match the `delete` word.
+- **The box and the words sit with the first line** of a wrapped row, todos and steps alike; before,
+  they were centred on the whole text. Found at the 640×420 window, where a long todo with steps
+  read as a column with its box adrift.
+- **A step drags within its todo only** (its sortable group and type are the todo's id, and its own
+  modifiers hold it in the todo's list). Not across todos or to the top level: rows are locked to
+  the vertical axis. Nesting by drag came later the same day (see above).
+
 ## Drop is gone, delete is back on the row (2026-09-25)
 
 - **Two states.** A todo is open or done; dropped is gone from `domain/todo.ts`, the checkbox,

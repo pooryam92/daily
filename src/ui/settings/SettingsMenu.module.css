@@ -1,4 +1,4 @@
-/* In the window's bottom-left corner, on the background: the gutter beside the cards is always free. */
+/* In the window's bottom-left corner, on the background, outside the rounded corner of the day before. */
 .trigger {
   position: fixed;
   left: var(--space-3);

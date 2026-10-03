@@ -22,7 +22,12 @@ for (const [key, value] of Object.entries(process.env)) {
 
 export const today: DayKey = toDayKey(new Date())
 export const day = (offset: number): DayKey => addDays(today, offset)
-export const todo = (text: string, status: TodoStatus = 'open'): Todo => ({ id: randomUUID(), text, status })
+export const todo = (text: string, status: TodoStatus = 'open', steps?: readonly Todo[]): Todo => ({
+  id: randomUUID(),
+  text,
+  status,
+  ...(steps === undefined ? {} : { steps })
+})
 
 /** The built app, running from a data folder of its own that a test may seed, read and reopen. */
 export class Daily {
@@ -47,6 +52,13 @@ export class Daily {
       env
     })
     this.page = await this.app.firstWindow()
+    // Under xvfb the X cursor rests at the screen's centre, where the window opens, and X sends the
+    // page real pointer events from it at odd moments, even mid-drag. The window goes below and to
+    // the right of the cursor, so it is never under it, whatever size a test gives it.
+    await this.app.evaluate(({ BrowserWindow, screen }) => {
+      const cursor = screen.getCursorScreenPoint()
+      BrowserWindow.getAllWindows()[0]?.setPosition(cursor.x + 1, cursor.y + 1)
+    })
     await this.input.waitFor()
   }
 
@@ -71,11 +83,98 @@ export class Daily {
     await this.input.press('Enter')
   }
 
-  /** A todo's row on the card in front. */
+  /** A todo's row on the card in front, with its steps under it; steps themselves are `step`. */
   row(text: string): Locator {
+    return this.page.locator('li[data-todo]:not([data-step])').filter({ has: this.editButton(text) })
+  }
+
+  /** A step's row, under its todo's on the card in front. */
+  step(text: string): Locator {
+    return this.page.locator('li[data-step]').filter({ has: this.editButton(text) })
+  }
+
+  /**
+   * The box of a todo or a step itself. A todo's row holds its steps' boxes too, so this is the box
+   * on the line that holds the text, not on the lines under it.
+   */
+  box(text: string): Locator {
     return this.page
-      .getByRole('listitem')
-      .filter({ has: this.page.getByRole('button', { name: `Edit ${text}`, exact: true }) })
+      .locator('[data-todo] > div')
+      .filter({ has: this.editButton(text) })
+      .getByRole('checkbox', { name: 'Done' })
+  }
+
+  private editButton(text: string): Locator {
+    return this.page.getByRole('button', { name: `Edit ${text}`, exact: true })
+  }
+
+  /**
+   * The toggle that folds and unfolds a todo's steps. It lies over the count, so a click on the count
+   * lands on it. The one place that knows its name.
+   */
+  chevron(text: string): Locator {
+    return this.row(text).getByRole('button', { name: `Steps of ${text}`, exact: true })
+  }
+
+  /** The line that holds `text`, a todo's or a step's, without the lines of its steps under it. */
+  line(text: string): Locator {
+    return this.page.locator('[data-todo] > div').filter({ has: this.editButton(text) })
+  }
+
+  /**
+   * One of the buttons at the end of the line that holds `text`, by its full name: "Move <text> to
+   * tomorrow" (or "to today"), "Delete <text>" or "Add a step to <text>". They show on hover or focus.
+   */
+  button(text: string, name: string): Locator {
+    return this.line(text).getByRole('button', { name, exact: true })
+  }
+
+  /**
+   * The names of the buttons that act on the line that holds `text`, in the order they stand: not its
+   * grip, its text or its steps' fold, which are not actions.
+   */
+  async actions(text: string): Promise<string[]> {
+    const names = await this.line(text)
+      .getByRole('button')
+      .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label') ?? ''))
+    return names.filter((name) => !/^(Reorder|Edit|Steps of) /.test(name))
+  }
+
+  /**
+   * The tip that names a row's button, shown on keyboard focus at once and after a moment's hover. It
+   * is drawn outside the card, so it is found on the page. One that is fading out is not it.
+   */
+  get tip(): Locator {
+    return this.page.getByRole('tooltip').and(this.page.locator(':not([data-ending-style])'))
+  }
+
+  /**
+   * The open menu, which a right-click on a row opens. It is drawn outside the card, so it is found on
+   * the page, not in a row. One that has just closed fades out for a moment with data-closed; it is not
+   * the open one.
+   */
+  get menu(): Locator {
+    return this.page.getByRole('menu').and(this.page.locator(':not([data-closed])'))
+  }
+
+  /** An item of the open menu, by its full name, such as "Delete Buy milk". */
+  menuItem(name: string): Locator {
+    return this.menu.getByRole('menuitem', { name, exact: true })
+  }
+
+  /** Opens the menu of the line that holds `text` with a right-click on its words. */
+  async openMenu(text: string): Promise<void> {
+    await this.editButton(text).click({ button: 'right' })
+    await expect(this.menu).toBeVisible()
+  }
+
+  /**
+   * Does what a row's end offers: points at the line that holds `text` and clicks its button `item`,
+   * by its full name ("Add a step to <text>", "Move <text> to tomorrow", "Delete <text>").
+   */
+  async act(text: string, item: string): Promise<void> {
+    await this.line(text).hover()
+    await this.button(text, item).click()
   }
 
   heading(name: string): Locator {
@@ -96,8 +195,18 @@ export class Daily {
     return this.read<Settings>('settings.json')
   }
 
+  /** A file in the data folder as it is written, for its exact shape. */
+  file(name: string): Promise<string> {
+    return readFile(path.join(this.userData, name), 'utf8')
+  }
+
+  /** The day's progress ring, which says how many of its todos are resolved. */
+  get ring(): Locator {
+    return this.page.getByRole('progressbar', { name: 'Day progress' })
+  }
+
   private async read<T>(file: string): Promise<T> {
-    return JSON.parse(await readFile(path.join(this.userData, file), 'utf8')) as T
+    return JSON.parse(await this.file(file)) as T
   }
 }
 

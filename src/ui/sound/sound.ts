@@ -1,4 +1,5 @@
 import type { Todo } from '@/domain/todo'
+import { locate } from '@/domain/todo-rules'
 
 /*
  * The app's two sounds, synthesised with Web Audio: no samples, no library. They are off unless
@@ -8,12 +9,14 @@ import type { Todo } from '@/domain/todo'
 export type SoundCue = 'done' | 'cleared'
 
 /**
- * What a click on a todo's box sounds like. Reopening a todo is silent. The click that checks the
- * last open todo gets the chime instead of the tick: the day is cleared.
+ * What a click on a todo's box, or a step's, sounds like. Reopening is silent. The click that checks
+ * the last open todo gets the chime instead of the tick: the day is cleared. A step always ticks,
+ * even the last open thing on the card, because the ring that the chime belongs to counts todos only.
  */
 export function cueFor(todos: readonly Todo[], id: string): SoundCue | null {
-  const todo = todos.find((candidate) => candidate.id === id)
-  if (todo === undefined || todo.status === 'done') return null
+  const found = locate(todos, id)
+  if (found === undefined || found.todo.status === 'done') return null
+  if (found.parentId !== undefined) return 'done'
   const clears = todos.every((other) => other.id === id || other.status === 'done')
   return clears ? 'cleared' : 'done'
 }

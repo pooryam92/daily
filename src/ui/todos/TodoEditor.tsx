@@ -15,7 +15,8 @@ interface TodoEditorProps {
 /**
  * A todo's text, edited where it stands. Enter saves and so does leaving the field, like everywhere
  * else in the app where a change is never asked about; Escape puts the old text back. An emptied
- * todo keeps its text: deleting is a word on the row, with its own undo.
+ * todo keeps its text: deleting is a word on the row, with its own undo. Steps are added by the +
+ * on the row, not here.
  */
 export function TodoEditor({ text, onCommit, onClose }: TodoEditorProps) {
   const [draft, setDraft] = useState(text)
@@ -34,8 +35,7 @@ export function TodoEditor({ text, onCommit, onClose }: TodoEditorProps) {
   const close = (how: EditorClose): void => {
     if (closed.current) return
     closed.current = true
-    // A todo is one line, however it was typed or pasted; the row wraps it as needed.
-    const next = draft.trim().replace(/\s+/g, ' ')
+    const next = normalise(draft)
     if (how !== 'escape' && next !== '' && next !== text) onCommit(next)
     onClose(how)
   }
@@ -68,3 +68,6 @@ export function TodoEditor({ text, onCommit, onClose }: TodoEditorProps) {
     />
   )
 }
+
+/** A todo, or a step, is one line however it was typed or pasted; the row wraps it as needed. */
+export const normalise = (text: string): string => text.trim().replace(/\s+/g, ' ')
