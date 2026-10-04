@@ -14,7 +14,6 @@ export interface TodoActions {
   /** Puts a removed todo back at `index` of its day, or a removed step at `index` of its parent's steps. */
   readonly restore: (day: DayKey, todo: Todo, index: number, parentId?: string) => void
   readonly edit: (day: DayKey, id: string, text: string) => void
-  /** Hides a todo's steps, or shows them again. */
   readonly toggleFold: (day: DayKey, id: string) => void
   /**
    * Puts a todo or a step just before `beforeId`, or at the end: among the steps of `parentId`, or

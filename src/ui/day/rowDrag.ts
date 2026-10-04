@@ -2,10 +2,9 @@ import type { Todo } from '@/domain/todo'
 import { locate } from '@/domain/todo-rules'
 
 /*
- * Where a dragged row would land. Nothing on the card moves while a row is dragged: the pointer is
- * over one of the rows as they were when it was picked up, and the part of that row it is over says
- * where the row goes. The top and bottom bands of a row mean above and below it, shown as a line at
- * the depth the row would take; the middle of a todo means into it, as its last step, shown as a tint.
+ * Where a dragged row would land. Nothing moves during a drag: the pointer is over the rows as measured
+ * at pick-up. A row's top and bottom bands mean above and below it, shown as a line at the depth the row
+ * would take; a todo's middle means into it, as its last step, shown as a tint.
  */
 
 /** How much of a row's height, at its top and at its bottom, means above and below it. */
@@ -14,7 +13,7 @@ export const ZONE_EDGE = 0.25
 /** The indent a drop line is drawn at: a todo's, or a step's. */
 export type Depth = 'todo' | 'step'
 
-/** A row on the card as it was measured when the drag began: a todo's own line, or a step's. */
+/** A row as measured when the drag began: a todo's own line, or a step's. */
 export interface ShownRow {
   readonly id: string
   /** The todo a step is under; none for a todo. */
@@ -26,7 +25,6 @@ export interface ShownRow {
   readonly end?: number
 }
 
-/** The row being dragged. */
 export interface Dragged {
   readonly id: string
   readonly parentId: string | undefined
@@ -41,9 +39,8 @@ export interface Dragged {
 export type Refusal = 'steps' | 'done' | 'top' | 'parentDone'
 
 /**
- * Where a drop puts the row: under `parentId` (none for the top level), before `beforeId` (none for
- * the end of that list), and how that is shown. A line, at a gap between rows, or without one, a tint
- * on `parentId`, which the row goes into as its last step.
+ * Where a drop puts the row: under `parentId` (none for the top level), before `beforeId` (none for the
+ * end). Shown as a line at a gap, or without one as a tint on `parentId`, which it goes into last.
  */
 export interface Drop {
   readonly parentId: string | undefined
@@ -69,10 +66,9 @@ function gapAt(rows: readonly ShownRow[], index: number): number {
 }
 
 /**
- * Where a line is drawn for the gap before the row at `index`, at a depth: on that row's top edge, or
- * past the end of a list, on the bottom edge of its last row. Rows lie flush, so that is the gap's
- * middle, except under a todo's steps, where the row that adds a step lies between the last step
- * and the next todo: a step's line goes over that row, and a todo's under it.
+ * Where the line for the gap before the row at `index` is drawn. Rows lie flush, so it is that row's top
+ * edge, except after a todo's steps, where the row that adds a step lies between: a step's line goes over
+ * that row, and a todo's under it.
  */
 function lineAt(rows: readonly ShownRow[], index: number, depth: Depth): number {
   const before = rows[index - 1]
@@ -94,10 +90,9 @@ function stepsEnd(rows: readonly ShownRow[], index: number): number {
 }
 
 /**
- * The drop for a pointer at height `y` in list coordinates, over `rows` in the order they are shown.
- * `settled` is the todos shown below the others, which an open row is never put among: over them, or
- * below every row, it goes to the end of the open part. A settled todo moves only among the settled
- * ones, and a step of one only among its todo's steps.
+ * The drop for a pointer at height `y` in list coordinates, over `rows` in shown order. `settled` is the
+ * todos shown below the others: an open row is never put among them, a settled todo moves only among
+ * them, and a step of one only among its todo's steps.
  */
 export function dropAt(
   rows: readonly ShownRow[],
@@ -245,15 +240,12 @@ export function dropNear(
 }
 
 /*
- * The keyboard moves the line from place to place, through the same places the pointer can reach,
- * but one level at a time. A todo's up and down arrows walk the gaps between todos, so that Space,
- * up, Space still moves it up by one, and the right arrow puts it into the todo above. A step's walk
- * the gaps between steps, on into the steps of the open todos around it, and the left arrow makes it
- * a todo just after the todo it would be under. After a todo's last step one gap holds both levels,
- * and left and right choose between them.
+ * The keyboard walks the places the pointer reaches, one level at a time. A todo's up and down walk the
+ * gaps between todos, so Space, up, Space still moves it up by one; right puts it into the todo above.
+ * A step's walk the gaps between steps, on into the open todos around it; left makes it a todo just
+ * after its todo. After a todo's last step one gap holds both levels, and left and right choose.
  */
 
-/** An arrow key, as a move of the line. */
 export type KeyMove = 'up' | 'down' | 'left' | 'right'
 
 /**
@@ -351,7 +343,6 @@ export function keyStart(
   return { level: 'step', index: Math.max(0, index) }
 }
 
-/** The drop the keyboard's place stands for. */
 export function keyDrop(
   rows: readonly ShownRow[],
   settled: ReadonlySet<string>,
@@ -426,7 +417,6 @@ const textOf = (ordered: readonly Todo[], id: string | undefined): string =>
 const stepsOf = (ordered: readonly Todo[], id: string | undefined): readonly Todo[] =>
   ordered.find((todo) => todo.id === id)?.steps ?? []
 
-/** The held row's own text, a todo's or a step's. */
 export function rowText(ordered: readonly Todo[], row: Pick<HeldRow, 'id' | 'parentId'>): string {
   const found = locate(ordered, row.id)
   return found !== undefined && found.parentId === row.parentId ? found.todo.text : ''
@@ -453,7 +443,6 @@ function countWords(ordered: readonly Todo[], settled: ReadonlySet<string>, row:
   return `${row.parentId === undefined ? '' : 'step '}${String(n)} of ${String(m)}`
 }
 
-/** Why a row is not put where it is held, or where an arrow would take it. */
 const REFUSALS: Readonly<Record<Refusal, string>> = {
   steps: "Can't be a step: it has steps of its own.",
   done: "Can't be a step: it's done.",
@@ -462,9 +451,8 @@ const REFUSALS: Readonly<Record<Refusal, string>> = {
 }
 
 /**
- * Where a drop puts the row, as the middle of a sentence: "above Do the taxes", "into Set up CI",
- * "step of Set up CI, after Add the workflow". The rows are named as they are shown, without the
- * dragged one.
+ * Where a drop puts the row, mid-sentence: "above Do the taxes", "into Set up CI", "step of Set up CI,
+ * after Add the workflow". Rows are named as shown, without the dragged one.
  */
 function whereWords(
   ordered: readonly Todo[],

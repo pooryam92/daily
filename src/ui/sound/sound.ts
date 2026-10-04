@@ -9,9 +9,8 @@ import { locate } from '@/domain/todo-rules'
 export type SoundCue = 'done' | 'cleared'
 
 /**
- * What a click on a todo's box, or a step's, sounds like. Reopening is silent. The click that checks
- * the last open todo gets the chime instead of the tick: the day is cleared. A step always ticks,
- * even the last open thing on the card, because the ring that the chime belongs to counts todos only.
+ * What a click on a todo's or a step's box sounds like. Reopening is silent; checking the last open todo
+ * chimes, as the day is cleared. A step always ticks: the ring the chime belongs to counts todos only.
  */
 export function cueFor(todos: readonly Todo[], id: string): SoundCue | null {
   const found = locate(todos, id)

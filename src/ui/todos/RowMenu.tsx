@@ -76,9 +76,8 @@ export function nextFocus(row: HTMLElement): HTMLElement | null {
 }
 
 /**
- * Puts the keyboard on `target` in the next frame, once the page is usable again (an open menu keeps
- * the rest of it out of reach), if it is nowhere, still on the menu, or on a row that has gone or is
- * going away (`left`). Anywhere else, it has moved on and is left there.
+ * Puts the keyboard on `target` in the next frame, once an open menu no longer keeps the page out of reach,
+ * unless it has moved on: only if it is nowhere, on the menu, or in a row going away (`left`).
  */
 function focusSoon(target: HTMLElement | null, left?: HTMLElement | null): void {
   requestAnimationFrame(() => {
@@ -94,9 +93,8 @@ function focusSoon(target: HTMLElement | null, left?: HTMLElement | null): void 
 }
 
 /**
- * Puts the keyboard, in the next frame, once the open menu no longer keeps the page out of reach, on
- * the control that Tab would reach from the row's text, or with Shift+Tab (`back`), on the row's box:
- * one control back from the text, as on every row, whether or not a todo's steps fold before it.
+ * In the next frame, puts the keyboard where Tab from the row's text would go, or for Shift+Tab (`back`) on
+ * the row's box: one back from the text, even when a fold arrow comes before the box.
  */
 function tabOn(row: HTMLElement | null, back: boolean): void {
   requestAnimationFrame(() => {
@@ -129,10 +127,8 @@ export function leaveRow(row: HTMLElement | null, action: () => void): void {
 }
 
 /**
- * The same actions as the row's buttons, and folding its steps, in a menu: at the pointer on a
- * right-click, at the row's end on Shift+F10 or the context menu key (TodoItem.tsx). It closes as soon
- * as the card around it stops being the place of attention: the window loses focus, the list
- * scrolls, or another day comes to the front.
+ * The row's buttons, and folding its steps, as a menu opened by right-click or Shift+F10 (TodoItem.tsx).
+ * It closes once the card loses attention: the window blurs, the list scrolls, or another day comes forward.
  */
 export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete }: RowMenuProps) {
   const popup = useRef<HTMLDivElement>(null)
@@ -167,7 +163,6 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
     }
   }, [isOpen, onOpen])
 
-  // From the keyboard, the first item takes the focus.
   const fromKeys = open?.from === 'keys'
   useEffect(() => {
     if (!fromKeys) return
@@ -190,7 +185,6 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
     [x, y]
   )
 
-  // Back to where Shift+F10 was pressed, else to the row's text.
   const back = (): void => {
     focusSoon(
       opened.current === 'keys'

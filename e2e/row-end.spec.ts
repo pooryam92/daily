@@ -7,18 +7,8 @@ import type { Locator } from '@playwright/test'
 import type { Todo } from '../src/domain/todo'
 
 /*
- * A row's actions are buttons at its end, shown on hover or keyboard focus, never moving anything:
- * "Add a step to <T>", "Move <T> to tomorrow" (or "to today" on another day), then 16px on, "Delete <T>",
- * 4px from the end on every row. An open todo has Move and Delete, and Add a step unless its steps show:
- * then the whole space under its last step adds the next one, so there is one way at a time, and Add a
- * step's room stays empty, so Move and the bin stand in one place on every open todo. A done todo and a
- * step have Delete only. A todo's steps fold from a chevron in the slot at the row's start, before the
- * box, where a grip once was: unfolded it shows only with its row pointed at or focused, folded it is
- * always there, turned along; folded, the count stands right after the text. Each button has a tip with
- * its words, at once on keyboard focus, after a moment's hover, never on touch; the space under the
- * steps has none, it shows its words instead. After Move or Delete the focus goes to the next row at the same level, else the previous, else
- * its todo (for a step) or "Add a todo". A right-click, Shift+F10 or the ContextMenu key still opens the
- * row's menu, which also folds.
+ * While a todo's steps show, the space under its last step adds the next one, and its Add a step's room
+ * stays empty, so Move and the bin stand in one place on every open todo.
  */
 const workflow = todo('Add the workflow file', 'done')
 const lint = todo('Fix the lint errors')
@@ -163,7 +153,6 @@ test.describe('a row’s end', () => {
       for (const name of offered(text)) {
         const button = daily.button(text, name)
         await expect(button, name).not.toHaveAttribute('title')
-        // 28px square.
         const at = await boxOf(button)
         expect(Math.abs(at.width - 28), name).toBeLessThanOrEqual(1)
         expect(Math.abs(at.height - 28), name).toBeLessThanOrEqual(1)
@@ -172,8 +161,7 @@ test.describe('a row’s end', () => {
     }
     await expect(daily.more('Set up CI')).not.toHaveAttribute('title')
 
-    // They stand in that order, left to right, by their right edges from the row's end: Add a step 76,
-    // Move 48, then 16px on, the bin 4; on every open todo, Add a step shown or not.
+    // By right edges from the row's end, on every open todo, Add a step shown or not.
     const fromEnd = (name: string) => (name.startsWith('Add a step') ? 76 : name.startsWith('Move') ? 48 : 4)
     for (const text of [
       'Buy milk',
@@ -192,7 +180,6 @@ test.describe('a row’s end', () => {
         expect(Math.abs(row.x + row.width - fromEnd(name) - (box.x + box.width)), where).toBeLessThanOrEqual(
           1
         )
-      // Add a step stands left of Move, flush against it.
       const add = at.find(({ name }) => name.startsWith('Add a step'))?.box
       const move = at.find(({ name }) => name.startsWith('Move'))?.box
       if (add !== undefined && move !== undefined)
@@ -203,8 +190,7 @@ test.describe('a row’s end', () => {
     await expect(kept).toHaveCount(1)
     await expect(kept).toBeHidden()
 
-    // The bin stands in the same place on every row: 4px from the end, whatever the row is, and nothing
-    // stands after it.
+    // The bin stands in the same place on every row, so one row's end serves for all.
     const row = await boxOf(daily.line('Buy milk'))
     for (const text of texts) {
       const bin = await boxOf(daily.button(text, `Delete ${text}`))
@@ -242,15 +228,13 @@ test.describe('a row’s end', () => {
     await rest(daily)
     for (const text of texts) {
       for (const name of offered(text)) await hidden(daily.button(text, name), name)
-      // No words but its own, and a folded todo's count.
       const counted = text === 'Plan the offsite' ? `${text} 1/2` : text
       expect(await words(daily.line(text)), text).toBe(counted)
     }
     await hidden(daily.more('Set up CI'), 'the add under the steps')
     await expect(daily.chevron('Buy milk')).toHaveCount(0)
     await expect(daily.chevron('Write the release notes')).toHaveCount(0)
-    // The fold has no words, folded or not; the steps done are read out with it. At rest it shows only
-    // when folded: unfolded, the steps under it say so.
+    // At rest the fold shows only when folded: unfolded, the steps under it say so.
     for (const text of withSteps) {
       expect(await words(daily.chevron(text)), text).toBe('')
       if ((await daily.chevron(text).getAttribute('data-folded')) === null)
@@ -263,7 +247,7 @@ test.describe('a row’s end', () => {
     await expect(daily.chevron('Clean the house')).toHaveAttribute('aria-expanded', 'true')
     await expect(daily.row('Clean the house').locator('li[data-add-step]')).toHaveCount(0)
     await expect(daily.chevron('Plan the offsite')).toHaveAccessibleDescription('1 of 2 steps done')
-    // Folded, the count stands right after the words, 8px on, on their last line, not at the row's end.
+    // On the words' last line, not at the row's end.
     const at = await count('Plan the offsite')
     if (at === null) throw new Error('Plan the offsite shows no count')
     const where = JSON.stringify(at)
@@ -275,7 +259,6 @@ test.describe('a row’s end', () => {
     expect(at.struck, where).toBe(false)
     await expect(daily.editButton('Plan the offsite')).toHaveCount(1)
 
-    // Folding shows the count, and Add a step on the row; unfolding takes both away, both ways.
     await daily.chevron('Set up CI').click()
     await expect(daily.chevron('Set up CI')).toHaveAttribute('aria-expanded', 'false')
     await daily.input.focus()
@@ -301,10 +284,8 @@ test.describe('a row’s end', () => {
     await rest(daily)
     await daily.point('Set up CI')
     for (const name of offered('Set up CI')) await showing(daily.button('Set up CI', name), name)
-    // Not its steps, not the others.
     await hidden(daily.button('Fix the lint errors', 'Delete Fix the lint errors'))
     await hidden(daily.button('Buy milk', 'Delete Buy milk'))
-    // The add under the steps shows with its todo, and with any of its steps.
     await showing(daily.more('Set up CI'), 'Set up CI pointed at')
     await daily.point('Fix the lint errors')
     await showing(daily.button('Fix the lint errors', 'Delete Fix the lint errors'))
@@ -319,13 +300,12 @@ test.describe('a row’s end', () => {
     await expect(daily.chevron('Set up CI')).toBeFocused()
     await daily.page.mouse.move(0, 0)
     await hidden(daily.button('Set up CI', 'Delete Set up CI'))
-    // From the keyboard they show, the one focused and the others of its row (folded now, so Add too).
+    // Folded now, so Add a step shows too.
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Done')
     for (const name of ['Add a step to Set up CI', 'Move Set up CI to tomorrow', 'Delete Set up CI'])
       await showing(daily.button('Set up CI', name), name)
     await hidden(daily.button('Buy milk', 'Delete Buy milk'))
-    // Focus on the last step's bin shows the add under the steps.
     await daily.editButton('Plan the offsite').focus()
     await daily.chevron('Plan the offsite').press('Enter')
     await expect(daily.chevron('Plan the offsite')).toHaveAttribute('aria-expanded', 'true')
@@ -333,7 +313,6 @@ test.describe('a row’s end', () => {
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Delete Book the venue')
     await showing(daily.more('Plan the offsite'), 'its last step’s bin focused')
-    // On the text too.
     await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Shift+Tab')
     await daily.page.keyboard.press('Tab')
@@ -361,10 +340,8 @@ test.describe('a row’s end', () => {
       }
       await expect.poll(async () => (await foldMark(daily, 'Set up CI')).seen, how).toBeGreaterThan(0.95)
       expect((await foldMark(daily, 'Set up CI')).rotate, how).toBe('none')
-      // The cell has not grown.
       expect(await boxOf(daily.chevron('Set up CI')), how).toEqual(cell)
     }
-    // Its row's text focused shows it too; a step of it pointed at does not.
     await rest(daily)
     await daily.editButton('Set up CI').focus()
     await daily.page.keyboard.press('Shift+Tab')
@@ -378,7 +355,6 @@ test.describe('a row’s end', () => {
     await daily.page.waitForTimeout(300)
     expect((await foldMark(daily, 'Set up CI')).seen, 'a step pointed at').toBeLessThan(0.05)
 
-    // Folded: there at rest, the same glyph turned a quarter back, in the same cell.
     await rest(daily)
     const folded = await foldMark(daily, 'Plan the offsite')
     expect(folded.icons, JSON.stringify(folded)).toEqual(atRest.icons)
@@ -386,7 +362,6 @@ test.describe('a row’s end', () => {
     await expect.poll(async () => (await foldMark(daily, 'Plan the offsite')).seen).toBeGreaterThan(0.95)
     const other = await boxOf(daily.chevron('Plan the offsite'))
     expect([other.x, other.width, other.height]).toEqual([cell.x, cell.width, cell.height])
-    // Folding turns it, unfolding turns it back.
     await daily.chevron('Set up CI').click()
     await expect(daily.chevron('Set up CI')).toHaveAttribute('data-folded')
     await rest(daily)
@@ -419,8 +394,7 @@ test.describe('a row’s end', () => {
       expect(await measure(daily), `${name} focused`).toEqual(before)
     }
 
-    // Folded or not, the fold keeps its room, the box its place and the text its width; only the
-    // count comes and goes after the words.
+    // Only the count comes and goes after the words, so the text is measured without it.
     const ownLine = async (text: string) =>
       daily.line(text).evaluate((row) =>
         [row, ...row.querySelectorAll('input[type="checkbox"], [data-todo-text] > span:first-child, button')]
@@ -460,7 +434,7 @@ test.describe('a row’s end', () => {
       const box = await boxOf(daily.box(text))
       const at = `${text}: cell ${JSON.stringify(cell)}, row ${JSON.stringify(row)}, box ${JSON.stringify(box)}`
       cells.push(cell)
-      // Inside the row, before the box, and by it, not by the middle of a long text.
+      // Centred on the box, not on the middle of a long text.
       expect(cell.x, at).toBeGreaterThanOrEqual(row.x - 1)
       expect(cell.x + cell.width, at).toBeLessThanOrEqual(box.x + 1)
       expect(Math.abs(cell.y + cell.height / 2 - (box.y + box.height / 2)), at).toBeLessThanOrEqual(3)
@@ -470,7 +444,6 @@ test.describe('a row’s end', () => {
       expect(Math.abs(cell.x - (cells[0]?.x ?? 0)), at).toBeLessThanOrEqual(1)
       expect(Math.abs(cell.width - (cells[0]?.width ?? 0)), at).toBeLessThanOrEqual(1)
     }
-    // Steps keep their indent: their boxes in one column, in from their todo's.
     const steps = await Promise.all(
       ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies', 'Dust the shelves'].map(
         (text) => boxOf(daily.box(text))
@@ -494,13 +467,11 @@ test.describe('a row’s end', () => {
       }
       return on
     }
-    // From the text of the row before: its end, then the next row from its start.
     expect(await path('Buy milk', 3 + along('Set up CI').length + 1)).toEqual([
       ...offered('Buy milk'),
       ...along('Set up CI'),
       'Done'
     ])
-    // The add under the steps after the last step's bin, then the next todo.
     expect(await path('Cache the dependencies', 3)).toEqual([
       'Delete Cache the dependencies',
       'Add a step to Set up CI',
@@ -509,7 +480,7 @@ test.describe('a row’s end', () => {
     // Folded: no steps and no add under them, so on to the next todo, which has no fold to stop at.
     expect(await path('Plan the offsite', 4)).toEqual([...offered('Plan the offsite'), 'Done'])
     expect(await path('Fix the lint errors', 1)).toEqual(['Delete Fix the lint errors'])
-    // A done todo: its fold, box and text, and the bin; its steps are done, and it has no add under them.
+    // A done todo has no add under its steps.
     expect(await path('Write the release notes', 3 + along('Clean the house').length)).toEqual([
       ...offered('Write the release notes'),
       ...along('Clean the house')
@@ -536,7 +507,6 @@ test.describe('a row’s end', () => {
     await expect.poll(() => focused(daily)).toBe('Delete Write the release notes')
     await daily.page.keyboard.press('Space')
     await expect.poll(() => daily.todos()).toStrictEqual({ [today]: [ci, offsite, house], [day(1)]: [milk] })
-    // The focus rule holds from the keyboard too.
     await expect.poll(() => focused(daily)).toBe('Edit Clean the house')
   })
 
@@ -545,21 +515,18 @@ test.describe('a row’s end', () => {
   }) => {
     await daily.act('Buy milk', 'Delete Buy milk')
     await expect.poll(() => focused(daily)).toBe('Edit Set up CI')
-    // Undo puts it back and leaves the focus where it is.
     await daily.page.getByRole('button', { name: 'Undo' }).dispatchEvent('click')
     await expect(daily.row('Buy milk')).toBeVisible()
     await expect.poll(() => focused(daily)).toBe('Edit Set up CI')
 
     await daily.act('Set up CI', 'Move Set up CI to tomorrow')
     await expect.poll(() => focused(daily)).toBe('Edit Plan the offsite')
-    // The last one has no next: the one before it.
     await daily.act('Clean the house', 'Delete Clean the house')
     await expect.poll(() => focused(daily)).toBe('Edit Write the release notes')
     await daily.act('Write the release notes', 'Delete Write the release notes')
     await expect.poll(() => focused(daily)).toBe('Edit Plan the offsite')
     await daily.act('Plan the offsite', 'Delete Plan the offsite')
     await expect.poll(() => focused(daily)).toBe('Edit Buy milk')
-    // The only one left: Add a todo.
     await daily.act('Buy milk', 'Delete Buy milk')
     await expect.poll(() => focused(daily)).toBe('Add a todo')
     await expect(daily.input).toBeFocused()
@@ -590,7 +557,7 @@ test.describe('a row’s end', () => {
 
   test('while a row is carried, no row shows its buttons, not even the one carried', async ({ daily }) => {
     const text = daily.editButton('Set up CI')
-    // By keyboard: its text has the focus, which shows them until Space lifts the row.
+    // By keyboard: the focus shows them until Space lifts the row.
     await text.focus()
     await daily.page.waitForTimeout(300)
     for (const name of offered('Set up CI'))
@@ -697,7 +664,6 @@ test.describe('after a pointer Move or Delete', () => {
     await clickHere(daily, 1)
     expect((await left(daily)).today).toEqual(['One', 'Four', 'Five'])
 
-    // Leaving the card lifts it too.
     await expect(card(daily)).toHaveAttribute('data-guard')
     await daily.page.mouse.move(0, 0)
     await expect(card(daily)).not.toHaveAttribute('data-guard')
@@ -721,14 +687,12 @@ test.describe('after a pointer Move or Delete', () => {
       await clickHere(daily, 1)
       await daily.page.waitForTimeout(400)
       await expect(daily.page.getByRole('textbox', { name: 'New step' })).toHaveCount(0)
-      // Moved on, it is back.
       await daily.page.mouse.move(at.x + 4, at.y + 40)
       await expect(card(daily)).not.toHaveAttribute('data-guard')
     })
   })
 
   test('the keyboard and the right-click menu are not held back', async ({ daily }) => {
-    // By keyboard nothing is guarded: Move, then the next row's bin, one after the other.
     await rest(daily)
     await daily.editButton('One').focus()
     await daily.page.keyboard.press('Tab')
@@ -778,8 +742,7 @@ test.describe('a button’s tip', () => {
 
   test('says what it does, at once on keyboard focus, 6px above it', async ({ daily }) => {
     await rest(daily)
-    // From what comes before it, the add under Set up CI's steps, along Plan the offsite, past its box
-    // and its text, which have no tip.
+    // Along Plan the offsite, past its box and its text, which have no tip.
     await daily.more('Set up CI').focus()
     for (const [verb, tip] of TIPS) {
       await daily.page.keyboard.press('Tab')
@@ -800,7 +763,6 @@ test.describe('a button’s tip', () => {
     await expect.poll(() => words(daily.more('Set up CI'))).toBe('Add a step')
     await daily.page.waitForTimeout(400)
     await expect(daily.tip).toHaveCount(0)
-    // Leaving the row takes it away.
     await daily.input.focus()
     await expect(daily.tip).toHaveCount(0)
   })
@@ -815,7 +777,6 @@ test.describe('a button’s tip', () => {
     await daily.page.waitForTimeout(100)
     await expect(daily.tip).toHaveCount(0)
     await expect(daily.tip).toHaveText('Delete', { timeout: 1500 })
-    // The folded count's tip says it shows the steps.
     await daily.point('Plan the offsite')
     const fold = await boxOf(daily.chevron('Plan the offsite'))
     await daily.page.mouse.move(fold.x + fold.width / 2, fold.y + fold.height / 2)
@@ -914,7 +875,6 @@ test.describe('on touch', () => {
       expect(colour.now, `${text}: ${JSON.stringify(colour)}`).toBe(colour.faint)
     }
 
-    // A tap on Delete deletes, and no tip shows on the way.
     const at = await boxOf(daily.button('Buy milk', 'Delete Buy milk'))
     const touch = { x: at.x + at.width / 2, y: at.y + at.height / 2 }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [touch] })
@@ -1042,7 +1002,6 @@ test.describe('a row’s menu, by right-click or key', () => {
       expect(await items(daily), text).toContain(`Delete ${text}`)
       const menu = await boxOf(daily.menu)
       const where = `${text}: pointer ${JSON.stringify(at)}, menu ${JSON.stringify(menu)}`
-      // At the pointer: one of its corners within a few pixels of it.
       const near = (a: number, b: number) => Math.abs(a - b) <= 8
       expect(near(menu.x, at.x) || near(menu.x + menu.width, at.x), where).toBe(true)
       expect(near(menu.y, at.y) || near(menu.y + menu.height, at.y), where).toBe(true)
@@ -1054,7 +1013,6 @@ test.describe('a row’s menu, by right-click or key', () => {
       await expect.poll(() => focused(daily), text).toBe(`Edit ${text}`)
     }
 
-    // Right-clicked while another row's menu is open: that one closes, this one opens with the focus.
     await rightClick(daily, 'Buy milk')
     await expect(daily.menu).toBeVisible()
     await rightClick(daily, 'Write the release notes')
@@ -1111,7 +1069,6 @@ test.describe('a row’s menu, by right-click or key', () => {
         await daily.page.mouse.up({ button: 'right' })
         await settle(what)
       }
-      // Held all the way onto Delete, and let go there.
       const what = `right press on ${text}, onto Delete`
       await start()
       const item = daily.menuItem(`Delete ${text}`)
@@ -1166,8 +1123,8 @@ test.describe('a row’s menu, by right-click or key', () => {
     await daily.page.keyboard.press('Escape')
     await expect(daily.page.getByRole('menu')).toHaveCount(0)
 
-    // Tab closes it and moves on from the row's text, to the first button after it (Move, or the bin on a
-    // done todo); Shift+Tab goes back from it, to the row's box. However it was opened.
+    // Tab moves on from the row's text to its first button (Move, or the bin on a done todo); Shift+Tab
+    // goes back to its box. However it was opened.
     for (const [text, how] of [
       ['Buy milk', 'Shift+F10'],
       ['Fix the lint errors', 'Shift+F10'],
@@ -1271,7 +1228,6 @@ test.describe('a row’s menu when the day changes', () => {
       await daily.page.waitForTimeout(600)
       await expect(daily.heading('Today'), key).toBeVisible()
       await expect(daily.menu, key).toBeVisible()
-      // Closed, the same key changes the day, and no menu is left anywhere.
       await daily.page.keyboard.press('Escape')
       await expect(menus, key).toHaveCount(0)
       await daily.page.keyboard.press(key)
@@ -1281,7 +1237,6 @@ test.describe('a row’s menu when the day changes', () => {
       await expect(daily.heading('Today')).toBeVisible()
     }
 
-    // A sideways swipe changes nothing while it is open; closed, the same swipe moves the day.
     const swipe = async () => {
       const card = await boxOf(daily.page.locator('section[data-offset="0"]'))
       await daily.page.mouse.move(card.x + 60, card.y + card.height / 2)
@@ -1304,7 +1259,6 @@ test.describe('a row’s menu when the day changes', () => {
     await daily.page.getByRole('button', { name: 'Back to today' }).click()
     await expect(daily.heading('Today')).toBeVisible()
 
-    // A click on a day's arrow only closes it.
     for (const name of ['Next day', 'Previous day']) {
       const arrow = await boxOf(daily.page.getByRole('button', { name }))
       await rightClick(daily, 'Buy milk')

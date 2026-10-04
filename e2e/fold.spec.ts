@@ -37,8 +37,7 @@ test.describe('folding steps', () => {
     await expect(daily.chevron('Buy milk')).toHaveCount(0)
     await expect(chevron).toHaveAccessibleName('Steps of Set up CI')
     await expect(chevron).toHaveAccessibleDescription('0 of 3 steps done')
-    // The count is read out with the toggle, not twice with the text as well. The text is described,
-    // by how it is moved, but not by the count.
+    // The count is read out with the toggle only; the text is described by how it is moved.
     const text = daily.page.getByRole('button', { name: 'Edit Set up CI', exact: true })
     await expect(text).toHaveAccessibleDescription(/^Press Enter to edit, Space to pick up\./)
     await expect(text).not.toHaveAccessibleDescription(/steps done|of 3/)
@@ -97,8 +96,6 @@ test.describe('folding steps', () => {
     expect(path).toContain('Steps of Set up CI')
     expect(path).toContain('Steps of Plan the offsite')
     expect(path.filter((label) => /Pick a date|Book the venue/.test(label))).toEqual([])
-    // On a row, in the order they stand: the toggle, the box, the text, Move, Add a step, then the bin,
-    // which ends it.
     const at = (label: string) => path.indexOf(label)
     expect(at('Steps of Plan the offsite')).toBeGreaterThanOrEqual(0)
     expect(
@@ -225,10 +222,7 @@ test.describe('folding steps', () => {
   })
 })
 
-/*
- * Folded, a todo shows how many of its steps are done right after its text, "1/2". A click on it
- * shows the steps; a press on it that moves lifts the row, as on the words.
- */
+// Folded, a todo shows how many of its steps are done right after its text, as "1/2".
 test.describe('the count after a folded todo’s text', () => {
   test.use({ seed: { [today]: [milk, ci, offsite] } })
 
@@ -259,9 +253,8 @@ test.describe('the count after a folded todo’s text', () => {
 })
 
 /*
- * The fold (note 4): a lone chevron in the 20×28 slot at the row's start, before the box, down while
- * the steps show and turned along while they are folded. No pie: unfolded, the steps' own boxes show
- * the progress; folded, the count after the text does.
+ * The fold is a lone chevron in the 20×28 slot at the row's start, down while the steps show. No pie:
+ * the steps' own boxes show the progress, or, folded, the count after the text.
  */
 test.describe('the fold', () => {
   const LONG =
@@ -317,7 +310,6 @@ test.describe('the fold', () => {
       for (const { fold, row, box } of at) {
         expect(Math.abs(fold.x - first.fold.x), where).toBeLessThanOrEqual(1)
         expect(Math.abs(fold.width - first.fold.width), where).toBeLessThanOrEqual(1)
-        // Inside its own row, at the start, before the box.
         expect(fold.x, where).toBeGreaterThanOrEqual(row.x - 1)
         expect(fold.x + fold.width, where).toBeLessThanOrEqual(box.x + 1)
       }
@@ -348,7 +340,6 @@ test.describe('the fold', () => {
   test('the count after the text takes its own colour: green when every step is done and the todo is open, faint when done', async ({
     daily
   }) => {
-    /** The fold, which knows how many steps are done. */
     const fold = (text: string) => daily.chevron(text)
     /**
      * The colour of the count after a folded todo's text and of its chevron, and the tokens' they may
@@ -397,8 +388,6 @@ test.describe('the fold', () => {
     await expect(daily.page.locator('[class*="_pie_"]')).toHaveCount(0)
     await expect(daily.step('Buy paint').getByRole('button', { name: /^Steps of / })).toHaveCount(0)
 
-    // Folded, the count after the text is muted, green when all are done on an open todo, faint when
-    // done; the chevron is faint at rest.
     await foldAway(LONG)
     const part = await colours(LONG)
     expect(part.count, JSON.stringify(part)).toBe(part.muted)
@@ -414,7 +403,6 @@ test.describe('the fold', () => {
       await expect.poll(async () => (await colours(text)).chevron, `${text}’s chevron`).toBe(part.faint)
     }
 
-    // Checking its last open step makes a todo's count green; the fold stays in its column.
     const before = await boxOf(daily.chevron('Set up CI'))
     for (const step of ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies']) {
       await daily.box(step).check()

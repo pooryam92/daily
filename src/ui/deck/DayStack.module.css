@@ -20,10 +20,8 @@
 }
 
 /*
- * How much of the day before and the day after shows. --cardw is the card in front's width
- * (DayCard.module.css); a wider window shows more of the neighbours (--peek, 64px to 240px), all but
- * 16px of the room beside the card. Set on the children because a container cannot size itself in
- * its own cqw.
+ * How much of the neighbouring days shows: all but 16px of the room beside the card in front, whose width
+ * --cardw matches DayCard.module.css. Set on the children: a container cannot size itself in its own cqw.
  */
 .stack > * {
   --cardw: min(100cqw - var(--card-gutter), var(--card-max));
@@ -60,9 +58,8 @@
 }
 
 /*
- * Centred on the neighbour's strip, which runs from the card in front's edge (half --cardw from the
- * centre) to --peek beyond it, so the arrow is never half on the strip and half off: the strip's
- * middle less half this 48px button.
+ * Centred on the neighbour's strip, never half off it. The strip runs from the front card's edge (half
+ * --cardw from the centre) to --peek beyond; less half this 48px button.
  */
 .nav[data-direction='previous'] {
   left: calc(50% - var(--cardw) / 2 - var(--peek) / 2 - 24px);

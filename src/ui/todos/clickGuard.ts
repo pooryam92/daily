@@ -7,10 +7,9 @@ const GUARD_PX = 4
 let lift: (() => void) | null = null
 
 /**
- * A click that takes a row away (moving it, deleting it) closes the rows up under a still pointer, and
- * a second click, a double click's say, would land on the button of the row that took its place. So
- * after one, the card's row buttons are hidden and let clicks by (TodoItem.module.css) until the
- * pointer moves 4px, leaves the card, or a key is pressed. The keyboard's own clicks set nothing.
+ * A click that takes a row away closes the rows up under a still pointer, so a second click would land on
+ * the next row's button. After one, the card's row buttons hide and let clicks by (TodoItem.module.css)
+ * until the pointer moves, leaves the card, or a key is pressed. Keyboard clicks set nothing.
  */
 export function guardClicks(event: MouseEvent<HTMLElement>): void {
   const card = event.currentTarget.closest<HTMLElement>('section')
@@ -34,7 +33,6 @@ export function guardClicks(event: MouseEvent<HTMLElement>): void {
   lift = end
 }
 
-/** Whether a click on a row button is one the guard lets by. */
 export function guarded(event: MouseEvent<HTMLElement>): boolean {
   return event.currentTarget.closest('[data-guard]') !== null
 }

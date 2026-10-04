@@ -19,9 +19,8 @@ export interface RowDrag {
   /** Where the row would land if it were let go now; none while it is held outside the list. */
   readonly drop: Drop | null
   /**
-   * The drop's line, where it is drawn: over the list rather than in it, in the list's container, so
-   * that the list's faded edges do not fade it. It starts at its dot, on the box of the depth the row
-   * will take. None while it is scrolled out of view.
+   * The drop's line, drawn in the list's container rather than the list so its faded edges do not fade
+   * it. It starts at its dot, on the box of the row's new depth; none while scrolled out of view.
    */
   readonly line:
     { readonly top: number; readonly left: number; readonly width: number; readonly depth: Depth } | undefined
@@ -42,9 +41,8 @@ const SCROLL_EDGE_PX = 36
 const SCROLL_PX_PER_FRAME = 10
 
 /**
- * Where a drop line's dot is centred, from the left of a todo's row: the row's padding (4px), the
- * slot at its start (20px), the gap (4px) and half the box (14px), TodoItem.module.css. A step's box is a step's
- * indent (32px) further in.
+ * Where a drop line's dot is centred from a todo row's left (TodoItem.module.css): padding 4px, start
+ * slot 20px, gap 4px and half the box 14px. A step's box is its indent (32px) further in.
  */
 const BOX_CENTRE_PX = { todo: 42, step: 74 } as const
 
@@ -87,10 +85,9 @@ function lineFor(at: Drop['line'], view: View): RowDrag['line'] {
 }
 
 /**
- * A row dragged on a card. Nothing on the card moves while it is held: the rows are measured once,
- * as it is picked up, in the list's own coordinates, so that a scroll of the list moves the pointer
- * over them and nothing else. Where the pointer is over them says where the row would land
- * (`dropAt`), and the drop puts it there. Let go outside the list, it stays where it was.
+ * A row dragged on a card. The rows are measured once, at pick-up, in the list's own coordinates, so a
+ * scroll moves the pointer over them and nothing else; where it is says where the row lands (`dropAt`).
+ * Let go outside the list, it stays where it was.
  */
 export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: RowDragInput): RowDrag {
   const [drop, setDrop] = useState<Drop | null>(null)
@@ -197,9 +194,8 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
     else if (bottom > view.bottom) list.scrollTo({ top: bottom - list.clientHeight + SCROLL_EDGE_PX })
   }
 
-  // Scrolls the list, as little as it takes, to show the row `id`, a step or a todo, where it is
-  // laid out, and clear of the list's scroll padding, as a new row is shown. Just after a drop the
-  // row that left its old level may still be there too.
+  // Scrolls the list as little as it takes to show the row `id` where it is laid out, clear of the scroll
+  // padding. Just after a drop the row that left its old level may still be there too.
   const showRow = useEffectEvent((id: string, step: boolean): void => {
     if (list === null) return
     const row = [...list.querySelectorAll<HTMLElement>(`[data-row="${CSS.escape(id)}"]`)].find(
@@ -317,7 +313,6 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
         return
       }
       setSaid(dragWords.dropped(ordered, settled, dragged, place, text))
-      // Let go where it is, it stays as it is, and nothing is saved.
       if (atOwnPlace(ordered, dragged, place)) return
       const byKeys = operation.activatorEvent instanceof KeyboardEvent
       // The row may be put in another list, where it is a new row whose text has to take the focus.

@@ -8,8 +8,8 @@ import type { TodoActions } from './useTodoStore'
 /**
  * Deleting is immediate and never asks for confirmation; instead a toast offers to undo it for a
  * few seconds. The todo is really gone (and saved as gone) in the meantime, so closing the app
- * during the undo window cannot bring it back by accident. A step comes back into its parent; if
- * the parent has been deleted since, there is nothing to put it back into, and undo does nothing.
+ * during the undo window cannot bring it back by accident. A step comes back into its parent, unless
+ * the parent has been deleted since: then undo does nothing.
  */
 export function useRemoveWithUndo(days: DaysMap, actions: TodoActions): (day: DayKey, id: string) => void {
   return useCallback(

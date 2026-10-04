@@ -273,7 +273,7 @@ test.describe('with three steps', () => {
     await daily.page.getByRole('button', { name: 'Edit Fix the lint errors', exact: true }).click()
     const editor = daily.page.getByRole('textbox', { name: 'Edit todo' })
     await expect(editor).toHaveValue('Fix the lint errors')
-    // A step cannot have steps: it has no +.
+    // A step cannot have steps: it has no Add a step.
     await expect(daily.page.getByRole('button', { name: 'Add a step to Fix the lint errors' })).toHaveCount(0)
     await editor.fill('Fix the lint warnings')
     await editor.press('Enter')

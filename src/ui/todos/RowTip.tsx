@@ -3,9 +3,8 @@ import type { ReactElement } from 'react'
 import styles from './RowTip.module.css'
 
 /**
- * A row button's name, shown above it a moment after the pointer rests on it (RowMenus sets how long),
- * at once when the keyboard reaches it, and never on touch, where the icons stay in view. The button
- * keeps its own longer name for screen readers.
+ * A row button's name above it: after the pointer rests (RowMenus sets how long), at once from the
+ * keyboard, never on touch. The button keeps its own longer name for screen readers.
  */
 export function RowTip({ tip, children }: { readonly tip: string; readonly children: ReactElement }) {
   return (

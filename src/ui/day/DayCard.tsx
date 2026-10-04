@@ -56,9 +56,8 @@ interface DayCardProps {
 const DRAG_PLUGINS = [StyleInjector.configure({ nonce: __STYLE_NONCE__ })]
 
 /**
- * A todo's part in the key that says when rows are measured: its id, and while its steps show (while
- * it is not folded), theirs, and a mark while a step is being written under it (only an open todo
- * takes one), since both make it taller.
+ * A todo's part in the key that says when rows are measured: its id, its steps' ids while they show,
+ * and a mark while a step is written under it (only an open todo takes one), since both make it taller.
  */
 const layoutKey = (todo: Todo, drafting: string | null): string => {
   const steps =
@@ -243,15 +242,13 @@ export function DayCard({
             )}
           </AnimatePresence>
 
-          {/* A dragged row stays in its place while a copy of it follows the pointer, and nothing
-              else moves until it is let go (useRowDrag.ts): a line, or a tint on a todo, shows where
-              it would land. */}
+          {/* A dragged row stays put while a copy follows the pointer, and nothing else moves
+              (useRowDrag.ts): a line, or a tint on a todo, shows where it would land. */}
           <RowMenus front={inFront}>
             <DragDropProvider
               // The card scrolls its list itself, only from the faded edges (useRowDrag.ts). Nor does
-              // the library speak: it would name a dragged row by its id, and make the row's text, its
-              // handle, a "draggable" toggle. The text tells how to drag (TodoItem.tsx), and what a drag
-              // does is said by the card, in the row's own words.
+              // the library speak: it would name a row by its id and make its text a "draggable" toggle.
+              // The text tells how to drag (TodoItem.tsx), and the card says what a drag does.
               plugins={(defaults) => [
                 ...defaults.filter((plugin) => plugin !== AutoScroller && plugin !== Accessibility),
                 ...DRAG_PLUGINS

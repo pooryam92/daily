@@ -7,13 +7,8 @@ import type { Locator } from '@playwright/test'
 import type { Todo } from '../src/domain/todo'
 
 /*
- * A step is added one way at a time, by a button "Add a step to <T>": while an open todo's steps show,
- * the whole 28px space under its last step, shaped like a step's row; otherwise (no steps yet, or
- * folded) one at its row's end, which unfolds a folded todo first. The editor has none, and a done todo
- * or a step has only Delete. Either opens the step draft under the steps; Enter chains and Escape
- * stops. The space is only that add: it is not a step, never a drop target, but its two halves still
- * place a drop.
- * The row's end itself (where its buttons are, when they show, their tips and keyboard) is row-end.spec's.
+ * A step is added one way at a time: the 28px space under an open todo's shown steps, else Add a step at
+ * the row's end, which unfolds a folded todo first. The row's end itself is row-end.spec's.
  */
 const workflow = todo('Add the workflow file', 'done')
 const lint = todo('Fix the lint errors')
@@ -45,7 +40,7 @@ async function addStep(daily: Daily, text: string): Promise<void> {
     await daily.more(text).click()
   } else await daily.act(text, `Add a step to ${text}`)
 }
-/** The empty spacer under `text`'s steps, where the row that added a step was. */
+/** The space under `text`'s steps, which holds its add. */
 const spacer = (daily: Daily, text: string) => daily.row(text).locator('li[data-add-step]')
 const spacers = (daily: Daily) => daily.page.locator('li[data-add-step]')
 const draft = (daily: Daily) => daily.page.getByRole('textbox', { name: 'New step' })
@@ -138,12 +133,10 @@ test.describe('adding a step from the todo’s row', () => {
     expect(row.y).toBeGreaterThanOrEqual(last.y + last.height - 1)
     expect(Math.abs(row.height - 28)).toBeLessThanOrEqual(1)
 
-    // One way at a time: the add under the steps, not the row's.
     expect(await daily.actions('Set up CI')).toEqual(['Move Set up CI to tomorrow', 'Delete Set up CI'])
     await expect(daily.more('Set up CI')).toHaveCount(1)
     await expect(daily.more('Paint the fence')).toHaveCount(1)
 
-    // Folded, the row's Add a step is back and nothing is under it.
     await daily.chevron('Set up CI').click()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(0)
     await expect(daily.more('Set up CI')).toBeHidden()
@@ -156,7 +149,6 @@ test.describe('adding a step from the todo’s row', () => {
     await expect(spacer(daily, 'Set up CI')).toHaveCount(1)
     expect(await daily.actions('Set up CI')).toEqual(['Move Set up CI to tomorrow', 'Delete Set up CI'])
 
-    // Done, neither: a done todo takes no steps.
     await daily.box('Set up CI').check()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(0)
     await expect(daily.more('Set up CI')).toBeHidden()
@@ -172,7 +164,6 @@ test.describe('adding a step from the todo’s row', () => {
     for (const step of ['Buy paint', 'Sand it']) await daily.act(step, `Delete ${step}`)
     await expect(spacer(daily, 'Paint the fence')).toHaveCount(0)
     await expect(daily.more('Paint the fence')).toBeHidden()
-    // Without steps it is still open, so its row adds one.
     expect(await daily.actions('Paint the fence')).toContain('Add a step to Paint the fence')
   })
 
@@ -203,7 +194,6 @@ test.describe('adding a step from the todo’s row', () => {
     await expect.poll(() => seen(add), { message: 'at rest' }).toBeLessThan(0.05)
     await unlit()
 
-    // All of the space under the steps, 28 tall, from the step row's left to the row's end.
     const at = await boxOf(add)
     const under = await boxOf(spacer(daily, 'Set up CI'))
     const step = await boxOf(daily.step('Fix the lint errors').locator(':scope > div'))
@@ -215,7 +205,6 @@ test.describe('adding a step from the todo’s row', () => {
     expect(Math.abs(at.y - under.y), where).toBeLessThanOrEqual(1)
     expect(Math.abs(at.x - step.x), where).toBeLessThanOrEqual(1)
     expect(Math.abs(at.x + at.width - (step.x + step.width)), where).toBeLessThanOrEqual(1)
-    // Its one icon, 14px, in the steps' box column; its words in the steps' text column.
     await expect(icon).toHaveCount(1)
     const glyph = await boxOf(icon)
     expect(Math.round(glyph.width), where).toBeLessThanOrEqual(14)
@@ -228,7 +217,6 @@ test.describe('adding a step from the todo’s row', () => {
       `words ${JSON.stringify(text)}, a step's ${JSON.stringify(words)}`
     ).toBeLessThanOrEqual(2)
 
-    // Its todo or one of its steps pointed at: the icon alone.
     for (const pointed of ['Set up CI', 'Fix the lint errors', 'Add the workflow file']) {
       await daily.point(pointed)
       await showing(icon)
@@ -237,12 +225,10 @@ test.describe('adding a step from the todo’s row', () => {
       await daily.page.mouse.move(0, 0)
       await expect.poll(() => seen(add), { message: `after ${pointed}` }).toBeLessThan(0.05)
     }
-    // Another todo pointed at shows its own, not this one.
     await daily.point('Paint the fence')
     await showing(daily.more('Paint the fence').locator('svg'))
     expect(await seen(add)).toBeLessThan(0.05)
 
-    // The space itself pointed at: the icon, the words and a step row's hover; no tip, even after a wait.
     await daily.page.mouse.move(at.x + at.width / 2, at.y + at.height / 2)
     await showing(icon)
     await showing(label)
@@ -251,7 +237,6 @@ test.describe('adding a step from the todo’s row', () => {
     await expect(daily.tip).toHaveCount(0)
     await expect(add).not.toHaveAttribute('title')
 
-    // Focused from the keyboard, after the last step's bin: the same, and no tip.
     await daily.page.mouse.move(0, 0)
     await daily.input.focus()
     await expect.poll(() => seen(add)).toBeLessThan(0.05)
@@ -286,12 +271,7 @@ test.describe('adding a step from the todo’s row', () => {
   })
 })
 
-/*
- * Usability round 1, as R1 has it: the editor has no way to add a step; the draft says "First step…"
- * or "Next step…"; while a step draft is open the row's buttons are hidden and do nothing; a draft left
- * by Tab closes; a new draft opens focused even inside the old one's fade; the fold's tip says what a
- * click does.
- */
+// What the first usability round asked for, a test each.
 test.describe('round 1', () => {
   test.use({ seed: { [today]: [milk, ci, offsite, fence, notes, house] } })
 
@@ -412,7 +392,6 @@ test.describe('round 1', () => {
   }) => {
     const label = () => daily.page.evaluate(() => document.activeElement?.getAttribute('aria-label'))
     for (const key of ['Escape', 'Enter']) {
-      // From the add under the steps, by the keyboard.
       await daily.page.getByRole('button', { name: 'Edit Fix the lint errors', exact: true }).focus()
       await daily.page.keyboard.press('Tab')
       await daily.page.keyboard.press('Tab')
@@ -426,7 +405,6 @@ test.describe('round 1', () => {
         .toBe('Add a step to Set up CI')
       await expect(daily.more('Set up CI')).toBeFocused()
 
-      // From the row's Add a step, to the todo's text.
       await addStep(daily, 'Write the release notes')
       await expect(draft(daily)).toBeFocused()
       await daily.page.keyboard.press(key)
@@ -448,7 +426,6 @@ test.describe('round 1', () => {
       await addStep(daily, 'Set up CI')
       await expect(draft(daily)).toBeFocused()
       await daily.page.keyboard.press(key)
-      // Shift+Tab goes back to the last step's bin, Tab on to the next todo.
       await expect
         .poll(() => daily.page.evaluate(() => document.activeElement?.getAttribute('aria-label')), {
           message: key

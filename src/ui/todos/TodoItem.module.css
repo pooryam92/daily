@@ -5,9 +5,8 @@
  */
 
 /*
- * A todo is its row and, while it is open, its steps under it. The todo is what is dragged, animated
- * and lifted, as a whole; everything that styles a line is on the row, so none of it reaches the
- * steps, which are rows of their own. A step is dragged and lifted on its own.
+ * A todo is its row plus, while open, its steps, and is dragged and animated as a whole. Line styles go on
+ * the row, so none of them reach the steps, which are rows of their own.
  */
 .todo {
   /* The anchor its steps are positioned against while they fold away (AnimatePresence popLayout). */
@@ -46,10 +45,9 @@
 }
 
 /*
- * A todo that is being dragged stays in its place, steps and all, faded, while a small copy of it
- * follows the pointer (`DraggedCopy`). Its text fades but not the text's button, so a keyboard drag's
- * focus ring keeps its strength. A filter, not opacity: the steps' list is animated by Motion, which
- * holds its opacity.
+ * A dragged row stays in place, steps and all, faded (`DraggedCopy` follows the pointer). The text fades
+ * but not its button, so a keyboard drag's focus ring stays strong. A filter, not opacity: Motion holds
+ * the steps' list's opacity.
  */
 :is(.todo, .step)[data-dragging] > .row > :not(.label),
 :is(.todo, .step)[data-dragging] > .row > .label > .text > *,
@@ -58,9 +56,8 @@
 }
 
 /*
- * The copy: the row's box and its text on one line, lifted off the card with the card's surface and
- * a shadow, since it lies over other rows. It is placed in the library's overlay, a box the size of
- * the row, by `DraggedCopy`.
+ * The copy, lifted off the card with its surface and a shadow, since it lies over other rows.
+ * `DraggedCopy` places it in the library's overlay, a box the size of the row.
  */
 .chip {
   position: absolute;
@@ -111,11 +108,7 @@
   color: var(--text-faint);
 }
 
-/*
- * The room under a todo's last step: short of a step's height, so the steps end before the next todo
- * begins, and all of it the button that adds a step. The step editor opens in its place, and a row
- * dragged over it goes to the end of the steps or after the todo, by the half it is over.
- */
+/* The room under a todo's last step: short of a step's height, so the steps end before the next todo. */
 .stepSpace {
   height: 28px;
 }
@@ -141,10 +134,9 @@
 }
 
 /*
- * A todo's steps, indented by a box and its gap (32px), so that a step's box sits under its todo's
- * text. They keep their place when they are done: only the todos settle. The indent is padding, not
- * margin: while the list folds away it is placed where it was measured, and a margin would be added
- * to that a second time.
+ * A todo's steps, indented by a box and its gap (32px), so a step's box sits under its todo's text.
+ * Padding, not margin: while the list folds away it is placed where it was measured, and a margin would
+ * be added twice.
  */
 .steps {
   /* The anchor a deleted step is positioned against while it fades out (AnimatePresence popLayout). */
@@ -262,9 +254,8 @@
 }
 
 /*
- * Where there is a mouse the buttons, and the way to another step, wait for their row, or their todo,
- * to be pointed at or to hold the keyboard's focus; a click's focus is not kept, so they do not linger
- * once the pointer has left. On touch they are always there.
+ * With a mouse the buttons wait for their row to be pointed at or hold the keyboard's focus (a click's
+ * focus does not count, so they do not linger). On touch they are always there.
  */
 @media (hover: hover) and (pointer: fine) {
   .row:not(:hover, :has(:focus-visible)) > .actions {
@@ -278,10 +269,9 @@
 }
 
 /*
- * They stay hidden while a row is dragged, and after a click took a row away until the pointer moves
- * (clickGuard.ts): the buttons that close up under a still pointer must not look ready for a second
- * click. The way to another step is not there at all then, nor while the todo's text is edited: while
- * a row is dragged, the room under the steps is only where it goes to the end of them.
+ * Hidden while a row is dragged, and after a click took a row away until the pointer moves (clickGuard.ts),
+ * so buttons closing up under a still pointer do not look ready for a second click. The way to another
+ * step goes entirely then (while dragging, that room is only a drop place), and while the text is edited.
  */
 :is([data-sorting], [data-guard]) .actions {
   opacity: 0;
@@ -297,10 +287,9 @@
 }
 
 /*
- * The button that is the room under a todo's last step (`StepSpace`), shaped like a step's row. Where
- * there is a mouse it shows nothing at rest; its icon, under the steps' boxes, while the todo is
- * pointed at or holds the keyboard's focus; and its words, beside the icon, and a step row's hover,
- * while it is pointed at or focused itself. On touch the icon is always there, and the words never.
+ * The room under a todo's last step (`StepSpace`), shaped like a step's row. With a mouse: nothing at
+ * rest, its icon while the todo is pointed at or focused, its words and a hover while it is pointed at
+ * or focused itself. On touch the icon always, the words never.
  */
 .more {
   display: flex;
@@ -345,10 +334,8 @@
 }
 
 /*
- * The fold, at the row's start: an arrow, down while the steps show and along while they are folded.
- * It is faint, and stronger while its row is pointed at or holds the keyboard's focus. Folded, it is
- * always there: steps are hidden here. While they show, the steps under it say so, and the arrow
- * waits for the row, where there is a mouse; on touch it is always there.
+ * The fold arrow is faint, stronger while its row is pointed at or focused. Folded, it always shows, as
+ * the steps are hidden; while they show it waits for the row where there is a mouse.
  */
 .fold {
   display: grid;
@@ -422,7 +409,6 @@
   }
 }
 
-/* While the text is edited the row is a field: nothing else is offered. */
 .row[data-editing] > .fold {
   visibility: hidden;
 }

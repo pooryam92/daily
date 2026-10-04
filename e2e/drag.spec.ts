@@ -6,10 +6,8 @@ import type { Daily } from './daily'
 import type { DaysMap, Todo } from '../src/domain/todo'
 
 /*
- * Drag spec draft 4: a row is dropped onto a row. Nothing moves while it is held; the top quarter of a
- * row is "above", the bottom quarter "below", and the middle of a todo "into" (a step's middle splits
- * at its centre). A line shows where it goes, at the depth it takes, or the todo it goes into is
- * tinted.
+ * A row is dropped onto a row, and nothing moves while it is held: a row's top quarter is "above", its
+ * bottom quarter "below", and a todo's middle "into" (a step's middle splits at its centre).
  */
 /** Where the middle of a row starts and ends, from its top (ZONE_EDGE in rowDrag.ts). */
 const EDGE = 0.25
@@ -20,7 +18,6 @@ const BELOW = 0.88
 
 const LINE = '[data-drop-line]'
 const TINT = 'li[data-drop-target]'
-/** The copy of the held row that follows the pointer. */
 const COPY = '[data-drag-copy]'
 /** What is read out without being shown: a status says its changes politely, without `aria-live`. */
 const LIVE = '[role="status"], [aria-live]'
@@ -140,9 +137,8 @@ async function still(daily: Daily): Promise<void> {
 }
 
 /**
- * How the source row shows: how opaque its text button, its box and its steps look, counting opacity
- * and opacity filters on every element up from each (Motion holds the row's own opacity). The dimming
- * spares the text button, so a focus ring on it keeps its strength.
+ * How opaque the held row's text button, box and steps look, through every ancestor's opacity and opacity
+ * filter (Motion holds the row's own). The text button is spared so its focus ring keeps its strength.
  */
 const dimmed = (daily: Daily) =>
   daily.page.evaluate(() => {
@@ -200,9 +196,8 @@ async function pickUp(daily: Daily, text: string): Promise<Held> {
 }
 
 /**
- * The copy is a chip beside the pointer, never over it: its top-left corner 16px right of the pointer
- * and 24px below it. Near the list's right edge it shifts left to stay 8px inside the list; near the
- * bottom it flips, its bottom 24px above the pointer.
+ * The copy is a chip beside the pointer, never over it: 16px right of it and 24px below. Near the list's
+ * right edge it shifts left to stay 8px inside; near the bottom it flips to 24px above the pointer.
  */
 async function copyFollows(daily: Daily, held: Held): Promise<void> {
   const chip = daily.page.locator(COPY)
@@ -251,7 +246,6 @@ async function drop(
   await daily.page.mouse.up()
 }
 
-/** The drop line's box. */
 async function line(daily: Daily): Promise<Box> {
   const box = await daily.page.locator(LINE).boundingBox()
   if (box === null) throw new Error('No drop line is shown')
@@ -567,7 +561,6 @@ test.describe('dropping a row onto a row', () => {
         const stepLine = (await line(daily)).x
         await over(daily, held, 'Do the taxes', ABOVE)
         await shows(daily, { line: 'todo', near: top(held.before, 'Do the taxes') })
-        // The line is indented by as much as a step's text is.
         expect(Math.abs(stepLine - (await line(daily)).x - (stepColumn - todoColumn))).toBeLessThanOrEqual(2)
       })
       await saved(daily, on([ci, milk, taxes, trip, folded(house), plants, rent]))
@@ -764,7 +757,6 @@ test.describe('dropping a row onto a row', () => {
         await expect(daily.page.locator('li[data-dragging]')).toHaveCount(0)
         await steady(daily, held.before, `after ${text}`)
       }
-      // Clean the house stays folded: its steps came along without showing.
       await expect(daily.chevron('Clean the house')).toHaveAttribute('aria-expanded', 'false')
       await unchanged(daily, on(seed))
     })
@@ -1063,7 +1055,6 @@ test.describe('dropping a row onto a row', () => {
       await daily.page.waitForTimeout(600)
       expect(await scrolled()).toBe(0)
       await shows(daily, { line: 'todo' })
-      // Past the bottom edge it scrolls, with no line and no tint.
       await glide(daily, down, { x, y: list.y + list.height + 40 })
       await expect(daily.page.locator(LINE)).toHaveCount(0)
       await expect(daily.page.locator(TINT)).toHaveCount(0)
@@ -1257,7 +1248,6 @@ test.describe('dropping a row onto a row', () => {
       await daily.page.keyboard.press('Space')
       await unchanged(daily, on(seed))
 
-      // The first todo has no todo above to go into.
       await carry(daily, 'Buy milk', ['ArrowRight'], async () => {
         await expect(daily.page.locator(TINT)).toHaveCount(0)
       })
@@ -1314,12 +1304,6 @@ test.describe('dragging a row', () => {
   })
 })
 
-/*
- * The whole row is the drag: there is no grip. A pointer lifts a row from its text or any empty part of
- * it once it has moved 5px; a plain click on the text still edits it. The box, the fold, the buttons at
- * the row's end and the add under the steps keep their presses and never lift it. From the keyboard the
- * text is the handle: Space lifts, Enter still edits, and ← and → change the day until a row is lifted.
- */
 test.describe('what lifts a row', () => {
   test.use({ seed: on([milk, ci, folded(trip), taxes]) })
 
@@ -1353,7 +1337,6 @@ test.describe('what lifts a row', () => {
     const words = await daily.editButton('Do the taxes').locator('span').first().boundingBox()
     if (words === null) throw new Error('The words of Do the taxes are not shown')
     const start = { x: words.x + 8, y: words.y + words.height / 2 }
-    // Under 5px it is a click, which edits.
     expect(await press(daily, start, 3), '3px on the words').toBe(false)
     await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveValue('Do the taxes')
     await daily.page.keyboard.press('Escape')
@@ -1367,7 +1350,6 @@ test.describe('what lifts a row', () => {
       await press(daily, { x: (line.x + box.x) / 2, y: box.y + box.height / 2 }, 10),
       'its empty start'
     ).toBe(true)
-    // A step, from its words.
     const step = await daily.editButton('Fix the lint errors').locator('span').first().boundingBox()
     if (step === null) throw new Error('The words of Fix the lint errors are not shown')
     expect(await press(daily, { x: step.x + 8, y: step.y + step.height / 2 }, 10), 'a step’s words').toBe(
@@ -1412,14 +1394,12 @@ test.describe('what lifts a row', () => {
     await daily.page.keyboard.press('Escape')
     await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveCount(0)
 
-    // Resting on the text, → shows tomorrow and ← brings today back.
     await text.focus()
     await daily.page.keyboard.press('ArrowRight')
     await expect(daily.heading('Tomorrow')).toBeVisible()
     await daily.page.keyboard.press('ArrowLeft')
     await expect(daily.heading('Today')).toBeVisible()
 
-    // Lifted, → changes its level instead, and the day stays; Escape puts it back.
     await hold(daily, 'Do the taxes')
     await daily.page.keyboard.press('Space')
     await expect(lifted(daily)).toHaveCount(1)
@@ -1432,7 +1412,6 @@ test.describe('what lifts a row', () => {
     await expect(lifted(daily)).toHaveCount(0)
     await unchanged(daily, on([milk, ci, folded(trip), taxes]))
 
-    // ↑ and Space move it, and the focus stays on its text.
     await carry(daily, 'Do the taxes', ['ArrowUp'])
     await saved(daily, on([milk, ci, taxes, folded(trip)]))
     await expect

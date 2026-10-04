@@ -1,11 +1,6 @@
 import { expect, test } from './daily'
 import type { Daily } from './daily'
 
-/*
- * The arrows sit on the strips of the day before and the day after that peek out from behind the
- * front card, whatever the window's width: inside the neighbour's visible strip, clear of the front
- * card. A click moves the deck by exactly one day.
- */
 const card = (daily: Daily, offset: number) => daily.page.locator(`section[data-offset="${String(offset)}"]`)
 const front = (daily: Daily) => card(daily, 0)
 
@@ -66,12 +61,10 @@ for (const [width, height] of [
       expect(arrow.right, where).toBeLessThanOrEqual(strip.right + 0.5)
       expect(arrow.top, where).toBeGreaterThanOrEqual(neighbour.top - 0.5)
       expect(arrow.bottom, where).toBeLessThanOrEqual(neighbour.bottom + 0.5)
-      // Clear of the front card.
       if (direction === 'previous') expect(arrow.right, where).toBeLessThanOrEqual(main.left + 0.5)
       else expect(arrow.left, where).toBeGreaterThanOrEqual(main.right - 0.5)
     }
 
-    // One click, one day: today → yesterday → today → tomorrow.
     await expect(front(daily).getByRole('heading', { name: 'Today', exact: true })).toBeVisible()
     await daily.page.getByRole('button', { name: 'Previous day' }).click()
     await expect(front(daily).getByRole('heading', { name: 'Yesterday', exact: true })).toBeVisible()

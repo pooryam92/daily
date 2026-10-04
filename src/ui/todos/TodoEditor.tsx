@@ -27,9 +27,8 @@ export function TodoEditor({ text, onCommit, onClose }: TodoEditorProps) {
 }
 
 /**
- * The props of a one-line field, a todo's or a step's, that ends once: on Enter, on Escape, or when
- * it is left. It takes the keyboard as it shows, with the cursor at the end, where a sentence is
- * carried on and most slips are made. `onEnd` gets the text as it would be saved.
+ * The props of a one-line field (a todo's or a step's) that ends once: on Enter, Escape or blur. It takes the
+ * keyboard with the cursor at the end, where most slips are made; `onEnd` gets the text as it would be saved.
  */
 export function useLineField(initial: string, onEnd: (text: string, how: EditorClose) => void) {
   const [draft, setDraft] = useState(initial)

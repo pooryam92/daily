@@ -34,9 +34,8 @@ describe('rowText', () => {
 })
 
 /*
- * A card as measured at pick-up, every line 30px tall and touching the next, from the top of the list:
- * Buy milk; Set up CI with three steps; Do the taxes; Plan the trip, folded; Clean the house with two
- * steps; Water the plants; then settled, Pay the rent and Do the chores with two steps.
+ * A card as measured at pick-up, every line 30px tall and touching the next, from the top of the list.
+ * `trip` is folded; `rent` and `chores` are settled.
  */
 const H = 30
 const shownRows: readonly ShownRow[] = [
@@ -453,13 +452,11 @@ describe('dragWords', () => {
   })
 
   it('says a row’s own place, either boundary of it, as where it was', () => {
-    // Above Do the taxes, and above Water the plants just below it.
     expect(at(row('taxes'), todoLine('taxes'))).toBe('Where it was.')
     expect(at(row('taxes'), todoLine('plants'))).toBe('Where it was.')
     // The last open todo, and the last settled one.
     expect(at(row('plants'), todoLine('rent'))).toBe('Where it was.')
     expect(at(row('flight'), todoLine(undefined))).toBe('Where it was.')
-    // A first step, and a last one.
     expect(at(row('workflow', 'ci'), stepLine('ci', 'workflow'))).toBe('Where it was.')
     expect(at(row('workflow', 'ci'), stepLine('ci', 'lint'))).toBe('Where it was.')
     expect(at(row('lint', 'ci'), stepLine('ci', undefined))).toBe('Where it was.')

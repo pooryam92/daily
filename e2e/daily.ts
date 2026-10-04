@@ -78,9 +78,8 @@ export class Daily {
       env
     })
     this.page = await this.app.firstWindow()
-    // Under xvfb the X cursor rests at the screen's centre, where the window opens, and X sends the
-    // page real pointer events from it at odd moments, even mid-drag. The window goes below and to
-    // the right of the cursor, so it is never under it, whatever size a test gives it.
+    // Under xvfb X sends the page pointer events from its cursor at the screen's centre, even mid-drag,
+    // so the window goes below and right of the cursor, never under it, whatever its size.
     await this.app.evaluate(({ BrowserWindow, screen }) => {
       const cursor = screen.getCursorScreenPoint()
       BrowserWindow.getAllWindows()[0]?.setPosition(cursor.x + 1, cursor.y + 1)
@@ -174,9 +173,8 @@ export class Daily {
   }
 
   /**
-   * The space under an unfolded todo's last step, all of it one button "Add a step to <text>", which
-   * adds the next one. It is under the steps, not on the todo's line, so it is never the line's Add.
-   * Found by its label, shown or not.
+   * The button "Add a step to <text>" that fills the space under an unfolded todo's last step; never the
+   * one on the todo's line, which shares its name. Found shown or not.
    */
   more(text: string): Locator {
     return this.row(text).locator(':scope > :not(div)').locator(`button[aria-label="Add a step to ${text}"]`)
@@ -191,9 +189,8 @@ export class Daily {
   }
 
   /**
-   * The open menu, which a right-click on a row opens. It is drawn outside the card, so it is found on
-   * the page, not in a row. One that has just closed fades out for a moment with data-closed; it is not
-   * the open one.
+   * The open menu, found on the page as it is drawn outside the card. One that has just closed fades
+   * out for a moment with data-closed; it is not the open one.
    */
   get menu(): Locator {
     return this.page.getByRole('menu').and(this.page.locator(':not([data-closed])'))
@@ -210,10 +207,7 @@ export class Daily {
     await expect(this.menu).toBeVisible()
   }
 
-  /**
-   * Does what a row's end offers: points at the line that holds `text` and clicks its button `item`,
-   * by its full name ("Add a step to <text>", "Move <text> to tomorrow", "Delete <text>").
-   */
+  /** Points at the line that holds `text` and clicks its button `item`, by its full name. */
   async act(text: string, item: string): Promise<void> {
     await this.line(text).hover()
     await this.button(text, item).click()

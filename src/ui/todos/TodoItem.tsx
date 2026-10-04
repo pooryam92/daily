@@ -32,10 +32,9 @@ import type { EditorClose } from './TodoEditor'
 const ROW_CONTROLS = 'input, textarea, select, button:not([data-todo-text]), a'
 
 /**
- * The pointer sensor, kept to the pointer that pressed the row. Another finger or pen neither moves
- * the row nor lets it go. Every mouse shares one pointer id, so a second mouse, or a cursor that
- * passes over the window, is told apart by holding no button: those moves are not the drag's. A
- * release the window never sees ends nothing, as before: the next release, or Escape, does.
+ * The pointer sensor, kept to the pointer that pressed the row: another finger or pen neither moves nor
+ * drops it. Every mouse shares one pointer id, so a mouse move with no button held is not the drag's. A
+ * release the window never sees ends nothing: the next release, or Escape, does.
  */
 class HeldPointerSensor extends PointerSensor {
   // The pointer that last pressed a row while none was held.
@@ -53,9 +52,8 @@ class HeldPointerSensor extends PointerSensor {
       this.pending = undefined
       if (this.isPressed(event)) release(event)
     }
-    // The library starts a drag where the row was pressed, and takes no moves until it has started:
-    // the move that picked the row up, 5px from the press, and any after it, are passed on then, so
-    // the copy is beside the pointer from the first frame.
+    // The library takes no moves until the drag starts; replay the held one so the copy starts beside
+    // the pointer.
     this.unlisten = manager.monitor.addEventListener('dragstart', () => {
       const pending = this.pending
       this.pending = undefined
@@ -108,9 +106,8 @@ class HeldPointerSensor extends PointerSensor {
 }
 
 /**
- * A row is picked up anywhere on it but its controls: after 5px, so a click on the text still edits
- * it, and after a short hold on touch, so the list still scrolls. The keyboard picks it up from its
- * text, with Space: Enter still edits it.
+ * A row is picked up anywhere but its controls: after 5px, so a click on the text still edits it, and after
+ * a hold on touch, so the list still scrolls. The keyboard picks it up from its text with Space.
  */
 export const TODO_SENSORS: Sensors = [
   configure(HeldPointerSensor, {
@@ -150,7 +147,7 @@ interface RowActions {
 interface RowMotion {
   /** Changes whenever the height or the order of any row can: the only time rows have to be measured. */
   readonly order: string
-  /** Whether the todo or step with this id was added while the card was open, as opposed to loaded with it. */
+  /** Whether the todo or step with this id was added while the card was open, not loaded with it. */
   readonly isNew: (id: string) => boolean
   /** Whether a new row animates in; false for todos added in quick succession. */
   readonly animateEnter: boolean
@@ -166,7 +163,6 @@ interface TodoItemProps extends RowActions, RowMotion {
   /** Whether a step is being written under the todo. The card keeps it: it moves the rows below. */
   readonly addingStep: boolean
   readonly onAddingStep: (open: boolean) => void
-  /** Folds the todo's steps away, or shows them again. */
   readonly onToggleFold: (id: string) => void
   /** Whether a row being dragged would belong to this todo if it were dropped now. */
   readonly dropTarget: boolean
@@ -211,10 +207,8 @@ function useItemRef(
 }
 
 /*
- * `› ☐ Buy milk 1/3 ········ [add a step] [move]   [delete]`, and while the todo is open, its steps
- * under it, and under those the step being written, if any. The buttons at the end are two tiers:
- * what comes of the todo (a step, another day), then set apart, whether it was a mistake (delete).
- * Left to right they are ever more final, so the row is a spectrum to read, not a menu to compare.
+ * `› ☐ Buy milk 1/3 ········ [add a step] [move]   [delete]`, with its steps under it while it is open.
+ * Left to right the buttons grow more final, delete set apart: a spectrum to read, not a menu to compare.
  */
 export function TodoItem({
   todo,
@@ -318,9 +312,8 @@ export function TodoItem({
         }}
         {...actions}
       />
-      {/* The steps fold away together, by the count or by checking the todo, and come back when it is
-          unfolded. `popLayout` takes them out of the flow at once, so the rows below close up while
-          they fade. */}
+      {/* `popLayout` takes folding steps out of the flow at once, so the rows below close up while they
+          fade. */}
       <AnimatePresence mode="popLayout" initial={false}>
         {(steps.length > 0 || drafting) && (
           <motion.ul
@@ -346,7 +339,7 @@ export function TodoItem({
                   {...actions}
                 />
               ))}
-              {/* The line under the last step, with the way to another step; the step editor opens in its place. */}
+              {/* The step editor opens in the place of this line. */}
               {!drafting && todo.status === 'open' && steps.length > 0 && (
                 <StepSpace
                   key="add"
@@ -464,9 +457,8 @@ interface StepDraftItemProps {
 }
 
 /**
- * The step being written, as the last of the steps: a step's row with the field in place of the
- * text, and an empty box that can be checked once it is a step. The row itself stays while one step
- * after another is added: it slides down under each new step, and only the field starts afresh.
+ * The step being written, last among the steps: a step's row with the field in place of the text. The
+ * row stays while step after step is added, sliding down under each; only the field starts afresh.
  */
 function StepDraftItem({ draft, first, order, onAdd, onClose, ref }: StepDraftItemProps) {
   const item = useRef<HTMLLIElement | null>(null)
@@ -525,11 +517,9 @@ interface StepSpaceProps {
 }
 
 /**
- * The last line of an open todo's steps: shorter than a step, so the steps end before the next todo,
- * and all of it one button that opens the step editor there. It shows its icon, under the steps'
- * boxes, while the todo is pointed at, and its words too while it is itself. It is not a row: nothing
- * is dropped on it, and a row dragged over it goes to the end of the steps above or before the todo
- * below, by the half it is over (rowDrag.ts).
+ * The last line of an open todo's steps, all one button that opens the step editor there. It is not a
+ * row: nothing is dropped on it, and a row dragged over it goes to the end of the steps above or before
+ * the todo below, by the half it is over (rowDrag.ts).
  */
 function StepSpace({ text, order, buttonRef, onStep, ref }: StepSpaceProps) {
   return (
@@ -569,7 +559,6 @@ interface TodoRowProps extends RowActions {
    * the keyboard's handle for dragging the row too.
    */
   readonly textRef: RefObject<HTMLButtonElement | null>
-  /** The drag handle's ref. */
   readonly handleRef: (element: Element | null) => void
   /** Whether the text takes the focus: see `useRefocus`. */
   readonly refocus?: boolean
@@ -586,15 +575,13 @@ interface TodoRowProps extends RowActions {
   readonly fold?: { readonly folded: boolean; readonly stepsId: string; readonly onToggle: () => void }
 }
 
-/** How long a row's text watches for the focus to need it after a drop: the drop's animations and the old row's exit. */
+/** How long a row's text watches for the focus after a drop: its animations and the old row's exit. */
 const REFOCUS_MS = 1000
 
 /**
- * A keyboard drop that makes a todo a step, or a step a todo, puts the row in a new place on the page:
- * the row it was keeps the focus while it fades out, and the library may hand the focus back to it,
- * so once it is gone the focus is nowhere. The text in the new place takes it then, and only then:
- * a focus that is somewhere is left where it is. Returns the text's ref, which is the drag handle's
- * too.
+ * After a keyboard drop that makes a todo a step or a step a todo, the old row keeps the focus while it
+ * fades, and the library may hand it back there, so once it is gone the focus is nowhere. Only then does
+ * the text in the new place take it. Returns the text's ref, which is the drag handle's too.
  */
 function useRefocus(
   refocus: boolean,
@@ -623,7 +610,7 @@ function useRefocus(
   )
 }
 
-/** One line of the list, a todo's or a step's: the slot at its start, the box, the text and the buttons at the end. */
+/** One line of the list, a todo's or a step's: the slot, the box, the text and the buttons at the end. */
 function TodoRow({
   todo,
   editing,
@@ -705,16 +692,13 @@ function TodoRow({
         if (drafting && event.target === event.currentTarget) event.preventDefault()
       }}
       onKeyDown={onRowKeyDown}
-      // A right-click anywhere on the row opens its menu where the pointer is.
       onContextMenu={(event) => {
         if (editing || drafting) return
         event.preventDefault()
         setMenu({ from: 'point', x: event.clientX, y: event.clientY })
       }}
     >
-      {/* A todo's steps fold away and come back from the row's start: an arrow, along while they are
-          folded, down while they show. Folded steps are not on the page, so there is nothing to control
-          then. */}
+      {/* Folded steps are not on the page, so the arrow controls nothing then. */}
       {foldable !== undefined ? (
         <RowTip tip={foldable.folded ? 'Show steps' : 'Hide steps'}>
           <button
@@ -756,11 +740,8 @@ function TodoRow({
             }}
           />
         )}
-        {/* A button, so the text can be edited from the keyboard: Enter edits it. It is the row's
-            handle too: a press that moves drags the row, and Space picks it up, the arrow keys move
-            where it would land (up and down, and right and left between a todo and a step), Space or
-            Enter drops it, Escape puts it back. It stays while the text is edited, hidden, so the row
-            always has its handle. */}
+        {/* A button, so Enter edits the text. It is the row's drag handle too (`dragWords.instructions`),
+            and stays, hidden, while the text is edited, so the row always has its handle. */}
         <button
           ref={setText}
           type="button"
@@ -901,13 +882,10 @@ const COPY_OFFSET_TOUCH = { x: 16, y: 40 } as const
 const COPY_MARGIN_PX = 8
 
 /**
- * What follows the pointer while a row is dragged: a small copy of it, its box and its text on one
- * line, and a todo's count of steps, so that steps it carries can be seen to come along. The row itself stays
- * where it is, dimmed, and nothing else on the card moves until the drop. The copy sits beside the
- * pointer rather than under it, so it never covers the row aimed at, or the line: below and to the
- * right, or above a finger, and turned the other way at the list's edges rather than pushed back
- * over the pointer. A keyboard drag has no copy: the line and the focused text say it all. The copy
- * is only to be looked at: the keyboard and screen readers keep the real row.
+ * A small copy of the dragged row: box, text and a todo's step count, so carried steps are seen to come
+ * along; the row stays put, dimmed, until the drop. It sits beside the pointer, never over the row or line
+ * aimed at, and flips at the list's edges rather than covering the pointer. A keyboard drag has no copy,
+ * and the keyboard and screen readers keep the real row.
  */
 export function DraggedCopy({
   ordered,
@@ -1022,9 +1000,8 @@ function CopyChip({
 }
 
 /**
- * How many of a todo's steps are done, as figures, on the copy that follows the pointer in a drag:
- * whether its steps show or not, they come along. The copy is hidden from screen readers, so this is
- * only seen; nothing is shown for a todo without steps.
+ * A todo's done steps as figures on the drag copy, folded or not, since they come along. Only seen: the
+ * copy is hidden from screen readers.
  */
 function StepCount({ todo }: { readonly todo: Todo }) {
   const { done, total } = stepProgress(todo)

@@ -1,4 +1,4 @@
-// The geometry is read in the page, which needs the DOM types the other e2e files do without.
+// The geometry is read in the page, which needs the DOM types.
 /// <reference lib="dom" />
 
 import { expect, test, todo, today } from './daily'
@@ -28,10 +28,6 @@ interface Box {
   readonly width: number
 }
 
-/**
- * Where a row's parts are: the row, the label slot, the text button in it and where its words may go,
- * the text's lines, the box, the fold and its chevron, and the buttons at the row's end.
- */
 interface Geometry {
   readonly row: Box
   readonly label: Box
@@ -106,13 +102,7 @@ async function smallest(daily: Daily): Promise<void> {
     .toEqual([640, 420])
 }
 
-/**
- * At the smallest window a long text wraps over several lines in a narrow column. Its words run up to
- * the room kept for the row's end, which nothing at rest or on hover takes from them, and the box sits
- * by the first line. Past the words only the 28px buttons (Add a step, Move, by the first line) and,
- * 16px on, the bin at the row's end may be. Before the box, a todo with steps has its fold (its
- * chevron 14px, by the first line) in the 20px slot at the row's start.
- */
+/** Past the words only the 28px buttons may be: Add a step and Move side by side, then, 16px on, the bin. */
 test('in the smallest window, a wrapped row keeps its text wide, its box up, and its buttons at its end and its fold at its start', async ({
   daily
 }) => {
@@ -152,7 +142,6 @@ test('in the smallest window, a wrapped row keeps its text wide, its box up, and
     // The box is on the first line, not centred on the block.
     expect(Math.abs(at.box.top - (first.top - 4)), where).toBeLessThanOrEqual(1)
 
-    // The buttons: 28px, by the first line, and the last thing on the row is at its end.
     expect(at.actions, where).toHaveLength(buttons)
     // From the end: the bin 4px in on every row; Move 48px in and Add a step 76px in on an open todo.
     const fromEnd = buttons === 3 ? [76, 48, 4] : [4]
@@ -237,7 +226,6 @@ test('in the smallest window, the space under the steps is 28px high, as wide as
     expect(Math.abs(at.row.left - steps.row.left), where).toBeLessThanOrEqual(1)
     expect(Math.abs(at.row.right - steps.row.right), where).toBeLessThanOrEqual(1)
     expect(Math.abs(at.row.bottom - at.row.top - 28), where).toBeLessThanOrEqual(1)
-    // The add is the whole space: from the step row's left to the row's end, 28 tall.
     if (at.add === null) throw new Error(`${text} has no add under its steps`)
     for (const edge of ['left', 'right', 'top', 'bottom'] as const)
       expect(Math.abs(at.add[edge] - at.row[edge]), `${edge}: ${where}`).toBeLessThanOrEqual(1)

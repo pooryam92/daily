@@ -19,11 +19,9 @@ export type TodoAction =
   /** Hides the steps of the todo `id`, or shows them again. A step, or a todo without steps, has none. */
   | { type: 'foldToggled'; day: DayKey; id: string }
   /**
-   * Puts the todo or step `id` just before `beforeId` in the steps of the todo `parentId`, or without
-   * `parentId`, among the day's todos; without `beforeId`, at the end. It is how a drag drops a row
-   * anywhere, at either level. The todo it goes under unfolds to show it, and one that loses its last
-   * step loses its fold. Steps go one level deep: a todo with steps of its own is not put under
-   * another.
+   * Puts the todo or step `id` before `beforeId` (else at the end) in the steps of `parentId`, or in the
+   * day's todos: how a drag drops a row. The todo it goes under unfolds, one that loses its last step loses
+   * its fold, and a todo with steps of its own never goes under another.
    */
   | { type: 'placed'; day: DayKey; id: string; parentId?: string; beforeId?: string }
   /**

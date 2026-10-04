@@ -241,11 +241,9 @@
 }
 
 /*
- * Where a dragged row would land: a line in the gap, from a dot on the box of the depth the row will
- * take, a todo's or a step's, to the row's right edge (left and width are set by the card,
- * useRowDrag.ts). It is drawn over the list, not in it, so it takes no room and nothing moves for
- * it, and the list's faded edges, where the list scrolls during a drag, leave it whole. The box is
- * as tall as the dot and centred on the gap.
+ * Where a dragged row would land: a line from a dot on the box of its new depth to the row's right edge
+ * (placed by useRowDrag.ts). Drawn over the list, so nothing moves for it and the faded edges leave it
+ * whole. The box is as tall as the dot and centred on the gap.
  */
 .dropLine {
   position: absolute;

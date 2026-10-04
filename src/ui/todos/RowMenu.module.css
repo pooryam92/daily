@@ -1,7 +1,6 @@
 /*
- * Portalled to the body, so the menu, and the guard Base UI lays over the window while it is open
- * (so that a click elsewhere only closes it), need telling where they go: over everything, the undo
- * toast (Sonner's 999999999) included, the guard just under the menu.
+ * Portalled to the body, the menu and the click guard Base UI lays over the window while it is open go
+ * over everything, the undo toast (Sonner's 999999999) included.
  */
 .positioner,
 .portal [data-base-ui-inert] {
