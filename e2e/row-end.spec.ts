@@ -1166,7 +1166,7 @@ test.describe('a row’s menu, by right-click or key', () => {
   }) => {
     await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Shift+F10')
-    await expect(daily.menu).toBeVisible()
+    await expect(daily.menu.getByRole('menuitem').first()).toBeFocused()
     const names = await items(daily)
     const first = names[0]
     const last = names.at(-1)
@@ -1198,6 +1198,7 @@ test.describe('a row’s menu, by right-click or key', () => {
         else {
           await daily.editButton(text).focus()
           await daily.page.keyboard.press(how)
+          await expect(daily.menu.getByRole('menuitem').first(), what).toBeFocused()
         }
         await expect(daily.menu, what).toBeVisible()
         await daily.page.keyboard.press('End')
@@ -1210,7 +1211,7 @@ test.describe('a row’s menu, by right-click or key', () => {
 
     await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Shift+F10')
-    await expect(daily.menu).toBeVisible()
+    await expect(daily.menu.getByRole('menuitem').first()).toBeFocused()
     await walkTo(daily, 'Move to tomorrow: Buy milk')
     await daily.page.keyboard.press('Enter')
     await expect
@@ -1220,7 +1221,7 @@ test.describe('a row’s menu, by right-click or key', () => {
 
     await daily.editButton('Set up CI').focus()
     await daily.page.keyboard.press('ContextMenu')
-    await expect(daily.menu).toBeVisible()
+    await expect(daily.menu.getByRole('menuitem').first()).toBeFocused()
     await walkTo(daily, 'Delete Set up CI')
     await daily.page.keyboard.press('Space')
     await expect
