@@ -22,6 +22,29 @@ describe('cueFor', () => {
   it('is silent for a todo that is not there', () => {
     expect(cueFor([milk], 'gone')).toBeNull()
   })
+
+  describe('on a step', () => {
+    const oats: Todo = { id: 'oats', text: 'Oat milk', status: 'open' }
+    const shopping: Todo = { id: 'shopping', text: 'Shopping', status: 'open', steps: [oats] }
+
+    it('ticks when a step is checked', () => {
+      expect(cueFor([shopping, taxes], 'oats')).toBe('done')
+    })
+
+    it('ticks, never chimes, when the last open step is checked on an otherwise cleared day', () => {
+      expect(cueFor([{ ...shopping, status: 'done' }], 'oats')).toBe('done')
+      expect(cueFor([shopping], 'oats')).toBe('done')
+    })
+
+    it('is silent when a step is reopened', () => {
+      expect(cueFor([{ ...shopping, steps: [{ ...oats, status: 'done' }] }], 'oats')).toBeNull()
+    })
+
+    it('leaves the rule for the parent as it is: its open steps do not keep the day from clearing', () => {
+      expect(cueFor([shopping, { ...taxes, status: 'done' }], 'shopping')).toBe('cleared')
+      expect(cueFor([shopping, taxes], 'shopping')).toBe('done')
+    })
+  })
 })
 
 describe('nextStep', () => {

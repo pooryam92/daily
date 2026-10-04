@@ -21,5 +21,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      # Electron needs a display, which the runner has not got.
       - run: xvfb-run -a npm run e2e

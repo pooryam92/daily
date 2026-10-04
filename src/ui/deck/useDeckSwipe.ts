@@ -26,6 +26,8 @@ export function useDeckSwipe(stack: RefObject<HTMLElement | null>, onFlip: (amou
       if (isStart) flipped = false
       if (flipped || isMomentum) return
       if (Math.abs(x) < SWIPE_DISTANCE_PX || Math.abs(x) < Math.abs(y) * SIDEWAYS_RATIO) return
+      // While a card drags something of its own sideways, the deck stays where it is.
+      if (element.querySelector('[data-sorting]') !== null) return
       flipped = true
       // The swipe points at the day it goes to, as the arrow keys do, and not the way a drag pulls
       // the card: to the right brings the day after.

@@ -93,8 +93,8 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
             offset={offset}
             view={view}
             todos={days[day] ?? []}
-            onAdd={(text) => {
-              actions.add(day, text)
+            onAdd={(text, parentId) => {
+              actions.add(day, text, parentId)
             }}
             onToggleDone={(id) => {
               playMark(days[day] ?? [], id)
@@ -109,8 +109,11 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
             onMove={(id) => {
               moveWithUndo(day, moveTarget(day, today), id)
             }}
-            onReorder={(id, targetId) => {
-              actions.reorder(day, id, targetId)
+            onPlace={(id, parentId, beforeId) => {
+              actions.place(day, id, parentId, beforeId)
+            }}
+            onToggleFold={(id) => {
+              actions.toggleFold(day, id)
             }}
             onSelect={() => {
               goTo(day)

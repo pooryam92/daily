@@ -16,20 +16,20 @@
 @property --peek {
   syntax: '<length>';
   inherits: true;
-  initial-value: 56px;
+  initial-value: 64px;
 }
 
 /*
- * How much of the day before and the day after shows. A wider window shows more of them (--peek, up
- * to 240px). 80px of each side stays free for the arrow. Set on the children because a container
- * cannot size itself in its own cqw.
+ * How much of the neighbouring days shows: all but 16px of the room beside the card in front, whose width
+ * --cardw matches DayCard.module.css. Set on the children: a container cannot size itself in its own cqw.
  */
 .stack > * {
-  --free: calc((100cqw - var(--card-max)) / 2);
-  --peek: clamp(56px, var(--free) - 80px, 240px);
+  --cardw: min(100cqw - var(--card-gutter), var(--card-max));
+  --free: calc((100cqw - var(--cardw)) / 2);
+  --peek: clamp(64px, var(--free) - 16px, 240px);
 }
 
-/* The arrows sit in the gutters just outside the neighbouring cards. */
+/* The arrows lie on the strips of the neighbouring cards that show beside the card in front. */
 .nav {
   position: absolute;
   top: 50%;
@@ -52,22 +52,21 @@
   background: var(--hover-strong);
 }
 
-/* The arrows are the only controls that sit on the window background instead of a card. */
+/* The arrows lie on a neighbouring card, so their ring is the one drawn on a card. */
 .nav:focus-visible {
-  box-shadow: var(--focus-ring-on-bg);
+  box-shadow: var(--focus-ring);
 }
 
 /*
- * On wide windows: just outside the neighbouring card, which is half the widest card + --peek from
- * the centre, + a gap (8) + this button (48). On narrow ones: 8px from the window edge, which is
- * 12px outside the stack because of the app's 20px padding.
+ * Centred on the neighbour's strip, never half off it. The strip runs from the front card's edge (half
+ * --cardw from the centre) to --peek beyond; less half this 48px button.
  */
 .nav[data-direction='previous'] {
-  left: max(-12px, 50% - var(--card-max) / 2 - var(--peek) - 56px);
+  left: calc(50% - var(--cardw) / 2 - var(--peek) / 2 - 24px);
 }
 
 .nav[data-direction='next'] {
-  right: max(-12px, 50% - var(--card-max) / 2 - var(--peek) - 56px);
+  right: calc(50% - var(--cardw) / 2 - var(--peek) / 2 - 24px);
 }
 
 /*

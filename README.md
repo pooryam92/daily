@@ -2,7 +2,7 @@
 
 A todo list for today, and nothing else. One card per day, a line to type into, and a checkbox.
 
-![Daily: adding todos, checking them off until the day is cleared, and moving between days](docs/media/demo.gif)
+![Daily: adding todos, giving one steps and folding them, checking them off until the day is cleared, and moving between days](docs/media/demo.gif)
 
 Most todo apps grow into project managers: priorities, tags, due dates, projects, and an overdue list
 that is longer every week. Daily goes the other way. There is nothing to set up and nothing to
@@ -29,8 +29,13 @@ app is built on.
 - **Days.** The app opens on today. The day before and the day after peek out behind it; move with
   the arrow keys, the arrow buttons, a drag or a two-finger swipe, and come back with "Back to
   today". Todos can be added to any day, past or future.
-- **Edit, reorder, delete.** Click a todo's text to edit it, drag its grip to reorder, and `delete`
-  removes it at once with six seconds to undo. All of it works from the keyboard.
+- **Edit, reorder, move, delete.** Click a todo's text to edit it and drag it to reorder it.
+  The buttons at the end of its row move it to tomorrow or delete it, with six seconds to undo.
+  All of it works from the keyboard.
+- **Steps.** "Add a step" at the end of a todo's row writes steps under it, and the row under the
+  last one adds more. An arrow before the checkbox folds them away when clicked, leaving a count
+  like `1/3` after the text. Drag a todo onto another to make
+  it a step.
 - **Light and dark,** following the system or set by hand, and optional sounds. Both are behind the
   gear in the bottom-left corner.
 

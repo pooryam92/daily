@@ -64,6 +64,12 @@ export const ROW_LAYOUT: Transition = { type: 'spring', duration: 0.4, bounce: 0
 
 export const ROW_ENTER: Transition = { duration: BASE, ease: EASE_OUT }
 export const ROW_EXIT: Transition = { duration: FAST, ease: EASE_OUT }
+
+/** A dragged row's copy, fading where it is when the drag is cancelled: Web Animations timing, in ms. */
+export const COPY_CANCEL: KeyframeAnimationOptions = {
+  duration: FAST * 1000,
+  easing: `cubic-bezier(${EASE_OUT.join(', ')})`
+}
 /** How far a moved row slides towards its new day while it fades out. */
 export const ROW_MOVE_X = 24
 
