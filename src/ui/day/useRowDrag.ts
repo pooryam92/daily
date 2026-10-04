@@ -4,6 +4,7 @@ import type { Todo } from '@/domain/todo'
 import { locate } from '@/domain/todo-rules'
 import { atOwnPlace, dragWords, dropNear, keyDrop, keyMove, keyStart, rowText, sameDrop } from './rowDrag'
 import type { Depth, Dragged, Drop, KeyMove, KeyPlace, ShownRow } from './rowDrag'
+import { REFOCUS_MS } from '../todos/TodoItem'
 
 interface RowDragInput {
   readonly ordered: readonly Todo[]
@@ -93,6 +94,16 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
   const [drop, setDrop] = useState<Drop | null>(null)
   const [view, setView] = useState<View>({ top: 0, height: 0, scroll: 0, left: 0, right: 0 })
   const [refocus, setRefocus] = useState<string | null>(null)
+  // Kept no longer than the row watches for it, or a later remount of the row (an undo) takes the focus.
+  useEffect(() => {
+    if (refocus === null) return
+    const timer = setTimeout(() => {
+      setRefocus(null)
+    }, REFOCUS_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [refocus])
   const [said, setSaid] = useState('')
   // What the handlers share between renders: the library's events can come faster than the card renders.
   const held = useRef<Dragged | null>(null)

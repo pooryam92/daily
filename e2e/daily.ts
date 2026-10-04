@@ -227,9 +227,12 @@ export class Daily {
     return (await this.read<StoreData>('todos.json')).days
   }
 
-  /** What is on disk right now; saves are asynchronous, so poll it. */
-  settings(): Promise<Settings> {
-    return this.read<Settings>('settings.json')
+  /** What is on disk right now, if it is written yet; saves are asynchronous, so poll it. */
+  async settings(): Promise<Settings | undefined> {
+    return this.read<Settings>('settings.json').catch((error: unknown) => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+      throw error
+    })
   }
 
   /** A file in the data folder as it is written, for its exact shape. */

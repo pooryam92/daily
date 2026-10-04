@@ -197,7 +197,8 @@ test.describe('folding steps', () => {
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
     for (const [how, leave] of [
       ['Escape', () => draft.press('Escape')],
-      ['a click elsewhere', () => daily.input.click()]
+      ['a click elsewhere', () => daily.input.click()],
+      ['a click on its arrow', () => daily.chevron('Plan the offsite').click()]
     ] as const) {
       await daily.act('Plan the offsite', 'Add a step to Plan the offsite')
       await expect(draft, how).toBeFocused()

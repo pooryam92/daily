@@ -313,6 +313,9 @@ export function TodoItem({
           stepsId,
           onToggle: () => {
             onToggleFold(todo.id)
+          },
+          onPress: () => {
+            refold.current = false
           }
         }}
         {...actions}
@@ -599,11 +602,17 @@ interface TodoRowProps extends RowActions {
    * Whether the todo's steps are folded away, the id of their list, and what folds or unfolds them.
    * Steps have none.
    */
-  readonly fold?: { readonly folded: boolean; readonly stepsId: string; readonly onToggle: () => void }
+  readonly fold?: {
+    readonly folded: boolean
+    readonly stepsId: string
+    readonly onToggle: () => void
+    // Before the press blurs a step draft, whose close would fold the todo again under the click.
+    readonly onPress: () => void
+  }
 }
 
 /** How long a row's text watches for the focus after a drop: its animations and the old row's exit. */
-const REFOCUS_MS = 1000
+export const REFOCUS_MS = 1000
 
 /**
  * After a keyboard drop that makes a todo a step or a step a todo, the old row keeps the focus while it
@@ -736,6 +745,7 @@ function TodoRow({
             aria-expanded={!foldable.folded}
             aria-controls={foldable.folded ? undefined : foldable.stepsId}
             aria-describedby={countId}
+            onPointerDown={foldable.onPress}
             onClick={(event) => {
               if (!guarded(event)) foldable.onToggle()
             }}
