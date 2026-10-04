@@ -13,7 +13,7 @@
   inset: 0;
   margin: auto;
   /* Leave room at the sides for the neighbours to peek out. */
-  width: min(100% - 160px, var(--card-max));
+  width: min(100% - var(--card-gutter), var(--card-max));
   height: min(100%, var(--card-max-height));
   background: var(--surface);
   border: 1px solid var(--border);
@@ -278,13 +278,7 @@
 
 /* Read out, not shown: what a drag does, in the rows' own words. */
 .visuallyHidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  composes: visuallyHidden from '../todos/TodoItem.module.css';
 }
 
 /*

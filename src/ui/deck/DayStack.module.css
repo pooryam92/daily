@@ -26,7 +26,7 @@
  * its own cqw.
  */
 .stack > * {
-  --cardw: min(100cqw - 160px, var(--card-max));
+  --cardw: min(100cqw - var(--card-gutter), var(--card-max));
   --free: calc((100cqw - var(--cardw)) / 2);
   --peek: clamp(64px, var(--free) - 16px, 240px);
 }

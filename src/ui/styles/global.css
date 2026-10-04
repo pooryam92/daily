@@ -77,6 +77,8 @@
   --radius-lg: 14px;
   --radius-full: 999px;
   --card-max: 840px;
+  /* The room beside the card in front, for its neighbours to peek out. */
+  --card-gutter: 160px;
   --card-max-height: 860px;
 
   /* motion */

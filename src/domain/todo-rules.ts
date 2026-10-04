@@ -15,8 +15,6 @@ export type TodoAction =
    * unfolds to show it again. A todo keeps its own fold.
    */
   | { type: 'restored'; day: DayKey; todo: Todo; index: number; parentId?: string }
-  /** Moves the todo to the place `targetId` has now, like dragging it there. Both are in the same list. */
-  | { type: 'reordered'; day: DayKey; id: string; targetId: string }
   | { type: 'edited'; day: DayKey; id: string; text: string }
   /** Hides the steps of the todo `id`, or shows them again. A step, or a todo without steps, has none. */
   | { type: 'foldToggled'; day: DayKey; id: string }
@@ -129,6 +127,21 @@ const holding =
   (parent: Todo): Todo =>
     step.status === 'open' && parent.status === 'done' ? { ...parent, status: 'open' } : parent
 
+/** Puts `step` at `index` in the steps of `parentId` (at the end without one), unfolding the parent to show it. */
+function insertStep(
+  todos: readonly Todo[],
+  parentId: string,
+  index: number | undefined,
+  step: Todo
+): readonly Todo[] | undefined {
+  return updateSteps(
+    todos,
+    parentId,
+    (steps) => steps.toSpliced(index ?? steps.length, 0, step),
+    (parent) => holding(step)(unfolded(parent))
+  )
+}
+
 function moveTodo(days: DaysMap, { from, to, id, index }: Extract<TodoAction, { type: 'moved' }>): DaysMap {
   const source = days[from] ?? []
   const target = days[to] ?? []
@@ -157,12 +170,7 @@ function nextTodos(
       const { todo, parentId } = action
       if (parentId === undefined) return [...todos, todo]
       // A step is added to be seen: a folded todo opens for it.
-      return updateSteps(
-        todos,
-        parentId,
-        (steps) => [...steps, todo],
-        (parent) => holding(todo)(unfolded(parent))
-      )
+      return insertStep(todos, parentId, undefined, todo)
     }
 
     case 'doneToggled': {
@@ -183,23 +191,7 @@ function nextTodos(
       if (locate(todos, todo.id) !== undefined) return undefined
       if (parentId === undefined) return todos.toSpliced(index, 0, todo)
       // A step is deleted while it shows, so it comes back showing.
-      return updateSteps(
-        todos,
-        parentId,
-        (steps) => steps.toSpliced(index, 0, todo),
-        (parent) => holding(todo)(unfolded(parent))
-      )
-    }
-
-    case 'reordered': {
-      const moved = locate(todos, action.id)
-      const target = locate(todos, action.targetId)
-      // Both ends have to still be there (a drag can end on a todo another window has deleted), in one list.
-      if (moved === undefined || target === undefined || moved.parentId !== target.parentId) return undefined
-      if (moved.index === target.index) return undefined
-      return updateListOf(todos, action.id, (list, index, todo) =>
-        list.toSpliced(index, 1).toSpliced(target.index, 0, todo)
-      )
+      return insertStep(todos, parentId, index, todo)
     }
 
     case 'edited':
@@ -243,12 +235,7 @@ function place(
   if (index === -1 || (parentId === found.parentId && index === found.index)) return undefined
   // A done step comes out a done todo, and its todo keeps its status: done does not flow up.
   if (parentId === undefined) return rest.toSpliced(index, 0, todo)
-  return updateSteps(
-    rest,
-    parentId,
-    (steps) => steps.toSpliced(index, 0, todo),
-    (parent) => holding(todo)(unfolded(parent))
-  )
+  return insertStep(rest, parentId, index, todo)
 }
 
 export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
@@ -261,7 +248,7 @@ export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
  * The order a day is shown in: settled todos below the others, each group in the order the todos
  * are stored. `settled` is the resolved ids as they were a moment ago (see `useSettledTodos`), so a
  * todo that was only just marked, or reopened, stays under the pointer until the delay has passed.
- * Nothing but a drag (`placed`, `reordered`) changes the stored order.
+ * Nothing but a drag (`placed`) changes the stored order.
  */
 export function displayOrder(todos: readonly Todo[], settled: ReadonlySet<string>): readonly Todo[] {
   return [...todos.filter((todo) => !settled.has(todo.id)), ...todos.filter((todo) => settled.has(todo.id))]

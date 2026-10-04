@@ -68,6 +68,24 @@ function offsetIn(element: HTMLElement, list: HTMLElement): number {
   return top
 }
 
+/** Where the list is in its container, and how far it is scrolled, while a row is held; the rows' left and right edges in it. */
+interface View {
+  readonly top: number
+  readonly height: number
+  readonly scroll: number
+  readonly left: number
+  readonly right: number
+}
+
+/** The drop line where it is drawn, none while its place is scrolled out of view. */
+function lineFor(at: Drop['line'], view: View): RowDrag['line'] {
+  if (at === undefined) return undefined
+  const y = at.y - view.scroll
+  if (y < 0 || y > view.height) return undefined
+  const left = view.left + BOX_CENTRE_PX[at.depth] - DOT_RADIUS_PX
+  return { top: view.top + y, left, width: view.right - LINE_INSET_PX - left, depth: at.depth }
+}
+
 /**
  * A row dragged on a card. Nothing on the card moves while it is held: the rows are measured once,
  * as it is picked up, in the list's own coordinates, so that a scroll of the list moves the pointer
@@ -76,9 +94,7 @@ function offsetIn(element: HTMLElement, list: HTMLElement): number {
  */
 export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: RowDragInput): RowDrag {
   const [drop, setDrop] = useState<Drop | null>(null)
-  // Where the list is in its container, and how far it is scrolled, while a row is held.
-  // The rows' left and right edges in it, for the line.
-  const [view, setView] = useState({ top: 0, height: 0, scroll: 0, left: 0, right: 0 })
+  const [view, setView] = useState<View>({ top: 0, height: 0, scroll: 0, left: 0, right: 0 })
   const [refocus, setRefocus] = useState<string | null>(null)
   const [said, setSaid] = useState('')
   // What the handlers share between renders: the library's events can come faster than the card renders.
@@ -120,16 +136,14 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
   // the last drop is measured at the place it is going to, and one on its way out not at all.
   const measure = (): readonly ShownRow[] => {
     if (list === null) return []
-    const parents = new Map(
-      ordered.flatMap((todo) => (todo.steps ?? []).map((step) => [step.id, todo.id] as const))
-    )
     const seen = new Set<string>()
     return [...list.querySelectorAll<HTMLElement>('[data-row]')].flatMap((element): ShownRow[] => {
       const id = element.dataset.row ?? ''
-      const parentId = parents.get(id)
+      const found = locate(ordered, id)
+      const parentId = found?.parentId
       // A row that changed level is there twice for a moment: the old one leaves from the other level.
       const step = element.closest('li')?.hasAttribute('data-step') === true
-      if (seen.has(id) || step !== (parentId !== undefined) || locate(ordered, id) === undefined) return []
+      if (seen.has(id) || found === undefined || step !== (parentId !== undefined)) return []
       seen.add(id)
       const top = offsetIn(element, list)
       const row = { id, parentId, top, bottom: top + element.offsetHeight }
@@ -305,22 +319,17 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
       setSaid(dragWords.dropped(ordered, settled, dragged, place, text))
       // Let go where it is, it stays as it is, and nothing is saved.
       if (atOwnPlace(ordered, dragged, place)) return
+      const byKeys = operation.activatorEvent instanceof KeyboardEvent
       // The row may be put in another list, where it is a new row whose text has to take the focus.
-      if (operation.activatorEvent instanceof KeyboardEvent) setRefocus(dragged.id)
+      if (byKeys) setRefocus(dragged.id)
       onPlace(dragged.id, place.parentId, place.beforeId)
       // A row let go into a todo whose steps unfold can land below what the list shows: once it is in
       // its new place, the list is scrolled just enough to show it. The keyboard's line showed it already.
-      if (!(operation.activatorEvent instanceof KeyboardEvent))
-        dropped.current = { id: dragged.id, step: place.parentId !== undefined }
+      if (!byKeys) dropped.current = { id: dragged.id, step: place.parentId !== undefined }
     }
   }
 
-  const y = drop?.line === undefined ? undefined : drop.line.y - view.scroll
-  const left = drop?.line === undefined ? 0 : view.left + BOX_CENTRE_PX[drop.line.depth] - DOT_RADIUS_PX
-  const line =
-    drop?.line === undefined || y === undefined || y < 0 || y > view.height
-      ? undefined
-      : { top: view.top + y, left, width: view.right - LINE_INSET_PX - left, depth: drop.line.depth }
+  const line = lineFor(drop?.line, view)
 
   return { drop, line, refocus, said, handlers }
 }

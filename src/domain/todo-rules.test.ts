@@ -81,25 +81,6 @@ describe('daysReducer', () => {
     expect(daysReducer(days, { type: 'restored', day: DAY, todo: milk, index: 1 })).toBe(days)
   })
 
-  it('moves a todo to the place of the todo it was dropped on', () => {
-    const three = { [DAY]: [milk, taxes, plants] }
-    expect(daysReducer(three, { type: 'reordered', day: DAY, id: 'milk', targetId: 'plants' })[DAY]).toEqual([
-      taxes,
-      plants,
-      milk
-    ])
-    expect(daysReducer(three, { type: 'reordered', day: DAY, id: 'plants', targetId: 'milk' })[DAY]).toEqual([
-      plants,
-      milk,
-      taxes
-    ])
-  })
-
-  it('ignores a reorder whose ends are not both there', () => {
-    expect(daysReducer(days, { type: 'reordered', day: DAY, id: 'milk', targetId: 'gone' })).toBe(days)
-    expect(daysReducer(days, { type: 'reordered', day: DAY, id: 'milk', targetId: 'milk' })).toBe(days)
-  })
-
   it('edits the text of a todo and leaves its status alone', () => {
     const done = daysReducer(days, { type: 'doneToggled', day: DAY, id: 'milk' })
     const next = daysReducer(done, { type: 'edited', day: DAY, id: 'milk', text: 'Buy oat milk' })
@@ -270,22 +251,6 @@ describe('daysReducer with steps', () => {
     )
   })
 
-  it('moves a step to the place of the step it was dropped on', () => {
-    const next = daysReducer(withSteps, { type: 'reordered', day: DAY, id: 'workflow', targetId: 'cache' })
-    expect(next[DAY]).toStrictEqual([milk, { ...ci, steps: [lint, cache, workflow] }])
-  })
-
-  it('ignores a reorder across lists', () => {
-    expect(daysReducer(withSteps, { type: 'reordered', day: DAY, id: 'lint', targetId: 'milk' })).toBe(
-      withSteps
-    )
-    expect(daysReducer(withSteps, { type: 'reordered', day: DAY, id: 'milk', targetId: 'lint' })).toBe(
-      withSteps
-    )
-    const two: DaysMap = { [DAY]: [{ ...milk, steps: [plants] }, ci] }
-    expect(daysReducer(two, { type: 'reordered', day: DAY, id: 'plants', targetId: 'lint' })).toBe(two)
-  })
-
   it('moves a parent to another day with its steps', () => {
     const next = daysReducer(withSteps, { type: 'moved', from: DAY, to: '2026-09-20', id: 'ci' })
     expect(next).toStrictEqual({ [DAY]: [milk], '2026-09-20': [ci] })
@@ -307,7 +272,7 @@ describe('daysReducer with steps', () => {
       { type: 'doneToggled', day: DAY, id: 'milk' },
       { type: 'removed', day: DAY, id: 'plants' },
       { type: 'doneToggled', day: DAY, id: 'milk' },
-      { type: 'reordered', day: DAY, id: 'cache', targetId: 'workflow' },
+      { type: 'placed', day: DAY, id: 'cache', parentId: 'ci', beforeId: 'workflow' },
       { type: 'removed', day: DAY, id: 'workflow' },
       { type: 'removed', day: DAY, id: 'lint' },
       { type: 'edited', day: DAY, id: 'cache', text: 'Cache it' },
@@ -468,14 +433,7 @@ describe('daysReducer with a fold', () => {
       steps: [workflow, { ...lint, text: 'Fix types' }, cache]
     })
 
-    const stepMoved = daysReducer(foldedDay, {
-      type: 'reordered',
-      day: DAY,
-      id: 'cache',
-      targetId: 'workflow'
-    })
-    expect(stepMoved[DAY]?.[1]).toStrictEqual({ ...folded, steps: [cache, workflow, lint] })
-    const todoMoved = daysReducer(foldedDay, { type: 'reordered', day: DAY, id: 'ci', targetId: 'milk' })
+    const todoMoved = daysReducer(foldedDay, { type: 'placed', day: DAY, id: 'ci', beforeId: 'milk' })
     expect(todoMoved[DAY]).toStrictEqual([folded, milk])
 
     const removed = daysReducer(foldedDay, { type: 'removed', day: DAY, id: 'lint' })
@@ -824,7 +782,14 @@ describe('any run of actions', () => {
           const list =
             found?.parentId === undefined ? todos : todos.find((t) => t.id === found.parentId)?.steps
           const target = list && pick(list)
-          if (any && target) action = { type: 'reordered', day, id: any.id, targetId: target.id }
+          if (any && target)
+            action = {
+              type: 'placed',
+              day,
+              id: any.id,
+              ...(found?.parentId === undefined ? {} : { parentId: found.parentId }),
+              beforeId: target.id
+            }
           break
         }
         case 7:

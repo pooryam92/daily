@@ -20,7 +20,7 @@ import { dragWords } from '../day/rowDrag'
 import { COPY_CANCEL, ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
 import { guardClicks, guarded } from './clickGuard'
 import { DoneCheckbox } from './DoneCheckbox'
-import { leaveRow, nextFocus, RowMenu, RowMenusFront } from './RowMenu'
+import { leaveRow, RowMenu, RowMenusFront } from './RowMenu'
 import type { RowMenuOpen } from './RowMenu'
 import { RowTip } from './RowTip'
 import { StepDraft } from './StepDraft'
@@ -158,7 +158,7 @@ interface RowMotion {
 
 interface TodoItemProps extends RowActions, RowMotion {
   readonly todo: Todo
-  /** Where the move word sends the todo. */
+  /** Where the move button sends the todo. */
   readonly moveTarget: MoveTarget
   readonly onMove: (id: string) => void
   /** Adds a step at the end of the steps of the todo `parentId`. */
@@ -211,10 +211,10 @@ function useItemRef(
 }
 
 /*
- * `☐ Buy milk 1/3 ········ tomorrow   delete`, and while the todo is open, its steps under it, and
- * under those the step being written, if any. The words at the end are two tiers: where the todo
- * goes (move), then set apart and fainter, whether it was a mistake (delete). Left to right they are
- * ever more final, so the row is a spectrum to read, not a menu to compare.
+ * `› ☐ Buy milk 1/3 ········ [add a step] [move]   [delete]`, and while the todo is open, its steps
+ * under it, and under those the step being written, if any. The buttons at the end are two tiers:
+ * what comes of the todo (a step, another day), then set apart, whether it was a mistake (delete).
+ * Left to right they are ever more final, so the row is a spectrum to read, not a menu to compare.
  */
 export function TodoItem({
   todo,
@@ -394,7 +394,7 @@ interface StepItemProps extends RowActions, RowMotion {
 }
 
 /**
- * A step: a row like its todo's, without a move word. Steps stay where they are when they are done,
+ * A step: a row like its todo's, without a move button. Steps stay where they are when they are done,
  * and are dragged among their todo's steps the way a todo is among the todos.
  */
 function StepItem({
@@ -575,7 +575,7 @@ interface TodoRowProps extends RowActions {
   readonly refocus?: boolean
   /** Whether a step is being written under the todo. */
   readonly drafting?: boolean
-  /** Where the move word sends the todo. Steps have none: they go wherever their todo goes. */
+  /** Where the move button sends the todo. Steps have none: they go wherever their todo goes. */
   readonly move?: { readonly target: MoveTarget; readonly onMove: (id: string) => void }
   /** Opens the step editor under the todo. Steps have none: a step cannot have steps. */
   readonly onStep?: () => void
@@ -649,6 +649,10 @@ function TodoRow({
   const counted = total > 0
   // The steps are folded away, and the figures after the text say how many there are.
   const shut = fold?.folded === true && counted
+  const foldable = fold !== undefined && counted ? fold : undefined
+  // Only an open todo moves and takes steps (an open step under a done todo would undo "done flows down").
+  const rowMove = open ? move : undefined
+  const rowStep = open ? onStep : undefined
   const setText = useRefocus(refocus, text, handleRef)
   // The row itself: its menu opens at its end from the keyboard, and a row that goes away hands the
   // keyboard on from it.
@@ -671,10 +675,9 @@ function TodoRow({
     if (event.currentTarget.closest('[data-sorting]') !== null) return
     event.preventDefault()
     // The keyboard goes on to the next row, as after the delete button.
-    const next = event.currentTarget.closest<HTMLElement>('[data-row]')
-    const target = next === null ? null : nextFocus(next)
-    onRemove(todo.id)
-    target?.focus()
+    leaveRow(row, () => {
+      onRemove(todo.id)
+    })
   }
 
   // Shift+F10 and the context menu key open the row's menu, at its end.
@@ -712,21 +715,18 @@ function TodoRow({
       {/* A todo's steps fold away and come back from the row's start: an arrow, along while they are
           folded, down while they show. Folded steps are not on the page, so there is nothing to control
           then. */}
-      {fold !== undefined && counted ? (
-        <RowTip tip={fold.folded ? 'Show steps' : 'Hide steps'}>
+      {foldable !== undefined ? (
+        <RowTip tip={foldable.folded ? 'Show steps' : 'Hide steps'}>
           <button
             type="button"
             className={[styles.slot, styles.fold].join(' ')}
-            data-folded={fold.folded || undefined}
-            data-done={done}
-            data-total={total}
-            data-complete={done === total || undefined}
+            data-folded={foldable.folded || undefined}
             aria-label={`Steps of ${todo.text}`}
-            aria-expanded={!fold.folded}
-            aria-controls={fold.folded ? undefined : fold.stepsId}
+            aria-expanded={!foldable.folded}
+            aria-controls={foldable.folded ? undefined : foldable.stepsId}
             aria-describedby={countId}
             onClick={(event) => {
-              if (!guarded(event)) fold.onToggle()
+              if (!guarded(event)) foldable.onToggle()
             }}
           >
             <ChevronDown className={styles.chevron} size={14} strokeWidth={2} aria-hidden="true" />
@@ -797,13 +797,12 @@ function TodoRow({
         </span>
       </div>
       {/* What else the row does, at its end, where the pointer or the keyboard brings it into view
-          (TodoItem.module.css): only an open todo moves and takes steps (an open step under a done
-          todo would undo "done flows down"). Their room is always kept. */}
-      {open && (move !== undefined || onStep !== undefined) && (
-        <div className={styles.actions} data-actions inert={drafting}>
+          (TodoItem.module.css). Their room is always kept. */}
+      {(rowMove !== undefined || rowStep !== undefined) && (
+        <div className={styles.actions} inert={drafting}>
           {/* First, so that Move and the bin keep their places on every todo: hidden, its room kept, while
               the steps show, as the button under them adds one then. */}
-          {onStep !== undefined && (
+          {rowStep !== undefined && (
             <RowTip tip="Add a step">
               <button
                 type="button"
@@ -811,24 +810,24 @@ function TodoRow({
                 aria-label={`Add a step to ${todo.text}`}
                 // The step editor takes the keyboard itself.
                 onClick={(event) => {
-                  if (!guarded(event)) onStep()
+                  if (!guarded(event)) rowStep()
                 }}
               >
                 <ListPlus size={16} aria-hidden="true" />
               </button>
             </RowTip>
           )}
-          {move !== undefined && (
-            <RowTip tip={`Move to ${move.target.name}`}>
+          {rowMove !== undefined && (
+            <RowTip tip={`Move to ${rowMove.target.name}`}>
               <button
                 type="button"
                 className={styles.action}
-                aria-label={`Move ${todo.text} to ${move.target.name}`}
+                aria-label={`Move ${todo.text} to ${rowMove.target.name}`}
                 onClick={(event) => {
                   if (guarded(event)) return
                   guardClicks(event)
                   leaveRow(row, () => {
-                    move.onMove(todo.id)
+                    rowMove.onMove(todo.id)
                   })
                 }}
               >
@@ -839,7 +838,7 @@ function TodoRow({
         </div>
       )}
       {/* Any row is deleted, from the very end, the same place on every row, set apart from the rest. */}
-      <div className={[styles.actions, styles.bin].join(' ')} data-actions inert={drafting}>
+      <div className={[styles.actions, styles.bin].join(' ')} inert={drafting}>
         <RowTip tip="Delete">
           <button
             type="button"
@@ -863,18 +862,18 @@ function TodoRow({
         row={row}
         open={menu}
         onOpen={setMenu}
-        onStep={open ? onStep : undefined}
+        onStep={rowStep}
         move={
-          move !== undefined && open
-            ? {
-                name: move.target.name,
+          rowMove === undefined
+            ? undefined
+            : {
+                name: rowMove.target.name,
                 onMove: () => {
-                  move.onMove(todo.id)
+                  rowMove.onMove(todo.id)
                 }
               }
-            : undefined
         }
-        fold={fold !== undefined && counted ? { folded: fold.folded, onToggle: fold.onToggle } : undefined}
+        fold={foldable}
         onDelete={() => {
           onRemove(todo.id)
         }}
@@ -971,7 +970,6 @@ function CopyChip({
   readonly copyRef: RefObject<PlacedCopy | null>
 }) {
   const chip = useRef<HTMLDivElement>(null)
-  const countId = useId()
   const manager = useDragDropManager()
   const pointer = useComputed(() => manager?.dragOperation.position.current, [manager]).value
   const activator = manager?.dragOperation.activatorEvent
@@ -1018,23 +1016,22 @@ function CopyChip({
       <span className={styles.chipText}>
         <span className={styles.strike}>{todo.text}</span>
       </span>
-      <StepCount todo={todo} id={countId} />
+      <StepCount todo={todo} />
     </div>
   )
 }
 
 /**
  * How many of a todo's steps are done, as figures, on the copy that follows the pointer in a drag:
- * whether its steps show or not, they come along. Screen readers hear it in words, from the element
- * `id`; nothing is shown for a todo without steps.
+ * whether its steps show or not, they come along. The copy is hidden from screen readers, so this is
+ * only seen; nothing is shown for a todo without steps.
  */
-function StepCount({ todo, id }: { readonly todo: Todo; readonly id: string }) {
+function StepCount({ todo }: { readonly todo: Todo }) {
   const { done, total } = stepProgress(todo)
   if (total === 0) return null
   return (
     <span className={styles.count} data-complete={done === total || undefined}>
       {`${String(done)}/${String(total)}`}
-      <StepWords id={id} done={done} total={total} />
     </span>
   )
 }

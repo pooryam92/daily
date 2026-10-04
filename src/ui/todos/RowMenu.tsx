@@ -14,7 +14,7 @@ export type RowMenuOpen =
   { readonly from: 'keys' } | { readonly from: 'point'; readonly x: number; readonly y: number }
 
 /**
- * How long after opening a scroll is still the list bringing the ⋯ into view, not the user, and how
+ * How long after opening a scroll is still the list bringing the row's end into view, not the user, and how
  * soon each step of that smooth scroll follows the last (a frame is 16ms).
  */
 const SETTLING_MS = 300
@@ -41,7 +41,7 @@ export function RowMenus({ front, children }: { readonly front: boolean; readonl
 }
 
 /** What a row's menu offers. A step, and a done todo, only go away. */
-export interface RowMenuActions {
+interface RowMenuActions {
   readonly onStep?: () => void
   readonly move?: { readonly name: string; readonly onMove: () => void }
   readonly fold?: { readonly folded: boolean; readonly onToggle: () => void }

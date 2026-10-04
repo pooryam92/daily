@@ -36,7 +36,7 @@ interface DayCardProps {
   readonly onToggleDone: (id: string) => void
   readonly onRemove: (id: string) => void
   readonly onEdit: (id: string, text: string) => void
-  /** Move a todo to the day the card's move word names. */
+  /** Move a todo to the day the card's move button names. */
   readonly onMove: (id: string) => void
   /**
    * Put the todo or step `id` just before `beforeId` among the steps of `parentId`, or without it,

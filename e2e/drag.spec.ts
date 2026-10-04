@@ -118,10 +118,6 @@ async function steady(daily: Daily, before: Rows, when: string): Promise<void> {
   expect(moved, when).toEqual([])
 }
 
-/** A row's text, which is also what lifts it: by the pointer after 5px, by Space from the keyboard. */
-const handle = (daily: Daily, text: string) =>
-  daily.page.getByRole('button', { name: `Edit ${text}`, exact: true })
-
 interface Held {
   readonly text: string
   /** The rows as they were when it was picked up. */
@@ -178,12 +174,12 @@ const dimmed = (daily: Daily) =>
  */
 async function pickUp(daily: Daily, text: string): Promise<Held> {
   // For a moment after a drop a moved row is there twice, one leaving and one arriving.
-  await expect(handle(daily, text)).toHaveCount(1)
+  await expect(daily.editButton(text)).toHaveCount(1)
   // A row below the list's visible bottom is under whatever is drawn there: bring it into view.
-  await handle(daily, text).scrollIntoViewIfNeeded()
+  await daily.editButton(text).scrollIntoViewIfNeeded()
   await still(daily)
   const before = await measure(daily)
-  const box = await handle(daily, text).locator('span').first().boundingBox()
+  const box = await daily.editButton(text).locator('span').first().boundingBox()
   if (box === null) throw new Error(`The words of ${text} are not shown`)
   const point = { x: box.x + Math.min(8, box.width / 2), y: box.y + box.height / 2 }
   await daily.page.mouse.move(point.x, point.y)
@@ -319,9 +315,9 @@ const begins = (words: string) => new RegExp(`^${words.replace(/[.*+?^${}()|[\]\
  * than once (the copy leaving, the row arriving), and a text focused then does not pick up.
  */
 async function hold(daily: Daily, text: string): Promise<void> {
-  await expect(handle(daily, text)).toHaveCount(1)
+  await expect(daily.editButton(text)).toHaveCount(1)
   await daily.page.waitForTimeout(500)
-  await handle(daily, text).focus()
+  await daily.editButton(text).focus()
 }
 
 /** Picks a row up by its text from the keyboard, presses `keys` one by one, and drops it with Space. */
@@ -338,7 +334,7 @@ async function carry(daily: Daily, text: string, keys: readonly string[], during
   expect.soft(dim.box, `${text}'s box`).toBeCloseTo(0.4, 1)
   expect.soft(dim.words, `${text}'s words`).toBeCloseTo(0.4, 1)
   expect.soft(dim.text, `${text}'s focused text`).toBe(1)
-  await expect(handle(daily, text)).toBeFocused()
+  await expect(daily.editButton(text)).toBeFocused()
   for (const key of keys) {
     await daily.page.keyboard.press(key)
     await daily.page.waitForTimeout(350)
@@ -1297,7 +1293,7 @@ test.describe('dragging a row', () => {
         }
         await daily.page.waitForTimeout(700)
       }
-      const box = await handle(daily, 'Do the taxes').locator('span').first().boundingBox()
+      const box = await daily.editButton('Do the taxes').locator('span').first().boundingBox()
       if (box === null) throw new Error('The words of Do the taxes are not shown')
       await daily.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
       await daily.page.mouse.down()
@@ -1354,7 +1350,7 @@ test.describe('what lifts a row', () => {
   test('from its words or its empty start, past 5px; a plain click on the words edits it', async ({
     daily
   }) => {
-    const words = await handle(daily, 'Do the taxes').locator('span').first().boundingBox()
+    const words = await daily.editButton('Do the taxes').locator('span').first().boundingBox()
     if (words === null) throw new Error('The words of Do the taxes are not shown')
     const start = { x: words.x + 8, y: words.y + words.height / 2 }
     // Under 5px it is a click, which edits.
@@ -1372,7 +1368,7 @@ test.describe('what lifts a row', () => {
       'its empty start'
     ).toBe(true)
     // A step, from its words.
-    const step = await handle(daily, 'Fix the lint errors').locator('span').first().boundingBox()
+    const step = await daily.editButton('Fix the lint errors').locator('span').first().boundingBox()
     if (step === null) throw new Error('The words of Fix the lint errors are not shown')
     expect(await press(daily, { x: step.x + 8, y: step.y + step.height / 2 }, 10), 'a step’s words').toBe(
       true
@@ -1409,7 +1405,7 @@ test.describe('what lifts a row', () => {
   test('from the keyboard Space on the text lifts it and Enter edits it; ← and → change the day until it is lifted', async ({
     daily
   }) => {
-    const text = handle(daily, 'Do the taxes')
+    const text = daily.editButton('Do the taxes')
     await text.focus()
     await daily.page.keyboard.press('Enter')
     await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveValue('Do the taxes')
@@ -1461,12 +1457,12 @@ test.describe('what lifts a row', () => {
     await expect(daily.page.locator('[data-todo-handle]:not([aria-label^="Edit "])')).toHaveCount(0)
     const plain = async () => {
       for (const text of ['Buy milk', 'Set up CI', 'Fix the lint errors', 'Plan the trip']) {
-        await expect(handle(daily, text), text).toHaveAccessibleDescription(
+        await expect(daily.editButton(text), text).toHaveAccessibleDescription(
           'Press Enter to edit, Space to pick up. Up and Down arrows move it. Right arrow makes it a step of ' +
             'the todo above, Left arrow a todo again. Space drops it, Escape cancels.'
         )
         for (const attribute of ['aria-roledescription', 'aria-pressed', 'aria-grabbed', 'aria-disabled'])
-          await expect(handle(daily, text), `${text}: ${attribute}`).not.toHaveAttribute(attribute)
+          await expect(daily.editButton(text), `${text}: ${attribute}`).not.toHaveAttribute(attribute)
       }
     }
     await plain()

@@ -1,4 +1,5 @@
 import type { Todo } from '@/domain/todo'
+import { locate } from '@/domain/todo-rules'
 
 /*
  * Where a dragged row would land. Nothing on the card moves while a row is dragged: the pointer is
@@ -109,7 +110,6 @@ export function dropAt(
     const row = rows[index]
     return row !== undefined && settled.has(todoOf(row))
   }
-  const gapY = (index: number): number => gapAt(rows, index)
   // The first todo shown from `index` on, other than the dragged one. At the end of the open part
   // that is the first settled todo: the row goes before it in the stored order too.
   const todoFrom = (index: number): string | undefined =>
@@ -123,7 +123,6 @@ export function dropAt(
     }
     return undefined
   }
-  const blockEnd = (index: number): number => stepsEnd(rows, index)
   const todoGap = (index: number, refused?: Refusal): Drop => ({
     parentId: undefined,
     beforeId: todoFrom(index),
@@ -137,7 +136,7 @@ export function dropAt(
   })
   // Before the todo at `index` or after its steps, whichever is nearer `y`.
   const aroundTodo = (index: number, refused?: Refusal): Drop => {
-    const end = blockEnd(index)
+    const end = stepsEnd(rows, index)
     const top = rows[index]?.top ?? 0
     const bottom = rows[end - 1]?.bottom ?? top
     return y < (top + bottom) / 2 ? todoGap(index, refused) : todoGap(end, refused)
@@ -158,14 +157,14 @@ export function dropAt(
   const openEnd = firstSettled === -1 ? rows.length : firstSettled
   // The row whose band holds `y`, none below the last row: a row reaches halfway into the gaps on
   // either side of it, and the first one up to the top of the list.
-  const over = rows.findIndex((_, index) => y < gapY(index + 1))
+  const over = rows.findIndex((_, index) => y < gapAt(rows, index + 1))
   const row = rows[over]
 
   // A step of a settled todo stays among its todo's steps: at their start or end when it is held
   // anywhere else.
   if (dragged.parentId !== undefined && settled.has(dragged.parentId)) {
     const parent = rows.findIndex((entry) => entry.id === dragged.parentId)
-    const end = blockEnd(parent)
+    const end = stepsEnd(rows, parent)
     if (row?.parentId === dragged.parentId) return stepAt(over, row, dragged.parentId)
     return row !== undefined && over <= parent
       ? stepGap(parent + 1, dragged.parentId)
@@ -185,7 +184,7 @@ export function dropAt(
     }
     const zone = zoneOf(row)
     if (zone === 'above') return todoGap(over)
-    if (zone === 'below') return todoGap(blockEnd(over))
+    if (zone === 'below') return todoGap(stepsEnd(rows, over))
     return aroundTodo(over, row.id === dragged.id ? undefined : refused)
   }
 
@@ -208,7 +207,7 @@ export function dropAt(
   if (upper) return todoGap(over, zone === 'middle' && !own ? 'steps' : undefined)
   // Below a todo whose steps show is its first step, the gap the eye sees there.
   if (shows && !own && !dragged.hasSteps) return stepGap(over + 1, row.id)
-  if (shows) return todoGap(blockEnd(over), own ? undefined : 'steps')
+  if (shows) return todoGap(stepsEnd(rows, over), own ? undefined : 'steps')
   return todoGap(over + 1, zone === 'middle' && !own ? 'steps' : undefined)
 }
 
@@ -424,12 +423,13 @@ export interface HeldRow {
 const textOf = (ordered: readonly Todo[], id: string | undefined): string =>
   ordered.find((todo) => todo.id === id)?.text ?? ''
 
+const stepsOf = (ordered: readonly Todo[], id: string | undefined): readonly Todo[] =>
+  ordered.find((todo) => todo.id === id)?.steps ?? []
+
 /** The held row's own text, a todo's or a step's. */
 export function rowText(ordered: readonly Todo[], row: Pick<HeldRow, 'id' | 'parentId'>): string {
-  if (row.parentId === undefined) return textOf(ordered, row.id)
-  return (
-    ordered.find((todo) => todo.id === row.parentId)?.steps?.find((step) => step.id === row.id)?.text ?? ''
-  )
+  const found = locate(ordered, row.id)
+  return found !== undefined && found.parentId === row.parentId ? found.todo.text : ''
 }
 
 /** The row's place as it is held, counted from 1 among the todos of its part of the list, or its todo's steps. */
@@ -439,7 +439,7 @@ function place(
   row: HeldRow
 ): { readonly n: number; readonly m: number } {
   if (row.parentId !== undefined) {
-    return { n: row.index + 1, m: ordered.find((todo) => todo.id === row.parentId)?.steps?.length ?? 0 }
+    return { n: row.index + 1, m: stepsOf(ordered, row.parentId).length }
   }
   const open = ordered.filter((todo) => !settled.has(todo.id)).length
   return settled.has(row.id)
@@ -480,9 +480,7 @@ function whereWords(
     if (settled.has(beforeId) && !settled.has(dragged.parentId ?? dragged.id)) return 'last of the open todos'
     return `above ${textOf(ordered, beforeId)}`
   }
-  const steps = (ordered.find((todo) => todo.id === parentId)?.steps ?? []).filter(
-    (step) => step.id !== dragged.id
-  )
+  const steps = stepsOf(ordered, parentId).filter((step) => step.id !== dragged.id)
   const at = beforeId === undefined ? steps.length : steps.findIndex((step) => step.id === beforeId)
   const parent = `step of ${textOf(ordered, parentId)}`
   if (steps.length === 0) return parent
@@ -496,10 +494,7 @@ function whereWords(
  */
 export function atOwnPlace(ordered: readonly Todo[], dragged: Dragged, drop: Drop): boolean {
   if (drop.line === undefined || drop.parentId !== dragged.parentId) return false
-  const siblings =
-    dragged.parentId === undefined
-      ? ordered
-      : (ordered.find((todo) => todo.id === dragged.parentId)?.steps ?? [])
+  const siblings = dragged.parentId === undefined ? ordered : stepsOf(ordered, dragged.parentId)
   const index = siblings.findIndex((row) => row.id === dragged.id)
   return index !== -1 && (drop.beforeId === dragged.id || drop.beforeId === siblings[index + 1]?.id)
 }
@@ -535,14 +530,7 @@ export const dragWords = {
   ): string {
     if (atOwnPlace(ordered, dragged, drop)) return dragWords.stayed(text)
     // An open row under a done todo reopens it: no done todo has an open step.
-    const status = (id: string | undefined): string | undefined => {
-      for (const todo of ordered) {
-        if (todo.id === id) return todo.status
-        const step = todo.steps?.find((entry) => entry.id === id)
-        if (step !== undefined) return step.status
-      }
-      return undefined
-    }
+    const status = (id: string): string | undefined => locate(ordered, id)?.todo.status
     const reopens =
       drop.parentId !== undefined && status(dragged.id) === 'open' && status(drop.parentId) === 'done'
     const again = reopens ? ` ${textOf(ordered, drop.parentId)} is open again.` : ''

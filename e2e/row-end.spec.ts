@@ -1,7 +1,7 @@
 // What shows on a row is read in the page, which needs the DOM types.
 /// <reference lib="dom" />
 
-import { day, expect, test, todo, today } from './daily'
+import { boxOf, day, expect, hidden, showing, test, todo, today } from './daily'
 import type { Daily } from './daily'
 import type { Locator } from '@playwright/test'
 import type { Todo } from '../src/domain/todo'
@@ -69,46 +69,11 @@ const TIPS = [
   ['Delete', 'Delete']
 ] as const
 
-const boxOf = async (locator: Locator) => {
-  const box = await locator.boundingBox()
-  if (box === null) throw new Error(`${locator.toString()} is not shown`)
-  return box
-}
-
-const edit = (daily: Daily, text: string) =>
-  daily.page.getByRole('button', { name: `Edit ${text}`, exact: true })
-
-/** Points at `text`'s words. */
-async function point(daily: Daily, text: string): Promise<void> {
-  const words = await boxOf(daily.line(text).locator('[data-todo-text]').first())
-  await daily.page.mouse.move(words.x + 8, words.y + 10)
-}
-
 /** The pointer off the card, and the focus in the field that adds a todo, as when nothing is done. */
 async function rest(daily: Daily): Promise<void> {
   await daily.page.mouse.move(0, 0)
   await daily.input.focus()
 }
-
-/** How opaque the most opaque part of `locator` looks, counting opacity on every element up from it. */
-const seen = (locator: Locator) =>
-  locator.evaluate((element) => {
-    const shown = (at: Element) => {
-      let value = 1
-      for (let up: Element | null = at; up !== null; up = up.parentElement) {
-        const style = getComputedStyle(up)
-        if (style.visibility === 'hidden' || style.display === 'none') return 0
-        value *= Number(style.opacity)
-      }
-      return value
-    }
-    const leaves = [element, ...element.querySelectorAll('*')].filter((at) => at.childElementCount === 0)
-    return Math.max(...leaves.map(shown))
-  })
-const hidden = (locator: Locator, message?: string) =>
-  expect.poll(() => seen(locator), { message }).toBeLessThan(0.05)
-const showing = (locator: Locator, message?: string) =>
-  expect.poll(() => seen(locator), { message }).toBeGreaterThan(0.95)
 
 /** The words that are seen in `locator`: text in elements bigger than a pixel, so not reader-only text. */
 const words = (locator: Locator) =>
@@ -217,7 +182,7 @@ test.describe('a row’s end', () => {
       'Write the release notes',
       'Clean the house'
     ]) {
-      await point(daily, text)
+      await daily.point(text)
       const row = await boxOf(daily.line(text))
       const at = await Promise.all(
         offered(text).map(async (name) => ({ name, box: await boxOf(daily.button(text, name)) }))
@@ -308,7 +273,7 @@ test.describe('a row’s end', () => {
     // Not read out, since the fold says it, and not struck; its name is still only its words.
     expect(at.unread, where).toBe(true)
     expect(at.struck, where).toBe(false)
-    await expect(edit(daily, 'Plan the offsite')).toHaveCount(1)
+    await expect(daily.editButton('Plan the offsite')).toHaveCount(1)
 
     // Folding shows the count, and Add a step on the row; unfolding takes both away, both ways.
     await daily.chevron('Set up CI').click()
@@ -334,18 +299,18 @@ test.describe('a row’s end', () => {
     daily
   }) => {
     await rest(daily)
-    await point(daily, 'Set up CI')
+    await daily.point('Set up CI')
     for (const name of offered('Set up CI')) await showing(daily.button('Set up CI', name), name)
     // Not its steps, not the others.
     await hidden(daily.button('Fix the lint errors', 'Delete Fix the lint errors'))
     await hidden(daily.button('Buy milk', 'Delete Buy milk'))
     // The add under the steps shows with its todo, and with any of its steps.
     await showing(daily.more('Set up CI'), 'Set up CI pointed at')
-    await point(daily, 'Fix the lint errors')
+    await daily.point('Fix the lint errors')
     await showing(daily.button('Fix the lint errors', 'Delete Fix the lint errors'))
     await hidden(daily.button('Set up CI', 'Delete Set up CI'))
     await showing(daily.more('Set up CI'), 'a step of Set up CI pointed at')
-    await point(daily, 'Buy milk')
+    await daily.point('Buy milk')
     await hidden(daily.more('Set up CI'), 'Buy milk pointed at')
 
     // A mouse click on the chevron leaves the focus in the row, but not as keyboard focus.
@@ -361,18 +326,18 @@ test.describe('a row’s end', () => {
       await showing(daily.button('Set up CI', name), name)
     await hidden(daily.button('Buy milk', 'Delete Buy milk'))
     // Focus on the last step's bin shows the add under the steps.
-    await edit(daily, 'Plan the offsite').focus()
+    await daily.editButton('Plan the offsite').focus()
     await daily.chevron('Plan the offsite').press('Enter')
     await expect(daily.chevron('Plan the offsite')).toHaveAttribute('aria-expanded', 'true')
-    await edit(daily, 'Book the venue').focus()
+    await daily.editButton('Book the venue').focus()
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Delete Book the venue')
     await showing(daily.more('Plan the offsite'), 'its last step’s bin focused')
     // On the text too.
-    await edit(daily, 'Buy milk').focus()
+    await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Shift+Tab')
     await daily.page.keyboard.press('Tab')
-    await expect(edit(daily, 'Buy milk')).toBeFocused()
+    await expect(daily.editButton('Buy milk')).toBeFocused()
     for (const name of offered('Buy milk')) await showing(daily.button('Buy milk', name), name)
   })
 
@@ -387,7 +352,7 @@ test.describe('a row’s end', () => {
     expect(atRest.rotate, JSON.stringify(atRest)).toBe('none')
     await expect.poll(async () => (await foldMark(daily, 'Set up CI')).seen, 'at rest').toBeLessThan(0.05)
     for (const how of ['pointed at', 'focused'] as const) {
-      if (how === 'pointed at') await point(daily, 'Set up CI')
+      if (how === 'pointed at') await daily.point('Set up CI')
       else {
         await rest(daily)
         await daily.box('Set up CI').focus()
@@ -401,15 +366,15 @@ test.describe('a row’s end', () => {
     }
     // Its row's text focused shows it too; a step of it pointed at does not.
     await rest(daily)
-    await edit(daily, 'Set up CI').focus()
+    await daily.editButton('Set up CI').focus()
     await daily.page.keyboard.press('Shift+Tab')
     await daily.page.keyboard.press('Tab')
-    await expect(edit(daily, 'Set up CI')).toBeFocused()
+    await expect(daily.editButton('Set up CI')).toBeFocused()
     await expect
       .poll(async () => (await foldMark(daily, 'Set up CI')).seen, 'text focused')
       .toBeGreaterThan(0.95)
     await rest(daily)
-    await point(daily, 'Fix the lint errors')
+    await daily.point('Fix the lint errors')
     await daily.page.waitForTimeout(300)
     expect((await foldMark(daily, 'Set up CI')).seen, 'a step pointed at').toBeLessThan(0.05)
 
@@ -436,12 +401,12 @@ test.describe('a row’s end', () => {
     await rest(daily)
     const before = await measure(daily)
     for (const text of texts) {
-      await point(daily, text)
+      await daily.point(text)
       await daily.page.waitForTimeout(200)
       expect(await measure(daily), `pointing at ${text}`).toEqual(before)
     }
     await rest(daily)
-    await edit(daily, 'Buy milk').focus()
+    await daily.editButton('Buy milk').focus()
     for (const name of [
       ...offered('Buy milk'),
       ...along('Set up CI'),
@@ -521,7 +486,7 @@ test.describe('a row’s end', () => {
     daily
   }) => {
     const path = async (from: string, count: number) => {
-      await edit(daily, from).focus()
+      await daily.editButton(from).focus()
       const on: (string | null)[] = []
       for (let i = 0; i < count; i++) {
         await daily.page.keyboard.press('Tab')
@@ -556,7 +521,7 @@ test.describe('a row’s end', () => {
       'Delete Dust the shelves'
     ])
 
-    await edit(daily, 'Buy milk').focus()
+    await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Tab')
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Move Buy milk to tomorrow')
@@ -566,7 +531,7 @@ test.describe('a row’s end', () => {
       .toStrictEqual({ [today]: [ci, offsite, notes, house], [day(1)]: [milk] })
     await expect.poll(() => focused(daily)).toBe('Edit Set up CI')
 
-    await edit(daily, 'Write the release notes').focus()
+    await daily.editButton('Write the release notes').focus()
     for (let i = 0; i < 3; i++) await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Delete Write the release notes')
     await daily.page.keyboard.press('Space')
@@ -612,10 +577,10 @@ test.describe('a row’s end', () => {
   })
 
   test('Delete or Backspace on a focused text still deletes', async ({ daily }) => {
-    await edit(daily, 'Buy milk').focus()
+    await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Delete')
     await expect.poll(() => daily.todos()).toStrictEqual({ [today]: [ci, offsite, notes, house] })
-    await edit(daily, 'Fix the lint errors').focus()
+    await daily.editButton('Fix the lint errors').focus()
     await daily.page.keyboard.press('Backspace')
     await expect
       .poll(() => daily.todos())
@@ -624,7 +589,7 @@ test.describe('a row’s end', () => {
   })
 
   test('while a row is carried, no row shows its buttons, not even the one carried', async ({ daily }) => {
-    const text = edit(daily, 'Set up CI')
+    const text = daily.editButton('Set up CI')
     // By keyboard: its text has the focus, which shows them until Space lifts the row.
     await text.focus()
     await daily.page.waitForTimeout(300)
@@ -681,7 +646,7 @@ test.describe('after a pointer Move or Delete', () => {
   }
   /** Points at `name` on `text`'s row and says where its middle is. */
   async function onto(daily: Daily, text: string, name: string): Promise<{ x: number; y: number }> {
-    await point(daily, text)
+    await daily.point(text)
     await showing(daily.button(text, name))
     const at = await boxOf(daily.button(text, name))
     const middle = { x: at.x + at.width / 2, y: at.y + at.height / 2 }
@@ -765,7 +730,7 @@ test.describe('after a pointer Move or Delete', () => {
   test('the keyboard and the right-click menu are not held back', async ({ daily }) => {
     // By keyboard nothing is guarded: Move, then the next row's bin, one after the other.
     await rest(daily)
-    await edit(daily, 'One').focus()
+    await daily.editButton('One').focus()
     await daily.page.keyboard.press('Tab')
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Move One to tomorrow')
@@ -782,7 +747,7 @@ test.describe('after a pointer Move or Delete', () => {
     await onto(daily, 'Three', 'Delete Three')
     await clickHere(daily, 1)
     await expect(card(daily)).toHaveAttribute('data-guard')
-    await edit(daily, 'Four').focus()
+    await daily.editButton('Four').focus()
     await daily.page.keyboard.press('Delete')
     expect((await left(daily)).today).toEqual(['Five'])
     await daily.page.mouse.move(0, 0)
@@ -828,7 +793,7 @@ test.describe('a button’s tip', () => {
       expect(Math.abs(at.button.y - (at.tip.y + at.tip.height) - 6), where).toBeLessThanOrEqual(2)
     }
     // The add under the steps has none: it shows its words instead.
-    await edit(daily, 'Cache the dependencies').focus()
+    await daily.editButton('Cache the dependencies').focus()
     await daily.page.keyboard.press('Tab')
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Add a step to Set up CI')
@@ -842,7 +807,7 @@ test.describe('a button’s tip', () => {
 
   test('shows after a moment’s hover, not at once, and goes when the pointer leaves', async ({ daily }) => {
     await rest(daily)
-    await point(daily, 'Buy milk')
+    await daily.point('Buy milk')
     const trash = daily.button('Buy milk', 'Delete Buy milk')
     await showing(trash)
     const at = await boxOf(trash)
@@ -851,7 +816,7 @@ test.describe('a button’s tip', () => {
     await expect(daily.tip).toHaveCount(0)
     await expect(daily.tip).toHaveText('Delete', { timeout: 1500 })
     // The folded count's tip says it shows the steps.
-    await point(daily, 'Plan the offsite')
+    await daily.point('Plan the offsite')
     const fold = await boxOf(daily.chevron('Plan the offsite'))
     await daily.page.mouse.move(fold.x + fold.width / 2, fold.y + fold.height / 2)
     await expect(daily.tip).toHaveText('Show steps', { timeout: 1500 })
@@ -863,7 +828,7 @@ test.describe('a button’s tip', () => {
     await daily.page.getByRole('button', { name: 'Next day' }).click()
     await expect(daily.heading('Tomorrow')).toBeVisible()
     await daily.add('Dentist, 9:30')
-    await edit(daily, 'Dentist, 9:30').focus()
+    await daily.editButton('Dentist, 9:30').focus()
     await daily.page.keyboard.press('Tab')
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Move Dentist, 9:30 to today')
@@ -895,14 +860,14 @@ test.describe('a button’s tip', () => {
         await daily.page.keyboard.press('Shift+Tab')
         await inside(`Steps of ${text}`)
       }
-      await edit(daily, text).focus()
+      await daily.editButton(text).focus()
       for (const name of offered(text)) {
         await daily.page.keyboard.press('Tab')
         await inside(name)
       }
     }
     // The add under the steps has no tip to keep inside.
-    await edit(daily, 'Cache the dependencies').focus()
+    await daily.editButton('Cache the dependencies').focus()
     await daily.page.keyboard.press('Tab')
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Add a step to Set up CI')
@@ -1164,7 +1129,7 @@ test.describe('a row’s menu, by right-click or key', () => {
     for (const key of ['Shift+F10', 'ContextMenu']) {
       for (const text of ['Buy milk', 'Fix the lint errors']) {
         const what = `${key} on ${text}`
-        await edit(daily, text).focus()
+        await daily.editButton(text).focus()
         await daily.page.keyboard.press(key)
         await expect(daily.menu, what).toBeVisible()
         expect(await items(daily), what).toContain(`Delete ${text}`)
@@ -1184,7 +1149,7 @@ test.describe('a row’s menu, by right-click or key', () => {
   test('by keyboard its arrows wrap, Home and End jump, Enter and Space pick, and Tab or Shift+Tab close it', async ({
     daily
   }) => {
-    await edit(daily, 'Buy milk').focus()
+    await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Shift+F10')
     await expect(daily.menu).toBeVisible()
     const names = await items(daily)
@@ -1216,7 +1181,7 @@ test.describe('a row’s menu, by right-click or key', () => {
         const what = `${key} in ${text}'s menu, opened by ${how}`
         if (how === 'right-click') await rightClick(daily, text)
         else {
-          await edit(daily, text).focus()
+          await daily.editButton(text).focus()
           await daily.page.keyboard.press(how)
         }
         await expect(daily.menu, what).toBeVisible()
@@ -1228,7 +1193,7 @@ test.describe('a row’s menu, by right-click or key', () => {
     }
     expect(await daily.todos()).toStrictEqual({ [today]: seed })
 
-    await edit(daily, 'Buy milk').focus()
+    await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Shift+F10')
     await expect(daily.menu).toBeVisible()
     await walkTo(daily, 'Move Buy milk to tomorrow')
@@ -1238,7 +1203,7 @@ test.describe('a row’s menu, by right-click or key', () => {
       .toStrictEqual({ [today]: [ci, offsite, notes, house], [day(1)]: [milk] })
     await expect.poll(() => focused(daily)).toBe('Edit Set up CI')
 
-    await edit(daily, 'Set up CI').focus()
+    await daily.editButton('Set up CI').focus()
     await daily.page.keyboard.press('ContextMenu')
     await expect(daily.menu).toBeVisible()
     await walkTo(daily, 'Delete Set up CI')
@@ -1268,7 +1233,7 @@ test.describe('a row’s menu near the card’s bottom', () => {
       let at: { x: number; y: number }
       if (how === 'right-click') at = await rightClick(daily, 'Todo 12')
       else {
-        await edit(daily, 'Todo 12').focus()
+        await daily.editButton('Todo 12').focus()
         await daily.page.keyboard.press('Shift+F10')
         const row = await boxOf(daily.line('Todo 12'))
         at = { x: row.x + row.width, y: row.y }

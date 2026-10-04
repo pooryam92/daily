@@ -29,6 +29,32 @@ export const todo = (text: string, status: TodoStatus = 'open', steps?: readonly
   ...(steps === undefined ? {} : { steps })
 })
 
+export const boxOf = async (locator: Locator) => {
+  const box = await locator.boundingBox()
+  if (box === null) throw new Error(`${locator.toString()} is not shown`)
+  return box
+}
+
+/** How opaque the most opaque part of `locator` looks, counting opacity on every element up from it. */
+export const seen = (locator: Locator) =>
+  locator.evaluate((element) => {
+    const shown = (at: Element) => {
+      let value = 1
+      for (let up: Element | null = at; up !== null; up = up.parentElement) {
+        const style = getComputedStyle(up)
+        if (style.visibility === 'hidden' || style.display === 'none') return 0
+        value *= Number(style.opacity)
+      }
+      return value
+    }
+    const leaves = [element, ...element.querySelectorAll('*')].filter((at) => at.childElementCount === 0)
+    return Math.max(...leaves.map(shown))
+  })
+export const hidden = (locator: Locator, message?: string) =>
+  expect.poll(() => seen(locator), { message }).toBeLessThan(0.05)
+export const showing = (locator: Locator, message?: string) =>
+  expect.poll(() => seen(locator), { message }).toBeGreaterThan(0.95)
+
 /** The built app, running from a data folder of its own that a test may seed, read and reopen. */
 export class Daily {
   page!: Page
@@ -104,7 +130,8 @@ export class Daily {
       .getByRole('checkbox', { name: 'Done' })
   }
 
-  private editButton(text: string): Locator {
+  /** A row's text, which edits it, and is also what lifts it: by the pointer after 5px, by Space from the keyboard. */
+  editButton(text: string): Locator {
     return this.page.getByRole('button', { name: `Edit ${text}`, exact: true })
   }
 
@@ -119,6 +146,12 @@ export class Daily {
   /** The line that holds `text`, a todo's or a step's, without the lines of its steps under it. */
   line(text: string): Locator {
     return this.page.locator('[data-todo] > div').filter({ has: this.editButton(text) })
+  }
+
+  /** Points at the words of `text`'s line, so the buttons at its end show. */
+  async point(text: string): Promise<void> {
+    const words = await boxOf(this.line(text).locator('[data-todo-text]').first())
+    await this.page.mouse.move(words.x + 8, words.y + 10)
   }
 
   /**

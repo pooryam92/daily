@@ -1,7 +1,7 @@
 // The count's and the chevron's colours are read in the page, which needs the DOM types.
 /// <reference lib="dom" />
 
-import { expect, test, todo, today } from './daily'
+import { boxOf, expect, test, todo, today } from './daily'
 import type { Daily } from './daily'
 import type { Todo } from '../src/domain/todo'
 
@@ -275,13 +275,6 @@ test.describe('the fold', () => {
   const texts = ['Set up CI', 'Plan the offsite', LONG, 'Paint the fence', 'Clean the house']
   test.use({ seed: { [today]: [milk, ci, offsite, long, fence, house] } })
 
-  const boxOf = async (locator: ReturnType<Daily['row']>) => {
-    const box = await locator.boundingBox()
-    if (box === null) throw new Error(`${locator.toString()} is not shown`)
-    return box
-  }
-  const line = (daily: Daily, text: string) => daily.row(text).locator(':scope > div')
-
   test('folds and unfolds from the keyboard, with Enter or Space', async ({ daily }) => {
     const fold = daily.chevron('Set up CI')
     await fold.focus()
@@ -314,7 +307,7 @@ test.describe('the fold', () => {
         texts.map(async (text) => ({
           text,
           fold: await boxOf(daily.chevron(text)),
-          row: await boxOf(line(daily, text)),
+          row: await boxOf(daily.line(text)),
           box: await boxOf(daily.box(text))
         }))
       )
@@ -336,7 +329,7 @@ test.describe('the fold', () => {
       Promise.all(
         [...texts, 'Buy milk'].map(async (text) => ({
           text,
-          row: await boxOf(line(daily, text)),
+          row: await boxOf(daily.line(text)),
           label: await boxOf(daily.page.getByRole('button', { name: `Edit ${text}`, exact: true })),
           fold: text === 'Buy milk' ? null : await boxOf(daily.chevron(text))
         }))
@@ -362,7 +355,7 @@ test.describe('the fold', () => {
      * take, as the page computes them.
      */
     const colours = (text: string) =>
-      line(daily, text).evaluate((row) => {
+      daily.line(text).evaluate((row) => {
         const element = row.querySelector('[data-todo-text] > [data-figures]')
         const chevron = row.querySelector('[aria-label^="Steps of "] svg')
         if (element === null || chevron === null) throw new Error('The row shows no count')
@@ -382,11 +375,7 @@ test.describe('the fold', () => {
           faint: token('--text-faint')
         }
       })
-    const counted = async (text: string, done: number, total: number, complete: boolean) => {
-      await expect(fold(text)).toHaveAttribute('data-done', String(done))
-      await expect(fold(text)).toHaveAttribute('data-total', String(total))
-      if (complete) await expect(fold(text)).toHaveAttribute('data-complete')
-      else await expect(fold(text)).not.toHaveAttribute('data-complete')
+    const counted = async (text: string, done: number, total: number) => {
       await expect(daily.chevron(text)).toHaveAccessibleDescription(
         `${String(done)} of ${String(total)} steps done`
       )
@@ -400,10 +389,10 @@ test.describe('the fold', () => {
       // Past the colours' fade.
       await daily.page.waitForTimeout(300)
     }
-    await counted('Set up CI', 0, 3, false)
-    await counted(LONG, 1, 2, false)
-    await counted('Paint the fence', 2, 2, true)
-    await counted('Clean the house', 2, 2, true)
+    await counted('Set up CI', 0, 3)
+    await counted(LONG, 1, 2)
+    await counted('Paint the fence', 2, 2)
+    await counted('Clean the house', 2, 2)
     // No pie anywhere: not on a todo, a step or a plain todo.
     await expect(daily.page.locator('[class*="_pie_"]')).toHaveCount(0)
     await expect(daily.step('Buy paint').getByRole('button', { name: /^Steps of / })).toHaveCount(0)
@@ -430,7 +419,7 @@ test.describe('the fold', () => {
     for (const step of ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies']) {
       await daily.box(step).check()
     }
-    await counted('Set up CI', 3, 3, true)
+    await counted('Set up CI', 3, 3)
     expect(await boxOf(daily.chevron('Set up CI'))).toEqual(before)
     await foldAway('Set up CI')
     await expect.poll(async () => (await colours('Set up CI')).count).toBe(part.done)

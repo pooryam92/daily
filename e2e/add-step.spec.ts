@@ -1,7 +1,7 @@
 // The opacity of a row's parts is read in the page, which needs the DOM types.
 /// <reference lib="dom" />
 
-import { expect, test, todo, today } from './daily'
+import { boxOf, expect, seen, showing, test, todo, today } from './daily'
 import type { Daily } from './daily'
 import type { Locator } from '@playwright/test'
 import type { Todo } from '../src/domain/todo'
@@ -41,43 +41,14 @@ const unfolded = async (daily: Daily, text: string) =>
  */
 async function addStep(daily: Daily, text: string): Promise<void> {
   if (await unfolded(daily, text)) {
-    await point(daily, text)
+    await daily.point(text)
     await daily.more(text).click()
   } else await daily.act(text, `Add a step to ${text}`)
 }
-/** What the end of `text`'s row offers, by name. */
-const offers = (daily: Daily, text: string) => daily.actions(text)
 /** The empty spacer under `text`'s steps, where the row that added a step was. */
 const spacer = (daily: Daily, text: string) => daily.row(text).locator('li[data-add-step]')
 const spacers = (daily: Daily) => daily.page.locator('li[data-add-step]')
 const draft = (daily: Daily) => daily.page.getByRole('textbox', { name: 'New step' })
-
-const boxOf = async (locator: Locator) => {
-  const box = await locator.boundingBox()
-  if (box === null) throw new Error(`${locator.toString()} is not shown`)
-  return box
-}
-
-/** Points at `text`'s words, so its + shows. */
-async function point(daily: Daily, text: string): Promise<void> {
-  const words = await boxOf(daily.row(text).locator('[data-todo-text]').first())
-  await daily.page.mouse.move(words.x + 8, words.y + 10)
-}
-
-/** How opaque the most opaque part of `locator` looks, counting opacity on every element up from it. */
-const seen = (locator: Locator) =>
-  locator.evaluate((element) => {
-    const shown = (at: Element) => {
-      let value = 1
-      for (let up: Element | null = at; up !== null; up = up.parentElement) {
-        value *= Number(getComputedStyle(up).opacity)
-      }
-      return value
-    }
-    const leaves = [element, ...element.querySelectorAll('*')].filter((at) => at.childElementCount === 0)
-    return Math.max(...leaves.map(shown))
-  })
-const showing = (locator: Locator) => expect.poll(() => seen(locator)).toBeGreaterThan(0.95)
 
 test.describe('adding a step from the todo’s row', () => {
   test.use({ seed: { [today]: [milk, ci, offsite, fence, notes, house] } })
@@ -86,7 +57,7 @@ test.describe('adding a step from the todo’s row', () => {
     daily
   }) => {
     const where = await boxOf(spacer(daily, 'Set up CI'))
-    await point(daily, 'Set up CI')
+    await daily.point('Set up CI')
     await daily.more('Set up CI').click()
     const field = draft(daily)
     await expect(field).toBeFocused()
@@ -168,7 +139,7 @@ test.describe('adding a step from the todo’s row', () => {
     expect(Math.abs(row.height - 28)).toBeLessThanOrEqual(1)
 
     // One way at a time: the add under the steps, not the row's.
-    expect(await offers(daily, 'Set up CI')).toEqual(['Move Set up CI to tomorrow', 'Delete Set up CI'])
+    expect(await daily.actions('Set up CI')).toEqual(['Move Set up CI to tomorrow', 'Delete Set up CI'])
     await expect(daily.more('Set up CI')).toHaveCount(1)
     await expect(daily.more('Paint the fence')).toHaveCount(1)
 
@@ -176,23 +147,23 @@ test.describe('adding a step from the todo’s row', () => {
     await daily.chevron('Set up CI').click()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(0)
     await expect(daily.more('Set up CI')).toBeHidden()
-    expect(await offers(daily, 'Set up CI')).toEqual([
+    expect(await daily.actions('Set up CI')).toEqual([
       'Add a step to Set up CI',
       'Move Set up CI to tomorrow',
       'Delete Set up CI'
     ])
     await daily.chevron('Set up CI').click()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(1)
-    expect(await offers(daily, 'Set up CI')).toEqual(['Move Set up CI to tomorrow', 'Delete Set up CI'])
+    expect(await daily.actions('Set up CI')).toEqual(['Move Set up CI to tomorrow', 'Delete Set up CI'])
 
     // Done, neither: a done todo takes no steps.
     await daily.box('Set up CI').check()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(0)
     await expect(daily.more('Set up CI')).toBeHidden()
-    expect(await offers(daily, 'Set up CI')).toEqual(['Delete Set up CI'])
+    expect(await daily.actions('Set up CI')).toEqual(['Delete Set up CI'])
     await daily.box('Set up CI').uncheck()
     await expect(daily.chevron('Set up CI')).toHaveAttribute('aria-expanded', 'false')
-    expect(await offers(daily, 'Set up CI')).toEqual([
+    expect(await daily.actions('Set up CI')).toEqual([
       'Add a step to Set up CI',
       'Move Set up CI to tomorrow',
       'Delete Set up CI'
@@ -202,7 +173,7 @@ test.describe('adding a step from the todo’s row', () => {
     await expect(spacer(daily, 'Paint the fence')).toHaveCount(0)
     await expect(daily.more('Paint the fence')).toBeHidden()
     // Without steps it is still open, so its row adds one.
-    expect(await offers(daily, 'Paint the fence')).toContain('Add a step to Paint the fence')
+    expect(await daily.actions('Paint the fence')).toContain('Add a step to Paint the fence')
   })
 
   test('the add under the steps is the whole space there: nothing at rest, its icon with its todo pointed at, its words and a step’s hover when it is pointed at or focused, and no tip', async ({
@@ -259,7 +230,7 @@ test.describe('adding a step from the todo’s row', () => {
 
     // Its todo or one of its steps pointed at: the icon alone.
     for (const pointed of ['Set up CI', 'Fix the lint errors', 'Add the workflow file']) {
-      await point(daily, pointed)
+      await daily.point(pointed)
       await showing(icon)
       expect(await seen(label), `${pointed} pointed at`).toBeLessThan(0.05)
       await unlit()
@@ -267,7 +238,7 @@ test.describe('adding a step from the todo’s row', () => {
       await expect.poll(() => seen(add), { message: `after ${pointed}` }).toBeLessThan(0.05)
     }
     // Another todo pointed at shows its own, not this one.
-    await point(daily, 'Paint the fence')
+    await daily.point('Paint the fence')
     await showing(daily.more('Paint the fence').locator('svg'))
     expect(await seen(add)).toBeLessThan(0.05)
 
@@ -385,7 +356,7 @@ test.describe('round 1', () => {
   }) => {
     const drafts = daily.page.locator('li[data-draft]')
     const names = ['Move Set up CI to tomorrow', 'Delete Set up CI']
-    await point(daily, 'Set up CI')
+    await daily.point('Set up CI')
     const places = []
     for (const name of names) {
       await showing(daily.button('Set up CI', name))
@@ -393,7 +364,7 @@ test.describe('round 1', () => {
     }
     await addStep(daily, 'Set up CI')
     await expect(draft(daily)).toBeFocused()
-    await point(daily, 'Set up CI')
+    await daily.point('Set up CI')
     // Hidden from the pointer, the keys and the reader alike.
     await expect(
       daily.line('Set up CI').getByRole('button', { name: /^(Move|Delete|Add a step) / })
@@ -487,7 +458,7 @@ test.describe('round 1', () => {
       await expect(drafts).toHaveCount(0)
       await expect(daily.row('Set up CI')).not.toHaveAttribute('data-drafting')
       await expect(line).not.toHaveAttribute('data-drafting')
-      await point(daily, 'Set up CI')
+      await daily.point('Set up CI')
       await showing(daily.button('Set up CI', 'Delete Set up CI'))
       await daily.page.waitForTimeout(300)
       expect(await daily.todos(), `blank, left by ${key}`).toStrictEqual({

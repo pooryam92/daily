@@ -1,8 +1,5 @@
-import { useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
-import { normalise } from './TodoEditor'
+import { useLineField } from './TodoEditor'
 import type { EditorClose } from './TodoEditor'
-import styles from './TodoEditor.module.css'
 
 interface StepDraftProps {
   /** Whether it would be the todo's first step. */
@@ -19,49 +16,9 @@ interface StepDraftProps {
  * editor (`TodoEditor`), there is no old text to fall back on: an empty draft is no step at all.
  */
 export function StepDraft({ first, onAdd, onClose }: StepDraftProps) {
-  const [draft, setDraft] = useState('')
-  const field = useRef<HTMLTextAreaElement>(null)
-  // Whatever ends the draft takes the field away, which can blur it: one ending per draft.
-  const ended = useRef(false)
-
-  useLayoutEffect(() => {
-    field.current?.focus({ preventScroll: true })
-  }, [])
-
-  const end = (how: EditorClose): void => {
-    if (ended.current) return
-    ended.current = true
-    const next = normalise(draft)
+  const field = useLineField('', (next, how) => {
     if (how !== 'escape' && next !== '') onAdd(next)
     if (how !== 'enter' || next === '') onClose(how)
-  }
-
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-    // Enter that confirms an input method's suggestion does not add the step.
-    if (event.nativeEvent.isComposing) return
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      end('enter')
-    } else if (event.key === 'Escape') {
-      end('escape')
-    }
-  }
-
-  return (
-    <textarea
-      ref={field}
-      className={styles.editor}
-      rows={1}
-      aria-label="New step"
-      placeholder={first ? 'First step…' : 'Next step…'}
-      value={draft}
-      onChange={(event) => {
-        setDraft(event.target.value)
-      }}
-      onKeyDown={onKeyDown}
-      onBlur={() => {
-        end('blur')
-      }}
-    />
-  )
+  })
+  return <textarea {...field} aria-label="New step" placeholder={first ? 'First step…' : 'Next step…'} />
 }
