@@ -9,13 +9,14 @@ import type {
 } from '@dnd-kit/dom'
 import { DragOverlay, useDragDropManager, useDraggable } from '@dnd-kit/react'
 import { useComputed } from '@dnd-kit/react/hooks'
-import { CalendarClock, ChevronDown, ChevronRight, GripVertical, ListPlus, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronDown, ListPlus, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'motion/react'
 import { use, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from 'react'
 import type { Todo } from '@/domain/todo'
 import { locate, stepProgress } from '@/domain/todo-rules'
 import type { MoveDirection, MoveTarget } from '../day/copy'
+import { dragWords } from '../day/rowDrag'
 import { COPY_CANCEL, ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
 import { guardClicks, guarded } from './clickGuard'
 import { DoneCheckbox } from './DoneCheckbox'
@@ -39,6 +40,9 @@ const ROW_CONTROLS = 'input, textarea, select, button:not([data-todo-text]), a'
 class HeldPointerSensor extends PointerSensor {
   // The pointer that last pressed a row while none was held.
   private pressed: { readonly id: number; readonly mouse: boolean } | undefined
+  // While a row is being picked up, the last move of the pointer, which the drag has not been told.
+  private pending: { readonly event: PointerEvent; readonly source: Draggable } | undefined
+  private readonly unlisten: () => void
 
   constructor(manager: DragDropManager, options?: PointerSensorOptions) {
     super(manager, options)
@@ -46,8 +50,22 @@ class HeldPointerSensor extends PointerSensor {
     const sensor = this as unknown as { handlePointerUp: (event: PointerEvent) => void }
     const release = sensor.handlePointerUp
     sensor.handlePointerUp = (event) => {
+      this.pending = undefined
       if (this.isPressed(event)) release(event)
     }
+    // The library starts a drag where the row was pressed, and takes no moves until it has started:
+    // the move that picked the row up, 5px from the press, and any after it, are passed on then, so
+    // the copy is beside the pointer from the first frame.
+    this.unlisten = manager.monitor.addEventListener('dragstart', () => {
+      const pending = this.pending
+      this.pending = undefined
+      if (pending !== undefined) super.handlePointerMove(pending.event, pending.source)
+    })
+  }
+
+  override destroy(): void {
+    this.unlisten()
+    super.destroy()
   }
 
   private isPressed(event: PointerEvent): boolean {
@@ -62,44 +80,57 @@ class HeldPointerSensor extends PointerSensor {
     // The library takes only a primary pointer's press, and none while a row is held.
     if (event.isPrimary && this.manager.dragOperation.status.idle) {
       this.pressed = { id: event.pointerId, mouse: event.pointerType === 'mouse' }
+      this.pending = undefined
     }
     super.handlePointerDown(event, source, options)
   }
 
   protected override handlePointerMove(event: PointerEvent, source: Draggable): void {
     if (!this.isPressed(event) || (this.pressed?.mouse === true && event.buttons === 0)) return
+    if (this.pending !== undefined) {
+      this.pending = { event, source }
+      return
+    }
     super.handlePointerMove(event, source)
+  }
+
+  protected override handleStart(source: Draggable, event: PointerEvent): void {
+    super.handleStart(source, event)
+    const { status } = this.manager.dragOperation
+    if (!status.idle && !status.dragging) this.pending = { event, source }
   }
 
   protected override handleCancel(event: Event): void {
     if (event instanceof PointerEvent && !this.isPressed(event)) return
+    this.pending = undefined
     super.handleCancel(event)
   }
 }
 
 /**
- * A row is picked up anywhere on it: at once on the grip, after 5px elsewhere so a click on the text
- * still edits it, and after a short hold on touch so the list still scrolls. The keyboard uses the grip.
+ * A row is picked up anywhere on it but its controls: after 5px, so a click on the text still edits
+ * it, and after a short hold on touch, so the list still scrolls. The keyboard picks it up from its
+ * text, with Space: Enter still edits it.
  */
 export const TODO_SENSORS: Sensors = [
   configure(HeldPointerSensor, {
     activatorElements: (source) => [source.element],
-    activationConstraints: (event, source) => {
+    activationConstraints: (event) => {
       if (event.pointerType === 'touch') {
         return [new PointerActivationConstraints.Delay({ value: 250, tolerance: 5 })]
       }
-      if (event.target instanceof Element && source.handle?.contains(event.target) === true) return undefined
       return [new PointerActivationConstraints.Distance({ value: 5 })]
     },
     preventActivation: (event, source) => {
       if (!(event.target instanceof Element)) return false
       // A press on a step reaches its parent's item too, and must not pick the parent up.
       if (event.target.closest('[data-todo]') !== source.element) return true
-      if (source.handle?.contains(event.target) === true) return false
       return event.target.closest(ROW_CONTROLS) !== null
     }
   }),
-  KeyboardSensor
+  KeyboardSensor.configure({
+    keyboardCodes: { ...KeyboardSensor.defaults.keyboardCodes, start: ['Space'] }
+  })
 ]
 
 /**
@@ -139,8 +170,8 @@ interface TodoItemProps extends RowActions, RowMotion {
   readonly onToggleFold: (id: string) => void
   /** Whether a row being dragged would belong to this todo if it were dropped now. */
   readonly dropTarget: boolean
-  /** The todo or step whose grip takes the focus: see `useRegrip`. */
-  readonly regrip: string | null
+  /** The todo or step whose text takes the focus: see `useRefocus`. */
+  readonly refocus: string | null
   /** Set by `AnimatePresence`, which takes the row out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
@@ -200,7 +231,7 @@ export function TodoItem({
   onAddingStep,
   onToggleFold,
   dropTarget,
-  regrip,
+  refocus,
   ref
 }: TodoItemProps) {
   const [editing, setEditing] = useState(false)
@@ -210,6 +241,10 @@ export function TodoItem({
   // one has ended, and a new one takes the focus.
   const [opened, setOpened] = useState(0)
   const text = useRef<HTMLButtonElement>(null)
+  // The button under the steps, and whether the step editor was opened from it: the keyboard goes back
+  // to where it came from when the editor closes.
+  const more = useRef<HTMLButtonElement>(null)
+  const fromMore = useRef(false)
   // Under reduced motion a moved row only fades, like a deleted one.
   const still = useReducedMotion() === true
 
@@ -229,6 +264,13 @@ export function TodoItem({
   const drafting = todo.status === 'open' && addingStep
   const stepsId = useId()
   const actions = { onToggleDone, onRemove, onEdit }
+  const addStep = (fromIcon = false): void => {
+    fromMore.current = fromIcon
+    // The step is written among the steps, so they have to show.
+    if (folded) onToggleFold(todo.id)
+    if (!drafting) setOpened((count) => count + 1)
+    onAddingStep(true)
+  }
 
   return (
     <motion.li
@@ -261,14 +303,11 @@ export function TodoItem({
         setEditing={setEditing}
         textRef={text}
         handleRef={handleRef}
-        regrip={regrip === todo.id}
+        refocus={refocus === todo.id}
         drafting={drafting}
         move={{ target: moveTarget, onMove }}
         onStep={() => {
-          // The step is written among the steps, so they have to show.
-          if (folded) onToggleFold(todo.id)
-          if (!drafting) setOpened((count) => count + 1)
-          onAddingStep(true)
+          addStep()
         }}
         fold={{
           folded,
@@ -300,16 +339,24 @@ export function TodoItem({
                   // While a step is being written its field has the keyboard, and a press on a step
                   // above would take it away mid-word: the steps hold still, as the todo does.
                   disabled={drafting}
-                  regrip={regrip === step.id}
+                  refocus={refocus === step.id}
                   order={order}
                   isNew={isNew}
                   animateEnter={animateEnter}
                   {...actions}
                 />
               ))}
-              {/* The line under the last step, where the step editor opens in its place. */}
+              {/* The line under the last step, with the way to another step; the step editor opens in its place. */}
               {!drafting && todo.status === 'open' && steps.length > 0 && (
-                <StepSpace key="add" order={order} />
+                <StepSpace
+                  key="add"
+                  text={todo.text}
+                  order={order}
+                  buttonRef={more}
+                  onStep={() => {
+                    addStep(true)
+                  }}
+                />
               )}
               {drafting && (
                 <StepDraftItem
@@ -323,9 +370,10 @@ export function TodoItem({
                   }}
                   onClose={(how) => {
                     onAddingStep(false)
-                    // As in the editor: Escape and Enter leave the keyboard on the todo.
+                    // As in the editor, Escape and Enter leave the keyboard where it was: on the button
+                    // under the steps, back in its place, or on the todo.
                     if (how === 'enter' || how === 'escape')
-                      requestAnimationFrame(() => text.current?.focus())
+                      requestAnimationFrame(() => (fromMore.current ? more.current : text.current)?.focus())
                   }}
                 />
               )}
@@ -340,7 +388,7 @@ export function TodoItem({
 interface StepItemProps extends RowActions, RowMotion {
   readonly step: Todo
   readonly disabled: boolean
-  readonly regrip: boolean
+  readonly refocus: boolean
   /** Set by `AnimatePresence`, which takes the step out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
@@ -352,7 +400,7 @@ interface StepItemProps extends RowActions, RowMotion {
 function StepItem({
   step,
   disabled,
-  regrip,
+  refocus,
   order,
   isNew,
   animateEnter,
@@ -394,7 +442,7 @@ function StepItem({
         setEditing={setEditing}
         textRef={text}
         handleRef={handleRef}
-        regrip={regrip}
+        refocus={refocus}
         onToggleDone={onToggleDone}
         onRemove={onRemove}
         onEdit={onEdit}
@@ -453,8 +501,8 @@ function StepDraftItem({ draft, first, order, onAdd, onClose, ref }: StepDraftIt
       transition={{ ...ROW_ENTER, layout: ROW_LAYOUT }}
     >
       <div className={styles.row} data-status="open" data-editing onMouseDown={keepFocus}>
-        {/* The grip's slot, so the box lines up with the steps above; there is nothing to move yet. */}
-        <span className={styles.handle} aria-hidden="true" />
+        {/* The slot at the row's start, so the box lines up with the steps above. */}
+        <span className={styles.slot} aria-hidden="true" />
         <DoneCheckbox checked={false} size="sm" />
         <div className={styles.label}>
           <StepDraft key={draft} first={first} onAdd={onAdd} onClose={onClose} />
@@ -465,28 +513,50 @@ function StepDraftItem({ draft, first, order, onAdd, onClose, ref }: StepDraftIt
 }
 
 interface StepSpaceProps {
+  /** The todo's text, for the button's name. */
+  readonly text: string
   readonly order: string
+  /** The button, which the keyboard goes back to when the step editor it opened closes. */
+  readonly buttonRef: Ref<HTMLButtonElement>
+  /** Opens the step editor here. */
+  readonly onStep: () => void
   /** Set by `AnimatePresence`, which takes the row out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
 
 /**
- * The last line of an open todo's steps: empty and shorter than a step, so the steps end before the
- * next todo, and the step editor opens there. The + on the todo's row opens it. It is not a row: nothing is
- * dropped on it, and a row dragged over it goes to the end of the steps above or before the todo
+ * The last line of an open todo's steps: shorter than a step, so the steps end before the next todo,
+ * and all of it one button that opens the step editor there. It shows its icon, under the steps'
+ * boxes, while the todo is pointed at, and its words too while it is itself. It is not a row: nothing
+ * is dropped on it, and a row dragged over it goes to the end of the steps above or before the todo
  * below, by the half it is over (rowDrag.ts).
  */
-function StepSpace({ order, ref }: StepSpaceProps) {
+function StepSpace({ text, order, buttonRef, onStep, ref }: StepSpaceProps) {
   return (
     <motion.li
       ref={ref}
       className={[styles.step, styles.stepSpace].join(' ')}
       data-add-step
-      aria-hidden="true"
       layout="position"
       layoutDependency={order}
       transition={{ layout: ROW_LAYOUT }}
-    />
+    >
+      <button
+        ref={buttonRef}
+        type="button"
+        className={styles.more}
+        aria-label={`Add a step to ${text}`}
+        // The step editor takes the keyboard itself.
+        onClick={(event) => {
+          if (!guarded(event)) onStep()
+        }}
+      >
+        <ListPlus className={styles.moreIcon} size={14} aria-hidden="true" />
+        <span className={styles.moreWords} aria-hidden="true">
+          Add a step
+        </span>
+      </button>
+    </motion.li>
   )
 }
 
@@ -494,12 +564,15 @@ interface TodoRowProps extends RowActions {
   readonly todo: Todo
   readonly editing: boolean
   readonly setEditing: (editing: boolean) => void
-  /** The text button, which the keyboard goes back to when an edit, or the step editor, is done. */
+  /**
+   * The text button, which the keyboard goes back to when an edit, or the step editor, is done. It is
+   * the keyboard's handle for dragging the row too.
+   */
   readonly textRef: RefObject<HTMLButtonElement | null>
   /** The drag handle's ref. */
   readonly handleRef: (element: Element | null) => void
-  /** Whether the grip takes the focus: see `useRegrip`. */
-  readonly regrip?: boolean
+  /** Whether the text takes the focus: see `useRefocus`. */
+  readonly refocus?: boolean
   /** Whether a step is being written under the todo. */
   readonly drafting?: boolean
   /** Where the move word sends the todo. Steps have none: they go wherever their todo goes. */
@@ -513,51 +586,51 @@ interface TodoRowProps extends RowActions {
   readonly fold?: { readonly folded: boolean; readonly stepsId: string; readonly onToggle: () => void }
 }
 
-/** How long a grip watches for the focus to need it after a drop: the drop's animations and the old row's exit. */
-const REGRIP_MS = 1000
+/** How long a row's text watches for the focus to need it after a drop: the drop's animations and the old row's exit. */
+const REFOCUS_MS = 1000
 
 /**
  * A keyboard drop that makes a todo a step, or a step a todo, puts the row in a new place on the page:
  * the row it was keeps the focus while it fades out, and the library may hand the focus back to it,
- * so once it is gone the focus is nowhere. The grip in the new place takes it then, and only then:
- * a focus that is somewhere is left where it is. Returns the grip's ref, handed on to `handleRef`.
+ * so once it is gone the focus is nowhere. The text in the new place takes it then, and only then:
+ * a focus that is somewhere is left where it is. Returns the text's ref, which is the drag handle's
+ * too.
  */
-function useRegrip(
-  regrip: boolean,
+function useRefocus(
+  refocus: boolean,
+  text: RefObject<HTMLButtonElement | null>,
   handleRef: (element: Element | null) => void
 ): (element: HTMLButtonElement | null) => void {
-  const grip = useRef<HTMLButtonElement | null>(null)
-
   useEffect(() => {
-    if (!regrip) return
-    const until = performance.now() + REGRIP_MS
+    if (!refocus) return
+    const until = performance.now() + REFOCUS_MS
     let frame = requestAnimationFrame(function check() {
       const focused = document.activeElement
-      if (focused === null || focused === document.body || !focused.isConnected) grip.current?.focus()
+      if (focused === null || focused === document.body || !focused.isConnected) text.current?.focus()
       if (performance.now() < until) frame = requestAnimationFrame(check)
     })
     return () => {
       cancelAnimationFrame(frame)
     }
-  }, [regrip])
+  }, [refocus, text])
 
   return useCallback(
     (element: HTMLButtonElement | null) => {
-      grip.current = element
+      text.current = element
       handleRef(element)
     },
-    [handleRef]
+    [text, handleRef]
   )
 }
 
-/** One line of the list, a todo's or a step's: the grip, the box, the text and the words at the end. */
+/** One line of the list, a todo's or a step's: the slot at its start, the box, the text and the buttons at the end. */
 function TodoRow({
   todo,
   editing,
   setEditing,
   textRef: text,
   handleRef,
-  regrip = false,
+  refocus = false,
   drafting = false,
   move,
   onStep,
@@ -568,11 +641,15 @@ function TodoRow({
 }: TodoRowProps) {
   const step = move === undefined
   const open = todo.status === 'open'
-  // The count is read out with the toggle that shows it, as its description.
+  // The count is read out with the toggle that shows it, as its description, and how to drag the row
+  // with the text, its handle.
   const countId = useId()
+  const keysId = useId()
   const { done, total } = stepProgress(todo)
   const counted = total > 0
-  const grip = useRegrip(regrip, handleRef)
+  // The steps are folded away, and the figures after the text say how many there are.
+  const shut = fold?.folded === true && counted
+  const setText = useRefocus(refocus, text, handleRef)
   // The row itself: its menu opens at its end from the keyboard, and a row that goes away hands the
   // keyboard on from it.
   const [row, setRow] = useState<HTMLDivElement | null>(null)
@@ -583,7 +660,15 @@ function TodoRow({
   if (!front && menu !== null) setMenu(null)
 
   const onTextKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    // Space picks the row up (TODO_SENSORS), and stops there. When the row cannot be picked up, as
+    // while a step is written under its todo, it does nothing: only Enter edits.
+    if (event.key === ' ') {
+      event.preventDefault()
+      return
+    }
     if (event.key !== 'Delete' && event.key !== 'Backspace') return
+    // A row the keyboard has picked up keeps the focus on its text; it is not deleted from there.
+    if (event.currentTarget.closest('[data-sorting]') !== null) return
     event.preventDefault()
     // The keyboard goes on to the next row, as after the delete button.
     const next = event.currentTarget.closest<HTMLElement>('[data-row]')
@@ -608,6 +693,7 @@ function TodoRow({
       data-row={todo.id}
       data-status={todo.status}
       data-steps={counted || undefined}
+      data-folded={shut || undefined}
       data-editing={editing || undefined}
       data-drafting={drafting || undefined}
       // While a step is written, a press on the row's empty end, where its buttons are out of reach,
@@ -623,19 +709,32 @@ function TodoRow({
         setMenu({ from: 'point', x: event.clientX, y: event.clientY })
       }}
     >
-      {/* The grip shows on hover. It is the keyboard's handle: Space or Enter picks the row up, the
-          arrow keys move where it would land (up and down, and right and left between a todo and a
-          step), Space or Enter drops it, Escape puts it back. The deck leaves the arrow keys to a
-          focused grip. */}
-      <button
-        ref={grip}
-        type="button"
-        className={styles.handle}
-        data-todo-handle
-        aria-label={`Reorder ${todo.text}`}
-      >
-        <GripVertical className={styles.grip} size={14} aria-hidden="true" />
-      </button>
+      {/* A todo's steps fold away and come back from the row's start: an arrow, along while they are
+          folded, down while they show. Folded steps are not on the page, so there is nothing to control
+          then. */}
+      {fold !== undefined && counted ? (
+        <RowTip tip={fold.folded ? 'Show steps' : 'Hide steps'}>
+          <button
+            type="button"
+            className={[styles.slot, styles.fold].join(' ')}
+            data-folded={fold.folded || undefined}
+            data-done={done}
+            data-total={total}
+            data-complete={done === total || undefined}
+            aria-label={`Steps of ${todo.text}`}
+            aria-expanded={!fold.folded}
+            aria-controls={fold.folded ? undefined : fold.stepsId}
+            aria-describedby={countId}
+            onClick={(event) => {
+              if (!guarded(event)) fold.onToggle()
+            }}
+          >
+            <ChevronDown className={styles.chevron} size={14} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </RowTip>
+      ) : (
+        <span className={styles.slot} aria-hidden="true" />
+      )}
       <DoneCheckbox
         checked={todo.status === 'done'}
         size={step ? 'sm' : 'md'}
@@ -644,7 +743,7 @@ function TodoRow({
         }}
       />
       <div className={styles.label}>
-        {editing ? (
+        {editing && (
           <TodoEditor
             text={todo.text}
             onCommit={(next) => {
@@ -656,28 +755,69 @@ function TodoRow({
               if (how !== 'blur') requestAnimationFrame(() => text.current?.focus())
             }}
           />
-        ) : (
-          // A button, so the text can be edited from the keyboard. A press that moves drags the row.
-          <button
-            ref={text}
-            type="button"
-            className={styles.text}
-            data-todo-text
-            aria-label={`Edit ${todo.text}`}
-            onClick={() => {
-              setEditing(true)
-            }}
-            onKeyDown={onTextKeyDown}
-          >
-            <span className={styles.strike}>{todo.text}</span>
-          </button>
         )}
+        {/* A button, so the text can be edited from the keyboard: Enter edits it. It is the row's
+            handle too: a press that moves drags the row, and Space picks it up, the arrow keys move
+            where it would land (up and down, and right and left between a todo and a step), Space or
+            Enter drops it, Escape puts it back. It stays while the text is edited, hidden, so the row
+            always has its handle. */}
+        <button
+          ref={setText}
+          type="button"
+          className={styles.text}
+          hidden={editing}
+          data-todo-text
+          data-todo-handle
+          aria-label={`Edit ${todo.text}`}
+          aria-describedby={keysId}
+          onClick={(event) => {
+            // The folded steps' figures show the steps when they are clicked: that is what they ask.
+            if (event.target instanceof Element && event.target.closest('[data-figures]') !== null) {
+              if (!guarded(event)) fold?.onToggle()
+              return
+            }
+            setEditing(true)
+          }}
+          onKeyDown={onTextKeyDown}
+        >
+          <span className={styles.strike}>{todo.text}</span>
+          {/* Joined to the last word, so the figures never go onto a line alone. */}
+          {shut && '\u2060'}
+          {shut && (
+            <span
+              className={styles.figures}
+              data-figures
+              data-complete={done === total || undefined}
+              aria-hidden="true"
+            >{`${String(done)}/${String(total)}`}</span>
+          )}
+        </button>
+        <span id={keysId} hidden>
+          {dragWords.instructions}
+        </span>
       </div>
       {/* What else the row does, at its end, where the pointer or the keyboard brings it into view
           (TodoItem.module.css): only an open todo moves and takes steps (an open step under a done
           todo would undo "done flows down"). Their room is always kept. */}
       {open && (move !== undefined || onStep !== undefined) && (
         <div className={styles.actions} data-actions inert={drafting}>
+          {/* First, so that Move and the bin keep their places on every todo: hidden, its room kept, while
+              the steps show, as the button under them adds one then. */}
+          {onStep !== undefined && (
+            <RowTip tip="Add a step">
+              <button
+                type="button"
+                className={[styles.action, styles.add].join(' ')}
+                aria-label={`Add a step to ${todo.text}`}
+                // The step editor takes the keyboard itself.
+                onClick={(event) => {
+                  if (!guarded(event)) onStep()
+                }}
+              >
+                <ListPlus size={16} aria-hidden="true" />
+              </button>
+            </RowTip>
+          )}
           {move !== undefined && (
             <RowTip tip={`Move to ${move.target.name}`}>
               <button
@@ -696,46 +836,7 @@ function TodoRow({
               </button>
             </RowTip>
           )}
-          {onStep !== undefined && (
-            <RowTip tip="Add a step">
-              <button
-                type="button"
-                className={styles.action}
-                aria-label={`Add a step to ${todo.text}`}
-                // The step editor takes the keyboard itself.
-                onClick={(event) => {
-                  if (!guarded(event)) onStep()
-                }}
-              >
-                <ListPlus size={16} aria-hidden="true" />
-              </button>
-            </RowTip>
-          )}
         </div>
-      )}
-      {/* How far along the steps are, just before the bin, so that every todo's lines up: a pie while
-          they show, the figures while they are folded away. The whole of it folds and unfolds them. Folded
-          steps are not on the page, so there is nothing to control. */}
-      {fold !== undefined && counted && (
-        <RowTip tip={fold.folded ? 'Show steps' : 'Hide steps'}>
-          <button
-            type="button"
-            className={styles.fold}
-            data-folded={fold.folded || undefined}
-            data-done={done}
-            data-total={total}
-            data-complete={done === total || undefined}
-            aria-label={`Steps of ${todo.text}`}
-            aria-expanded={!fold.folded}
-            aria-controls={fold.folded ? undefined : fold.stepsId}
-            aria-describedby={countId}
-            onClick={(event) => {
-              if (!guarded(event)) fold.onToggle()
-            }}
-          >
-            <StepCell done={done} total={total} />
-          </button>
-        </RowTip>
       )}
       {/* Any row is deleted, from the very end, the same place on every row, set apart from the rest. */}
       <div className={[styles.actions, styles.bin].join(' ')} data-actions inert={drafting}>
@@ -802,11 +903,11 @@ const COPY_MARGIN_PX = 8
 
 /**
  * What follows the pointer while a row is dragged: a small copy of it, its box and its text on one
- * line, and a todo's count, so that steps it carries can be seen to come along. The row itself stays
+ * line, and a todo's count of steps, so that steps it carries can be seen to come along. The row itself stays
  * where it is, dimmed, and nothing else on the card moves until the drop. The copy sits beside the
  * pointer rather than under it, so it never covers the row aimed at, or the line: below and to the
  * right, or above a finger, and turned the other way at the list's edges rather than pushed back
- * over the pointer. A keyboard drag has no copy: the line and the focused grip say it all. The copy
+ * over the pointer. A keyboard drag has no copy: the line and the focused text say it all. The copy
  * is only to be looked at: the keyboard and screen readers keep the real row.
  */
 export function DraggedCopy({
@@ -922,81 +1023,18 @@ function CopyChip({
   )
 }
 
-/** The pie's size, and the radius of its filled part, inside a ring that is half its colour. */
-const PIE_PX = 16
-const PIE_RADIUS = PIE_PX / 2 - 2.5
-
-function StepPie({ done, total }: { readonly done: number; readonly total: number }) {
-  const centre = PIE_PX / 2
-  const part = done / total
-  // The filled part starts at the top and goes clockwise.
-  const angle = 2 * Math.PI * part - Math.PI / 2
-  const end = `${String(centre + PIE_RADIUS * Math.cos(angle))} ${String(centre + PIE_RADIUS * Math.sin(angle))}`
-  return (
-    <svg
-      width={PIE_PX}
-      height={PIE_PX}
-      viewBox={`0 0 ${String(PIE_PX)} ${String(PIE_PX)}`}
-      aria-hidden="true"
-    >
-      <circle
-        cx={centre}
-        cy={centre}
-        r={PIE_RADIUS + 0.75}
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity={0.5}
-        strokeWidth={1.5}
-      />
-      {part >= 1 ? (
-        <circle cx={centre} cy={centre} r={PIE_RADIUS} fill="currentColor" />
-      ) : (
-        part > 0 && (
-          <path
-            d={`M${String(centre)} ${String(centre)} V${String(centre - PIE_RADIUS)} A${String(PIE_RADIUS)} ${String(PIE_RADIUS)} 0 ${part > 0.5 ? '1' : '0'} 1 ${end} Z`}
-            fill="currentColor"
-          />
-        )
-      )}
-    </svg>
-  )
-}
-
 /**
- * How many of a todo's steps are done, as a pie that fills as they are, on the copy that follows the
- * pointer in a drag. Screen readers hear it in words, from the element `id`; nothing is shown for a
- * todo without steps.
+ * How many of a todo's steps are done, as figures, on the copy that follows the pointer in a drag:
+ * whether its steps show or not, they come along. Screen readers hear it in words, from the element
+ * `id`; nothing is shown for a todo without steps.
  */
 function StepCount({ todo, id }: { readonly todo: Todo; readonly id: string }) {
   const { done, total } = stepProgress(todo)
   if (total === 0) return null
   return (
-    <span className={styles.count}>
-      <StepPie done={done} total={total} />
+    <span className={styles.count} data-complete={done === total || undefined}>
+      {`${String(done)}/${String(total)}`}
       <StepWords id={id} done={done} total={total} />
-    </span>
-  )
-}
-
-/**
- * The steps' cell on a row: the pie, with an arrow down to fold them that shows with the row's
- * buttons, or, while they are folded, an arrow along and the figures, since nothing else on the page
- * then says how many there are. Both are laid in the same place, the one not shown keeping its room,
- * so folding never moves the row's text.
- */
-function StepCell({ done, total }: { readonly done: number; readonly total: number }) {
-  return (
-    <span className={styles.cell} aria-hidden="true">
-      <span className={styles.shut}>
-        <ChevronRight size={14} />
-        <span className={styles.figures}>{`${String(done)}/${String(total)}`}</span>
-      </span>
-      <span className={styles.shown}>
-        <ChevronDown className={styles.chevron} size={14} />
-        <span className={styles.pie}>
-          <StepPie done={done} total={total} />
-        </span>
-      </span>
     </span>
   )
 }

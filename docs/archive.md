@@ -10,6 +10,44 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## An arrow for the fold, and a whole row to add a step (2026-10-04)
+
+- **The fold is a chevron alone; the pie is gone** (`todos/TodoItem.tsx`). Poorya: "the circle
+  needs different ideas, doesn't fit the design". It was the one solid mark on a row of line icons:
+  beside the box it read as a second box, and full, as a status dot. Folded, a faint › stays at
+  rest; unfolded, the slot is empty until the row is pointed at or focused, since the steps below
+  already show they are open, and their boxes how far. The dragged copy shows `1/3` instead.
+  - Not a ring, bar or count in the slot: the same family, or too wide for 20px. Not progress drawn
+    into the checkbox: it must stay a plain box. Not a ⌄ at rest: a mark on every todo with steps.
+- **The space under the steps is one 28px target** (was a 28×20 icon). Poorya: "make the space to
+  click to add row in steps bigger". Pointing at it lights it like a step row and says "Add a
+  step"; at rest it is empty. The space grew 8px so the drop zones, halves of it, still match what is shown.
+  - Not a target hanging out of the 20px space: it would cover the next todo. Not words at rest.
+
+## The pie on the left, no grip, and more steps from below (2026-10-03)
+
+- **The grip is gone, and the steps' pie takes its place before the box** (`todos/TodoItem.tsx`).
+  Poorya: the pie "would work better somewhere on the left side", and the grip can go "as the
+  whole thing is now draggable". The grip's 20px slot stays on every todo, so boxes and step
+  indents do not move, and a todo without steps looks as it did at rest. Pointing at the row turns
+  the pie into a ⌄ (› when folded); touch always shows the chevron. The PO decided the open calls
+  ("let po decide").
+  - Folded, the count follows the text (`1/3`, joined to the last word), since 20px holds a pie but
+    not figures. A click on it unfolds. The steps' cell at the row's end is gone.
+  - Not a hidden grip shown on keyboard focus: it would pop up where the pie now is. Not Alt+arrows:
+    they lose nesting and un-nesting by key.
+- **The keyboard picks a row up from its text:** Space lifts, Enter still edits, and the focus
+  stays on the text after a drop. ←/→ change the day unless a row is lifted.
+- **More steps from below:** a small list-with-a-+ icon under an unfolded todo's last step, in the
+  steps' box column, shown when the todo is pointed at or focused (always on touch). Poorya asked
+  for "an easier way to add more steps ... at the bottom with a small icon". It sits in the 20px
+  gap under the steps and hides during a drag, so dropping after the last step is unchanged.
+  - The row's own add button shows only where the icon below does not (no steps, or folded), so
+    there is one way in at a time. It now comes first at the row's end, so Move and the bin keep
+    one place on every open todo.
+  - The 2026-10-02 line under the steps was "untidy" because it showed at rest, with words; this
+    one is an icon, shown only on pointing or focus.
+
 ## Buttons at the row's end, one click each (2026-10-03)
 
 - **No ⋯: on hover or focus a row shows its actions as icon buttons** (`todos/TodoItem.tsx`):

@@ -1,4 +1,4 @@
-// The pie's colour is read in the page, which needs the DOM types.
+// The count's and the chevron's colours are read in the page, which needs the DOM types.
 /// <reference lib="dom" />
 
 import { expect, test, todo, today } from './daily'
@@ -37,10 +37,11 @@ test.describe('folding steps', () => {
     await expect(daily.chevron('Buy milk')).toHaveCount(0)
     await expect(chevron).toHaveAccessibleName('Steps of Set up CI')
     await expect(chevron).toHaveAccessibleDescription('0 of 3 steps done')
-    // The count is read out with the toggle, not twice with the text as well.
-    await expect(daily.page.getByRole('button', { name: 'Edit Set up CI', exact: true })).not.toHaveAttribute(
-      'aria-describedby'
-    )
+    // The count is read out with the toggle, not twice with the text as well. The text is described,
+    // by how it is moved, but not by the count.
+    const text = daily.page.getByRole('button', { name: 'Edit Set up CI', exact: true })
+    await expect(text).toHaveAccessibleDescription(/^Press Enter to edit, Space to pick up\./)
+    await expect(text).not.toHaveAccessibleDescription(/steps done|of 3/)
     await expect(chevron).toHaveAttribute('aria-expanded', 'true')
     await expect(await controlled()).toHaveCount(1)
     expect(await (await controlled()).evaluate((el) => el.tagName)).toBe('UL')
@@ -96,24 +97,28 @@ test.describe('folding steps', () => {
     expect(path).toContain('Steps of Set up CI')
     expect(path).toContain('Steps of Plan the offsite')
     expect(path.filter((label) => /Pick a date|Book the venue/.test(label))).toEqual([])
-    // On a row, in the order they stand: the text, Move, Add a step, the toggle, then the bin, which ends it.
+    // On a row, in the order they stand: the toggle, the box, the text, Move, Add a step, then the bin,
+    // which ends it.
     const at = (label: string) => path.indexOf(label)
-    expect(at('Edit Plan the offsite')).toBeGreaterThanOrEqual(0)
+    expect(at('Steps of Plan the offsite')).toBeGreaterThanOrEqual(0)
     expect(
       [
-        'Move Plan the offsite to tomorrow',
+        'Done',
+        'Edit Plan the offsite',
         'Add a step to Plan the offsite',
-        'Steps of Plan the offsite',
+        'Move Plan the offsite to tomorrow',
         'Delete Plan the offsite'
-      ].map(at)
-    ).toEqual([1, 2, 3, 4].map((after) => at('Edit Plan the offsite') + after))
+      ].map((label) => path.indexOf(label, at('Steps of Plan the offsite')))
+    ).toEqual([1, 2, 3, 4, 5].map((after) => at('Steps of Plan the offsite') + after))
   })
 
-  test('a click on the pie folds the steps, and a click on the text still edits it', async ({ daily }) => {
-    const pie = await daily.chevron('Set up CI').boundingBox()
-    if (pie === null) throw new Error('The pie of Set up CI is not shown')
+  test('a click on the chevron folds the steps, and a click on the text still edits it', async ({
+    daily
+  }) => {
+    const fold = await daily.chevron('Set up CI').boundingBox()
+    if (fold === null) throw new Error('The fold of Set up CI is not shown')
 
-    await daily.page.mouse.click(pie.x + pie.width / 2, pie.y + pie.height / 2)
+    await daily.page.mouse.click(fold.x + fold.width / 2, fold.y + fold.height / 2)
 
     await expect(daily.chevron('Set up CI')).toHaveAttribute('aria-expanded', 'false')
     await expect(shown(daily, 'Set up CI')).toHaveCount(0)
@@ -204,7 +209,7 @@ test.describe('folding steps', () => {
   })
 
   test('a folded todo that is dragged takes its steps, and stays folded', async ({ daily }) => {
-    await daily.page.getByRole('button', { name: 'Reorder Plan the offsite', exact: true }).focus()
+    await daily.page.getByRole('button', { name: 'Edit Plan the offsite', exact: true }).focus()
     await daily.page.keyboard.press('Space')
     await daily.page.waitForTimeout(150)
     await daily.page.keyboard.press('ArrowUp')
@@ -221,11 +226,44 @@ test.describe('folding steps', () => {
 })
 
 /*
- * The pie (Poorya's pick, a): a small pie at the row's right edge, in one column for every todo, says
- * how many steps are done and is the fold toggle. Its name, aria-expanded and description are the
- * chevron's.
+ * Folded, a todo shows how many of its steps are done right after its text, "1/2". A click on it
+ * shows the steps; a press on it that moves lifts the row, as on the words.
  */
-test.describe('the pie', () => {
+test.describe('the count after a folded todo’s text', () => {
+  test.use({ seed: { [today]: [milk, ci, offsite] } })
+
+  const figures = (daily: Daily) =>
+    daily.line('Plan the offsite').locator('[data-todo-text] > [data-figures]')
+
+  test('a click on it unfolds the steps, and opens no editor', async ({ daily }) => {
+    await expect(figures(daily)).toHaveCount(1)
+    await figures(daily).click()
+    await expect(daily.chevron('Plan the offsite')).toHaveAttribute('aria-expanded', 'true')
+    await expect(shown(daily, 'Plan the offsite')).toHaveText(['Pick a date', 'Book the venue'])
+    await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveCount(0)
+    await expect(figures(daily)).toHaveCount(0)
+  })
+
+  test('a press on it that moves lifts the row, like its words', async ({ daily }) => {
+    const at = await figures(daily).boundingBox()
+    if (at === null) throw new Error('The count of Plan the offsite is not shown')
+    await daily.page.mouse.move(at.x + at.width / 2, at.y + at.height / 2)
+    await daily.page.mouse.down()
+    await daily.page.mouse.move(at.x + at.width / 2, at.y + at.height / 2 + 10, { steps: 6 })
+    await expect(daily.page.locator('li[data-dragging]')).toHaveCount(1)
+    await daily.page.keyboard.press('Escape')
+    await daily.page.mouse.up()
+    await expect(daily.page.locator('li[data-dragging]')).toHaveCount(0)
+    await expect(daily.chevron('Plan the offsite')).toHaveAttribute('aria-expanded', 'false')
+  })
+})
+
+/*
+ * The fold (note 4): a lone chevron in the 20×28 slot at the row's start, before the box, down while
+ * the steps show and turned along while they are folded. No pie: unfolded, the steps' own boxes show
+ * the progress; folded, the count after the text does.
+ */
+test.describe('the fold', () => {
   const LONG =
     'Set up continuous integration for the desktop build and the release pipeline on every platform'
   const long = todo(LONG, 'open', [todo('Write the workflow'), todo('Sign the installers', 'done')])
@@ -245,16 +283,16 @@ test.describe('the pie', () => {
   const line = (daily: Daily, text: string) => daily.row(text).locator(':scope > div')
 
   test('folds and unfolds from the keyboard, with Enter or Space', async ({ daily }) => {
-    const pie = daily.chevron('Set up CI')
-    await pie.focus()
+    const fold = daily.chevron('Set up CI')
+    await fold.focus()
     await daily.page.keyboard.press('Enter')
-    await expect(pie).toHaveAttribute('aria-expanded', 'false')
+    await expect(fold).toHaveAttribute('aria-expanded', 'false')
     await expect(shown(daily, 'Set up CI')).toHaveCount(0)
-    await expect(pie).toBeFocused()
+    await expect(fold).toBeFocused()
     await daily.page.keyboard.press('Space')
-    await expect(pie).toHaveAttribute('aria-expanded', 'true')
+    await expect(fold).toHaveAttribute('aria-expanded', 'true')
     await expect(shown(daily, 'Set up CI')).toHaveCount(3)
-    await expect(pie).toHaveAccessibleDescription('0 of 3 steps done')
+    await expect(fold).toHaveAccessibleDescription('0 of 3 steps done')
     await expect.poll(async () => await saved(daily, 'Set up CI')).not.toHaveProperty('folded')
   })
 
@@ -262,7 +300,7 @@ test.describe('the pie', () => {
     [1000, 700],
     [640, 420]
   ] as const) {
-    test(`every pie is in one column at the row’s right edge, at ${String(width)} wide`, async ({
+    test(`every fold is in one column at the row’s start, before its box, at ${String(width)} wide`, async ({
       daily
     }) => {
       await daily.app.evaluate(
@@ -275,31 +313,32 @@ test.describe('the pie', () => {
       const at = await Promise.all(
         texts.map(async (text) => ({
           text,
-          pie: await boxOf(daily.chevron(text)),
-          row: await boxOf(line(daily, text))
+          fold: await boxOf(daily.chevron(text)),
+          row: await boxOf(line(daily, text)),
+          box: await boxOf(daily.box(text))
         }))
       )
       const where = JSON.stringify(at)
       const first = at[0]
-      if (first === undefined) throw new Error('No pies')
-      for (const { pie, row } of at) {
-        expect(Math.abs(pie.x + pie.width - (first.pie.x + first.pie.width)), where).toBeLessThanOrEqual(1)
-        expect(Math.abs(pie.width - first.pie.width), where).toBeLessThanOrEqual(1)
-        // Inside its own row, at the end.
-        expect(pie.x + pie.width, where).toBeLessThanOrEqual(row.x + row.width + 1)
-        expect(pie.x, where).toBeGreaterThan(row.x + row.width / 2)
+      if (first === undefined) throw new Error('No folds')
+      for (const { fold, row, box } of at) {
+        expect(Math.abs(fold.x - first.fold.x), where).toBeLessThanOrEqual(1)
+        expect(Math.abs(fold.width - first.fold.width), where).toBeLessThanOrEqual(1)
+        // Inside its own row, at the start, before the box.
+        expect(fold.x, where).toBeGreaterThanOrEqual(row.x - 1)
+        expect(fold.x + fold.width, where).toBeLessThanOrEqual(box.x + 1)
       }
     })
   }
 
-  test('nothing moves when a row is pointed at: not the rows, the text or the pies', async ({ daily }) => {
+  test('nothing moves when a row is pointed at: not the rows, the text or the folds', async ({ daily }) => {
     const measure = () =>
       Promise.all(
         [...texts, 'Buy milk'].map(async (text) => ({
           text,
           row: await boxOf(line(daily, text)),
           label: await boxOf(daily.page.getByRole('button', { name: `Edit ${text}`, exact: true })),
-          pie: text === 'Buy milk' ? null : await boxOf(daily.chevron(text))
+          fold: text === 'Buy milk' ? null : await boxOf(daily.chevron(text))
         }))
       )
     await daily.page.mouse.move(0, 0)
@@ -313,18 +352,20 @@ test.describe('the pie', () => {
     }
   })
 
-  test('it counts in its own colour: green when every step is done and the todo is open, faint when done', async ({
+  test('the count after the text takes its own colour: green when every step is done and the todo is open, faint when done', async ({
     daily
   }) => {
-    /** The fold, which says how many steps are done, and the pie or the figures it shows. */
-    const pie = (text: string) => daily.chevron(text)
-    /** The pie's colour (or, folded, the figures'), and the tokens' it may take, as the page computes them. */
+    /** The fold, which knows how many steps are done. */
+    const fold = (text: string) => daily.chevron(text)
+    /**
+     * The colour of the count after a folded todo's text and of its chevron, and the tokens' they may
+     * take, as the page computes them.
+     */
     const colours = (text: string) =>
-      pie(text).evaluate((fold) => {
-        const element = fold.querySelector(
-          fold.hasAttribute('data-folded') ? '[class*="_figures_"]' : '[class*="_pie_"]'
-        )
-        if (element === null) throw new Error('The fold shows nothing')
+      line(daily, text).evaluate((row) => {
+        const element = row.querySelector('[data-todo-text] > [data-figures]')
+        const chevron = row.querySelector('[aria-label^="Steps of "] svg')
+        if (element === null || chevron === null) throw new Error('The row shows no count')
         const token = (name: string) => {
           const probe = document.createElement('span')
           probe.style.color = `var(${name})`
@@ -334,56 +375,65 @@ test.describe('the pie', () => {
           return value
         }
         return {
-          pie: getComputedStyle(element).color,
+          count: getComputedStyle(element).color,
+          chevron: getComputedStyle(chevron).color,
           done: token('--done'),
           muted: token('--text-muted'),
           faint: token('--text-faint')
         }
       })
     const counted = async (text: string, done: number, total: number, complete: boolean) => {
-      await expect(pie(text)).toHaveAttribute('data-done', String(done))
-      await expect(pie(text)).toHaveAttribute('data-total', String(total))
-      if (complete) await expect(pie(text)).toHaveAttribute('data-complete')
-      else await expect(pie(text)).not.toHaveAttribute('data-complete')
+      await expect(fold(text)).toHaveAttribute('data-done', String(done))
+      await expect(fold(text)).toHaveAttribute('data-total', String(total))
+      if (complete) await expect(fold(text)).toHaveAttribute('data-complete')
+      else await expect(fold(text)).not.toHaveAttribute('data-complete')
       await expect(daily.chevron(text)).toHaveAccessibleDescription(
         `${String(done)} of ${String(total)} steps done`
       )
+    }
+    /** Folds `text`, then takes the pointer and the keyboard away, as a hover takes the buttons' colour. */
+    const foldAway = async (text: string) => {
+      if ((await fold(text).getAttribute('data-folded')) === null) await fold(text).click()
+      await expect(fold(text)).toHaveAttribute('data-folded')
+      await daily.page.mouse.move(0, 0)
+      await daily.input.focus()
+      // Past the colours' fade.
+      await daily.page.waitForTimeout(300)
     }
     await counted('Set up CI', 0, 3, false)
     await counted(LONG, 1, 2, false)
     await counted('Paint the fence', 2, 2, true)
     await counted('Clean the house', 2, 2, true)
-    await expect(daily.step('Buy paint').locator('[class*="_pie_"]')).toHaveCount(0)
-    await expect(daily.row('Buy milk').locator('[class*="_pie_"]')).toHaveCount(0)
+    // No pie anywhere: not on a todo, a step or a plain todo.
+    await expect(daily.page.locator('[class*="_pie_"]')).toHaveCount(0)
+    await expect(daily.step('Buy paint').getByRole('button', { name: /^Steps of / })).toHaveCount(0)
 
+    // Folded, the count after the text is muted, green when all are done on an open todo, faint when
+    // done; the chevron is faint at rest.
+    await foldAway(LONG)
     const part = await colours(LONG)
-    expect(part.pie, JSON.stringify(part)).toBe(part.muted)
-    await expect.poll(async () => (await colours('Paint the fence')).pie).toBe(part.done)
+    expect(part.count, JSON.stringify(part)).toBe(part.muted)
+    expect(part.chevron, JSON.stringify(part)).toBe(part.faint)
     expect(part.done).not.toBe(part.muted)
     expect(part.faint).not.toBe(part.muted)
-    await expect.poll(async () => (await colours('Clean the house')).pie).toBe(part.faint)
+    for (const [text, colour] of [
+      ['Paint the fence', part.done],
+      ['Clean the house', part.faint]
+    ] as const) {
+      await foldAway(text)
+      await expect.poll(async () => (await colours(text)).count, `${text} folded`).toBe(colour)
+      await expect.poll(async () => (await colours(text)).chevron, `${text}’s chevron`).toBe(part.faint)
+    }
 
-    // Checking its last open step makes a todo's pie green; it stays in the column.
+    // Checking its last open step makes a todo's count green; the fold stays in its column.
     const before = await boxOf(daily.chevron('Set up CI'))
     for (const step of ['Add the workflow file', 'Fix the lint errors', 'Cache the dependencies']) {
       await daily.box(step).check()
     }
     await counted('Set up CI', 3, 3, true)
-    await expect.poll(async () => (await colours('Set up CI')).pie).toBe(part.done)
     expect(await boxOf(daily.chevron('Set up CI'))).toEqual(before)
-
-    // Folded, the figures take the same colours: muted, green when all are done on an open todo, faint when done.
-    for (const [text, colour] of [
-      [LONG, part.muted],
-      ['Paint the fence', part.done],
-      ['Clean the house', part.faint]
-    ] as const) {
-      await daily.chevron(text).click()
-      await expect(daily.chevron(text)).toHaveAttribute('data-folded')
-      // Pointed at, it takes the buttons' hover colour: away from it, its own.
-      await daily.page.mouse.move(0, 0)
-      await daily.input.focus()
-      await expect.poll(async () => (await colours(text)).pie, `${text} folded`).toBe(colour)
-    }
+    await foldAway('Set up CI')
+    await expect.poll(async () => (await colours('Set up CI')).count).toBe(part.done)
+    expect(await boxOf(daily.chevron('Set up CI'))).toEqual(before)
   })
 })

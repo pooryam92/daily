@@ -29,12 +29,13 @@ app is built on.
 - **Days.** The app opens on today. The day before and the day after peek out behind it; move with
   the arrow keys, the arrow buttons, a drag or a two-finger swipe, and come back with "Back to
   today". Todos can be added to any day, past or future.
-- **Edit, reorder, move, delete.** Click a todo's text to edit it and drag its grip to reorder it.
+- **Edit, reorder, move, delete.** Click a todo's text to edit it and drag it to reorder it.
   The buttons at the end of its row move it to tomorrow or delete it, with six seconds to undo.
   All of it works from the keyboard.
-- **Steps.** "Add a step" at the end of a todo's row writes steps under it. A small pie there
-  fills as they are done, and folds them away when clicked, leaving a count like `› 1/3`. Drag a
-  todo onto another to make it a step.
+- **Steps.** "Add a step" at the end of a todo's row writes steps under it, and the row under the
+  last one adds more. An arrow before the checkbox folds them away when clicked, leaving a count
+  like `1/3` after the text. Drag a todo onto another to make
+  it a step.
 - **Light and dark,** following the system or set by hand, and optional sounds. Both are behind the
   gear in the bottom-left corner.
 

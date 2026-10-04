@@ -46,8 +46,8 @@ test('a todo is planned for tomorrow', async ({ daily }) => {
   await expect(daily.row('Dentist, 9:30')).toBeVisible()
   // Any day but today moves its todos to today.
   expect(await daily.actions('Dentist, 9:30')).toEqual([
-    'Move Dentist, 9:30 to today',
     'Add a step to Dentist, 9:30',
+    'Move Dentist, 9:30 to today',
     'Delete Dentist, 9:30'
   ])
   await expect.poll(() => daily.todos()).toMatchObject({ [day(1)]: [{ text: 'Dentist, 9:30' }] })

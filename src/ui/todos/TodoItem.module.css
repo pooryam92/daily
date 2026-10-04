@@ -47,10 +47,12 @@
 
 /*
  * A todo that is being dragged stays in its place, steps and all, faded, while a small copy of it
- * follows the pointer (`DraggedCopy`). Its grip keeps its strength, so a keyboard drag's focus ring
- * does too. A filter, not opacity: the steps' list is animated by Motion, which holds its opacity.
+ * follows the pointer (`DraggedCopy`). Its text fades but not the text's button, so a keyboard drag's
+ * focus ring keeps its strength. A filter, not opacity: the steps' list is animated by Motion, which
+ * holds its opacity.
  */
-:is(.todo, .step)[data-dragging] > .row > :not(.handle),
+:is(.todo, .step)[data-dragging] > .row > :not(.label),
+:is(.todo, .step)[data-dragging] > .row > .label > .text > *,
 .todo[data-dragging] > .steps {
   filter: opacity(0.4);
 }
@@ -96,34 +98,35 @@
   background-size: 100% 1px;
 }
 
-/* Only the pie, after the text. */
+/* Only the steps' figures, after the text, 8px from it as on a folded row, with the chip's gap. */
 .chip .count {
-  margin-inline-start: var(--space-2);
+  margin-inline-start: calc(var(--space-2) - var(--space-1));
+}
+
+.chip[data-status='open'] .count[data-complete] {
+  color: var(--done);
+}
+
+.chip[data-status='done'] .count {
+  color: var(--text-faint);
 }
 
 /*
- * The room under a todo's last step: empty, short of a step's height, so the steps end before the
- * next todo begins. The step editor opens in its place, and a row dragged over it goes to the end of
- * the steps or after the todo, by the half it is over.
+ * The room under a todo's last step: short of a step's height, so the steps end before the next todo
+ * begins, and all of it the button that adds a step. The step editor opens in its place, and a row
+ * dragged over it goes to the end of the steps or after the todo, by the half it is over.
  */
 .stepSpace {
-  height: 20px;
+  height: 28px;
 }
 
 /*
- * While a row is dragged nothing else on the card answers the pointer: no hover background, grip,
- * buttons or names over the line and the tint (RowTip.module.css). The card says it is sorting
- * (DayCard.tsx).
+ * While a row is dragged nothing else on the card answers the pointer: no hover background, buttons
+ * or names over the line and the tint (RowTip.module.css). The card says it is sorting (DayCard.tsx).
  */
 [data-sorting] .row:hover,
 [data-sorting] .row :is(label, .fold):hover {
   background: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-sorting] :is(.todo, .step):not([data-dragging]) > .row:hover .grip {
-    opacity: 0;
-  }
 }
 
 /* While a row is dragged, the todo it would go into as its last step: its row and steps together. */
@@ -152,54 +155,17 @@
 }
 
 /*
- * The handle for reordering, by pointer and keyboard. Its slot is always there, so the list does
- * not shift when the grip appears. 20 by 28px beside the 28px checkbox (WCAG 2.5.8 counts spacing).
+ * The slot at the start of every row, 20 by 28px beside the 28px checkbox, so that every box, a
+ * step's too, is in the same place. It is empty but on a todo with steps, where it holds their fold.
  */
-.handle {
-  display: grid;
-  place-items: center;
+.slot {
   flex: none;
   width: 20px;
   height: 28px;
-  border-radius: var(--radius-sm);
-  color: var(--text-faint);
-  cursor: grab;
-  /* A finger that lands here drags the row, not the list. */
-  touch-action: none;
-  transition: color var(--duration-fast) var(--ease-out);
-}
-
-/* No press feedback: what is pressed here is about to move as a whole. */
-.handle:active {
-  scale: none;
-}
-
-.handle:hover {
-  color: var(--text);
-}
-
-.grip {
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-/* The grip waits for the row to be hovered, but only where hovering exists: on touch it stays. */
-@media (hover: hover) and (pointer: fine) {
-  .grip {
-    opacity: 0;
-  }
-
-  :is(.row:hover, :is(.todo, .step)[data-dragging] > .row) .grip,
-  .handle:focus-visible .grip {
-    opacity: 1;
-  }
 }
 
 /* While the text is edited the row is a field: nothing else is offered. */
-.row[data-editing] .handle {
-  visibility: hidden;
-}
-
-.row[data-editing] > :is(.actions, .fold) {
+.row[data-editing] > .actions {
   visibility: hidden;
 }
 
@@ -259,21 +225,16 @@
 }
 
 /*
- * The row's end: its buttons, the steps' cell and the bin, in the row's flow, so the text always leaves
- * them their room and nothing moves when they show.
+ * The row's end: its buttons and the bin, in the row's flow, so the text always leaves them their
+ * room and nothing moves when they show.
  */
 .actions {
   flex: none;
   display: flex;
 }
 
-/* The steps' cell follows the last button with no more room than its own padding. */
-.actions + .fold {
-  margin-inline-start: calc(-1 * var(--space-1));
-}
-
 /* Deleting stands apart from everything else on the row: 16px from it. */
-:is(.actions, .fold) + .bin {
+.actions + .bin {
   margin-inline-start: calc(var(--space-4) - var(--space-1));
 }
 
@@ -295,22 +256,19 @@
   background: var(--hover-strong);
 }
 
-/*
- * Where there is a mouse the buttons, and the arrow that folds steps away, wait for their row to be
- * pointed at or to hold the keyboard's focus; a click's focus is not kept, so they do not linger once
- * the pointer has left. On touch they are always there.
- */
-@media (hover: hover) and (pointer: fine) {
-  .row:not(:hover, :has(:focus-visible)) > .actions,
-  .row:not(:hover, :has(:focus-visible)) .chevron {
-    opacity: 0;
-  }
+/* While a todo's steps show, the way to another is under them; its room on the row is kept. */
+.row[data-steps]:not([data-folded]) .add {
+  visibility: hidden;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .actions,
-  .chevron {
-    transition: opacity var(--duration-fast) var(--ease-out);
+/*
+ * Where there is a mouse the buttons, and the way to another step, wait for their row, or their todo,
+ * to be pointed at or to hold the keyboard's focus; a click's focus is not kept, so they do not linger
+ * once the pointer has left. On touch they are always there.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .row:not(:hover, :has(:focus-visible)) > .actions {
+    opacity: 0;
   }
 }
 
@@ -322,10 +280,16 @@
 /*
  * They stay hidden while a row is dragged, and after a click took a row away until the pointer moves
  * (clickGuard.ts): the buttons that close up under a still pointer must not look ready for a second
- * click.
+ * click. The way to another step is not there at all then, nor while the todo's text is edited: while
+ * a row is dragged, the room under the steps is only where it goes to the end of them.
  */
-:is([data-sorting], [data-guard]) :is(.actions, .chevron) {
+:is([data-sorting], [data-guard]) .actions {
   opacity: 0;
+}
+
+:is([data-sorting], [data-guard]) .more,
+.todo:has(> .row[data-editing]) .more {
+  visibility: hidden;
 }
 
 :is([data-sorting], [data-guard]) .action:hover {
@@ -333,85 +297,160 @@
 }
 
 /*
- * The steps' cell (`StepCell`): one target, 28px high, as wide as the figures need, the same folded or
- * not. The pie and the figures end the row the same way on every todo.
+ * The button that is the room under a todo's last step (`StepSpace`), shaped like a step's row. Where
+ * there is a mouse it shows nothing at rest; its icon, under the steps' boxes, while the todo is
+ * pointed at or holds the keyboard's focus; and its words, beside the icon, and a step row's hover,
+ * while it is pointed at or focused itself. On touch the icon is always there, and the words never.
  */
-.fold {
-  flex: none;
-  height: 28px;
-  padding: 0 var(--space-1) 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out),
-    scale var(--duration-fast) var(--ease-out);
-}
-
-.cell {
-  display: grid;
-  height: 100%;
-}
-
-.shut,
-.shown {
-  grid-area: 1 / 1;
+.more {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: 11px;
+  width: 100%;
+  height: 28px;
+  padding: 0 0 0 35px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
 }
 
-.shut {
-  gap: 2px;
+/* No press feedback: the step editor takes its place at once. */
+.more:active {
+  scale: none;
 }
 
-.fold[data-folded] .shown,
-.fold:not([data-folded]) .shut {
-  visibility: hidden;
+.moreIcon {
+  flex: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .moreIcon,
+  .moreWords {
+    opacity: 0;
+  }
+
+  .todo:is(:hover, :has(:focus-visible)) > .steps .moreIcon,
+  .more:is(:hover, :focus-visible) :is(.moreIcon, .moreWords) {
+    opacity: 1;
+  }
+
+  .more:is(:hover, :focus-visible) {
+    background: var(--hover);
+  }
+}
+
+@media not ((hover: hover) and (pointer: fine)) {
+  .moreWords {
+    display: none;
+  }
+}
+
+/*
+ * The fold, at the row's start: an arrow, down while the steps show and along while they are folded.
+ * It is faint, and stronger while its row is pointed at or holds the keyboard's focus. Folded, it is
+ * always there: steps are hidden here. While they show, the steps under it say so, and the arrow
+ * waits for the row, where there is a mouse; on touch it is always there.
+ */
+.fold {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
 }
 
 .fold svg {
   display: block;
 }
 
-.figures {
-  font-size: var(--text-xs);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.fold[data-folded] .chevron {
+  rotate: -90deg;
 }
 
-/* The pie sits a little further in than the figures, which reach the row's last 8px. */
-.pie {
-  margin-inline-end: 2px;
+@media (hover: hover) and (pointer: fine) {
+  .fold:not([data-folded]) .chevron {
+    opacity: 0;
+  }
+
+  .row:is(:hover, :has(:focus-visible)) > .fold {
+    color: var(--text-muted);
+  }
+
+  .row:is(:hover, :has(:focus-visible)) .chevron {
+    opacity: 1;
+  }
 }
 
-/* Every step is done and the todo is still open: what is left is to check it. */
-.row[data-status='open'] .fold[data-complete] :is(.figures, .pie) {
-  color: var(--done);
-}
-
-.row[data-status='done'] .fold {
+.row[data-status='done'] > .fold {
   color: var(--text-faint);
 }
 
-/* Not while a row is dragged, or while clicks are held off. */
-.row:not(:is([data-sorting], [data-guard]) *) > .fold:hover,
-.row:not(:is([data-sorting], [data-guard]) *) > .fold:hover :is(.figures, .pie) {
-  color: var(--text);
-}
-
+/* Not while a row is dragged, or while clicks are held off: then only a folded todo's arrow stays. */
 .row:not(:is([data-sorting], [data-guard]) *) > .fold:hover {
+  color: var(--text);
   background: var(--hover-strong);
 }
 
-/* The pie alone, on the copy of a row that follows the pointer. */
-.count {
-  display: block;
+:is([data-sorting], [data-guard]) .row > .fold {
+  color: var(--text-faint);
+}
+
+:is([data-sorting], [data-guard]) .fold:not([data-folded]) .chevron {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .actions,
+  .moreIcon,
+  .moreWords {
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .more {
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .fold {
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .chevron {
+    transition:
+      opacity var(--duration-fast) var(--ease-out),
+      rotate var(--duration-fast) var(--ease-out);
+  }
+}
+
+/* While the text is edited the row is a field: nothing else is offered. */
+.row[data-editing] > .fold {
+  visibility: hidden;
+}
+
+/* The folded steps' figures, after the text, in figures of one width so they do not shift. */
+.figures {
+  margin-inline-start: var(--space-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   color: var(--text-muted);
 }
 
-.count svg {
-  display: block;
+/* Every step is done and the todo is still open: what is left is to check it. */
+.row[data-status='open'] .figures[data-complete] {
+  color: var(--done);
+}
+
+.row[data-status='done'] .figures {
+  color: var(--text-faint);
+}
+
+/* The steps' figures on the copy of a row that follows the pointer, as on a folded row. */
+.count {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-muted);
 }
 
 /* Read out, not shown: "1 of 3 steps done" instead of "1 slash 3". */

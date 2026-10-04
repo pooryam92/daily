@@ -507,8 +507,8 @@ export function atOwnPlace(ordered: readonly Todo[], dragged: Dragged, drop: Dro
 /** What a drag says, in the row's own words: never its id. */
 export const dragWords = {
   instructions:
-    'Press Space to pick up. Up and Down arrows move it. Right arrow makes it a step of the todo above, ' +
-    'Left arrow a todo again. Space drops it, Escape cancels.',
+    'Press Enter to edit, Space to pick up. Up and Down arrows move it. Right arrow makes it a step of the ' +
+    'todo above, Left arrow a todo again. Space drops it, Escape cancels.',
 
   pickedUp(ordered: readonly Todo[], settled: ReadonlySet<string>, row: HeldRow, text: string): string {
     const parent = row.parentId === undefined ? '' : ` of ${textOf(ordered, row.parentId)}`

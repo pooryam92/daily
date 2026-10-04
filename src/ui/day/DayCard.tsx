@@ -14,7 +14,6 @@ import { dayProgress } from '@/domain/todo-rules'
 import { AddTodoForm } from '../todos/AddTodoForm'
 import styles from './DayCard.module.css'
 import { ProgressRing } from './ProgressRing'
-import { dragWords } from './rowDrag'
 import { useRowDrag } from './useRowDrag'
 import { DraggedCopy, TODO_SENSORS, TodoItem } from '../todos/TodoItem'
 import { RowMenus } from '../todos/RowMenu'
@@ -54,15 +53,7 @@ interface DayCardProps {
  * The drag library adds its styles as a <style> element, which the built page's CSP only lets
  * through with the nonce of that build (vite.config.mts).
  */
-const DRAG_PLUGINS = [
-  StyleInjector.configure({ nonce: __STYLE_NONCE__ }),
-  // The library would name a dragged row by its id. It still tells how to drag; what a drag does is
-  // said by the card, in the row's own words.
-  Accessibility.configure({
-    announcements: { dragstart: () => undefined, dragend: () => undefined },
-    screenReaderInstructions: { draggable: dragWords.instructions }
-  })
-]
+const DRAG_PLUGINS = [StyleInjector.configure({ nonce: __STYLE_NONCE__ })]
 
 /**
  * A todo's part in the key that says when rows are measured: its id, and while its steps show (while
@@ -128,7 +119,7 @@ export function DayCard({
   const order = ordered.map((todo) => layoutKey(todo, drafting)).join()
   const [list, setList] = useState<HTMLUListElement | null>(null)
 
-  const { drop, line, regrip, said, handlers } = useRowDrag({ ordered, settled, list, setDragging, onPlace })
+  const { drop, line, refocus, said, handlers } = useRowDrag({ ordered, settled, list, setDragging, onPlace })
   // The todo a row let go here would be a step of: into it, as its last step, or at a step's line,
   // whose todo may be scrolled out of view. A todo's line tints nothing.
   const tinted = drop?.line?.depth === 'todo' ? undefined : drop?.parentId
@@ -257,9 +248,12 @@ export function DayCard({
               it would land. */}
           <RowMenus front={inFront}>
             <DragDropProvider
-              // The card scrolls its list itself, only from the faded edges (useRowDrag.ts).
+              // The card scrolls its list itself, only from the faded edges (useRowDrag.ts). Nor does
+              // the library speak: it would name a dragged row by its id, and make the row's text, its
+              // handle, a "draggable" toggle. The text tells how to drag (TodoItem.tsx), and what a drag
+              // does is said by the card, in the row's own words.
               plugins={(defaults) => [
-                ...defaults.filter((plugin) => plugin !== AutoScroller),
+                ...defaults.filter((plugin) => plugin !== AutoScroller && plugin !== Accessibility),
                 ...DRAG_PLUGINS
               ]}
               sensors={TODO_SENSORS}
@@ -286,7 +280,7 @@ export function DayCard({
                       addingStep={drafting === todo.id}
                       onToggleFold={onToggleFold}
                       dropTarget={tinted === todo.id}
-                      regrip={regrip}
+                      refocus={refocus}
                       onAddingStep={(open) => {
                         // Only the todo whose step editor is open closes it: another may have opened since.
                         setDrafting((current) => (open ? todo.id : current === todo.id ? null : current))

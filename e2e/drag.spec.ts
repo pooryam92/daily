@@ -118,8 +118,9 @@ async function steady(daily: Daily, before: Rows, when: string): Promise<void> {
   expect(moved, when).toEqual([])
 }
 
-const grip = (daily: Daily, text: string) =>
-  daily.page.getByRole('button', { name: `Reorder ${text}`, exact: true })
+/** A row's text, which is also what lifts it: by the pointer after 5px, by Space from the keyboard. */
+const handle = (daily: Daily, text: string) =>
+  daily.page.getByRole('button', { name: `Edit ${text}`, exact: true })
 
 interface Held {
   readonly text: string
@@ -143,8 +144,9 @@ async function still(daily: Daily): Promise<void> {
 }
 
 /**
- * How the source row shows: how opaque its text, its grip and its steps look, counting opacity and
- * opacity filters on every element up from each (Motion holds the row's own opacity).
+ * How the source row shows: how opaque its text button, its box and its steps look, counting opacity
+ * and opacity filters on every element up from each (Motion holds the row's own opacity). The dimming
+ * spares the text button, so a focus ring on it keeps its strength.
  */
 const dimmed = (daily: Daily) =>
   daily.page.evaluate(() => {
@@ -164,25 +166,26 @@ const dimmed = (daily: Daily) =>
     return {
       label: label?.getAttribute('aria-label'),
       text: shown(label),
-      grip: shown(line?.querySelector('[data-todo-handle]')),
+      words: shown(label?.querySelector('span')),
+      box: shown(line?.querySelector('input[type="checkbox"] + svg')),
       steps: shown(li?.querySelector(':scope ul'))
     }
   })
 
 /**
- * Picks `text` up by its grip with the pointer. The row stays where it was, dimmed, and a copy
+ * Picks `text` up by its words with the pointer. The row stays where it was, dimmed, and a copy
  * follows the pointer.
  */
 async function pickUp(daily: Daily, text: string): Promise<Held> {
   // For a moment after a drop a moved row is there twice, one leaving and one arriving.
-  await expect(grip(daily, text)).toHaveCount(1)
+  await expect(handle(daily, text)).toHaveCount(1)
   // A row below the list's visible bottom is under whatever is drawn there: bring it into view.
-  await grip(daily, text).scrollIntoViewIfNeeded()
+  await handle(daily, text).scrollIntoViewIfNeeded()
   await still(daily)
   const before = await measure(daily)
-  const box = await grip(daily, text).boundingBox()
-  if (box === null) throw new Error(`The grip of ${text} is not shown`)
-  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const box = await handle(daily, text).locator('span').first().boundingBox()
+  if (box === null) throw new Error(`The words of ${text} are not shown`)
+  const point = { x: box.x + Math.min(8, box.width / 2), y: box.y + box.height / 2 }
   await daily.page.mouse.move(point.x, point.y)
   await daily.page.mouse.down()
   point.y += 10
@@ -193,7 +196,8 @@ async function pickUp(daily: Daily, text: string): Promise<Held> {
   await steady(daily, before, `${text} picked up`)
   const dim = await dimmed(daily)
   expect(dim.label).toBe(`Edit ${text}`)
-  expect(dim.text, 'the source row’s text').toBeCloseTo(0.4, 1)
+  expect(dim.box, 'the source row’s box').toBeCloseTo(0.4, 1)
+  expect(dim.words, 'the source row’s words').toBeCloseTo(0.4, 1)
   if (dim.steps !== undefined) expect(dim.steps, 'the source row’s steps').toBeCloseTo(0.4, 1)
   await copyFollows(daily, held)
   return held
@@ -311,25 +315,30 @@ async function listen(daily: Daily): Promise<() => Promise<string[]>> {
 const begins = (words: string) => new RegExp(`^${words.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
 
 /**
- * Focuses a row's grip once the row is there only once. For a moment after a drop it is there more
- * than once (the copy leaving, the row arriving), and a grip focused then does not pick up.
+ * Focuses a row's text once the row is there only once. For a moment after a drop it is there more
+ * than once (the copy leaving, the row arriving), and a text focused then does not pick up.
  */
 async function hold(daily: Daily, text: string): Promise<void> {
-  await expect(grip(daily, text)).toHaveCount(1)
+  await expect(handle(daily, text)).toHaveCount(1)
   await daily.page.waitForTimeout(500)
-  await grip(daily, text).focus()
+  await handle(daily, text).focus()
 }
 
-/** Picks a row up by its grip from the keyboard, presses `keys` one by one, and drops it with Space. */
+/** Picks a row up by its text from the keyboard, presses `keys` one by one, and drops it with Space. */
 async function carry(daily: Daily, text: string, keys: readonly string[], during = () => Promise.resolve()) {
   await hold(daily, text)
   await daily.page.keyboard.press('Space')
   await daily.page.waitForTimeout(150)
-  // No copy for the keyboard: the dimmed row, the line and the focus on its grip carry it.
+  // No copy for the keyboard: the lifted row, the line and the focus on its text carry it.
   await expect(daily.page.locator(COPY)).toHaveCount(0)
+  await expect(daily.page.locator('li[data-dragging]')).toHaveCount(1)
   const dim = await dimmed(daily)
-  expect.soft(dim.text, `${text}'s text`).toBeCloseTo(0.4, 1)
-  expect.soft(dim.grip, `${text}'s focused grip`).toBe(1)
+  expect.soft(dim.label, `${text} lifted`).toBe(`Edit ${text}`)
+  // Dimmed like a pointer drag, all but the focused text, whose focus ring keeps its strength.
+  expect.soft(dim.box, `${text}'s box`).toBeCloseTo(0.4, 1)
+  expect.soft(dim.words, `${text}'s words`).toBeCloseTo(0.4, 1)
+  expect.soft(dim.text, `${text}'s focused text`).toBe(1)
+  await expect(handle(daily, text)).toBeFocused()
   for (const key of keys) {
     await daily.page.keyboard.press(key)
     await daily.page.waitForTimeout(350)
@@ -728,6 +737,40 @@ test.describe('dropping a row onto a row', () => {
       await daily.page.mouse.up()
       await unchanged(daily, on(seed))
       await steady(daily, again.before, 'after a release outside the list')
+    })
+
+    test('the copy of a todo with steps says how many are done, folded or not; a plain todo’s says nothing, and no pie anywhere', async ({
+      daily
+    }) => {
+      /** The words seen on the copy: text in elements bigger than a pixel, so not reader-only text. */
+      const copyWords = () =>
+        daily.page.locator(COPY).evaluate((chip) =>
+          [chip, ...chip.querySelectorAll('*')]
+            .filter((el) => {
+              const { width, height } = el.getBoundingClientRect()
+              return width > 1 && height > 1
+            })
+            .flatMap((el) => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE))
+            .map((node) => node.textContent?.trim() ?? '')
+            .filter((text) => text !== '')
+            .join(' ')
+        )
+      for (const [text, shown] of [
+        ['Set up CI', 'Set up CI 0/3'],
+        ['Clean the house', 'Clean the house 0/2'],
+        ['Buy milk', 'Buy milk']
+      ] as const) {
+        const held = await pickUp(daily, text)
+        expect(await copyWords(), text).toBe(shown)
+        await expect(daily.page.locator('[class*="_pie_"]'), text).toHaveCount(0)
+        await daily.page.keyboard.press('Escape')
+        await daily.page.mouse.up()
+        await expect(daily.page.locator('li[data-dragging]')).toHaveCount(0)
+        await steady(daily, held.before, `after ${text}`)
+      }
+      // Clean the house stays folded: its steps came along without showing.
+      await expect(daily.chevron('Clean the house')).toHaveAttribute('aria-expanded', 'false')
+      await unchanged(daily, on(seed))
     })
 
     test('a drop cannot be undone', async ({ daily }) => {
@@ -1226,16 +1269,16 @@ test.describe('dropping a row onto a row', () => {
       await unchanged(daily, on(seed))
     })
 
-    test('a keyboard drop leaves the focus on the grip of the row it moved', async ({ daily }) => {
+    test('a keyboard drop leaves the focus on the text of the row it moved', async ({ daily }) => {
       await carry(daily, 'Do the taxes', ['ArrowUp'])
-      await expect.poll(() => focused(daily)).toBe('Reorder Do the taxes')
+      await expect.poll(() => focused(daily)).toBe('Edit Do the taxes')
       await carry(daily, 'Water the plants', ['ArrowRight'])
-      await expect.poll(() => focused(daily)).toBe('Reorder Water the plants')
+      await expect.poll(() => focused(daily)).toBe('Edit Water the plants')
       // Held for a while, as a keyboard user would before the next key.
       await daily.page.waitForTimeout(1000)
-      expect(await focused(daily)).toBe('Reorder Water the plants')
+      expect(await focused(daily)).toBe('Edit Water the plants')
       await carry(daily, 'Water the plants', ['ArrowLeft'])
-      await expect.poll(() => focused(daily)).toBe('Reorder Water the plants')
+      await expect.poll(() => focused(daily)).toBe('Edit Water the plants')
     })
   })
 })
@@ -1254,11 +1297,11 @@ test.describe('dragging a row', () => {
         }
         await daily.page.waitForTimeout(700)
       }
-      const box = await grip(daily, 'Do the taxes').boundingBox()
-      if (box === null) throw new Error('The grip of Do the taxes is not shown')
+      const box = await handle(daily, 'Do the taxes').locator('span').first().boundingBox()
+      if (box === null) throw new Error('The words of Do the taxes are not shown')
       await daily.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
       await daily.page.mouse.down()
-      await daily.page.mouse.move(box.x + box.width / 2 + 4, box.y + box.height / 2 + 4, { steps: 4 })
+      await daily.page.mouse.move(box.x + box.width / 2 + 4, box.y + box.height / 2 + 8, { steps: 4 })
       await expect(daily.page.locator('section[data-sorting]')).toHaveCount(1)
 
       await swipe()
@@ -1272,5 +1315,165 @@ test.describe('dragging a row', () => {
 
       await expect(daily.heading('Today')).toBeHidden()
     })
+  })
+})
+
+/*
+ * The whole row is the drag: there is no grip. A pointer lifts a row from its text or any empty part of
+ * it once it has moved 5px; a plain click on the text still edits it. The box, the fold, the buttons at
+ * the row's end and the add under the steps keep their presses and never lift it. From the keyboard the
+ * text is the handle: Space lifts, Enter still edits, and ← and → change the day until a row is lifted.
+ */
+test.describe('what lifts a row', () => {
+  test.use({ seed: on([milk, ci, folded(trip), taxes]) })
+
+  const lifted = (daily: Daily) => daily.page.locator('li[data-dragging]')
+
+  /**
+   * Presses at a point, moves `by` px down from it, and says whether a row was lifted. A lifted row is
+   * let go with Escape first, so nothing is dropped; one that was not is let go where the pointer is.
+   */
+  async function press(daily: Daily, at: { x: number; y: number }, by: number): Promise<boolean> {
+    await daily.page.mouse.move(at.x, at.y)
+    await daily.page.mouse.down()
+    await daily.page.mouse.move(at.x, at.y + by, { steps: 6 })
+    await daily.page.waitForTimeout(150)
+    const up = (await lifted(daily).count()) > 0
+    if (up) await daily.page.keyboard.press('Escape')
+    await daily.page.mouse.up()
+    await expect(lifted(daily)).toHaveCount(0)
+    await daily.page.waitForTimeout(300)
+    return up
+  }
+  const middle = async (locator: ReturnType<Daily['row']>) => {
+    const box = await locator.boundingBox()
+    if (box === null) throw new Error(`${locator.toString()} is not shown`)
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  }
+
+  test('from its words or its empty start, past 5px; a plain click on the words edits it', async ({
+    daily
+  }) => {
+    const words = await handle(daily, 'Do the taxes').locator('span').first().boundingBox()
+    if (words === null) throw new Error('The words of Do the taxes are not shown')
+    const start = { x: words.x + 8, y: words.y + words.height / 2 }
+    // Under 5px it is a click, which edits.
+    expect(await press(daily, start, 3), '3px on the words').toBe(false)
+    await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveValue('Do the taxes')
+    await daily.page.keyboard.press('Escape')
+    await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveCount(0)
+    expect(await press(daily, start, 10), '10px on the words').toBe(true)
+    // A plain todo's start, where a todo with steps has its fold, is an empty part of the row.
+    const line = await daily.line('Do the taxes').boundingBox()
+    const box = await daily.box('Do the taxes').boundingBox()
+    if (line === null || box === null) throw new Error('Do the taxes is not shown')
+    expect(
+      await press(daily, { x: (line.x + box.x) / 2, y: box.y + box.height / 2 }, 10),
+      'its empty start'
+    ).toBe(true)
+    // A step, from its words.
+    const step = await handle(daily, 'Fix the lint errors').locator('span').first().boundingBox()
+    if (step === null) throw new Error('The words of Fix the lint errors are not shown')
+    expect(await press(daily, { x: step.x + 8, y: step.y + step.height / 2 }, 10), 'a step’s words').toBe(
+      true
+    )
+    await unchanged(daily, on([milk, ci, folded(trip), taxes]))
+
+    await daily.page.mouse.click(start.x, start.y)
+    await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveValue('Do the taxes')
+  })
+
+  test('never from its box, its fold, the buttons at its end or the add under its steps', async ({
+    daily
+  }) => {
+    const parts: [string, ReturnType<Daily['row']>][] = [
+      ['the box', daily.box('Do the taxes')],
+      ['a step’s box', daily.box('Fix the lint errors')],
+      ['the fold', daily.chevron('Set up CI')],
+      ['the folded fold', daily.chevron('Plan the trip')],
+      ['Move', daily.button('Do the taxes', 'Move Do the taxes to tomorrow')],
+      ['Add a step', daily.button('Do the taxes', 'Add a step to Do the taxes')],
+      ['the bin', daily.button('Do the taxes', 'Delete Do the taxes')],
+      ['a step’s bin', daily.button('Fix the lint errors', 'Delete Fix the lint errors')],
+      ['the add under the steps', daily.more('Set up CI')]
+    ]
+    for (const [name, part] of parts) {
+      // Pointed at first, as a hand would, so what shows on hover is there. The pointer moves on past the
+      // part's 28px, so letting go is not a click on it.
+      await part.hover()
+      expect(await press(daily, await middle(part), 30), name).toBe(false)
+    }
+    await unchanged(daily, on([milk, ci, folded(trip), taxes]))
+  })
+
+  test('from the keyboard Space on the text lifts it and Enter edits it; ← and → change the day until it is lifted', async ({
+    daily
+  }) => {
+    const text = handle(daily, 'Do the taxes')
+    await text.focus()
+    await daily.page.keyboard.press('Enter')
+    await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveValue('Do the taxes')
+    await daily.page.keyboard.press('Escape')
+    await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveCount(0)
+
+    // Resting on the text, → shows tomorrow and ← brings today back.
+    await text.focus()
+    await daily.page.keyboard.press('ArrowRight')
+    await expect(daily.heading('Tomorrow')).toBeVisible()
+    await daily.page.keyboard.press('ArrowLeft')
+    await expect(daily.heading('Today')).toBeVisible()
+
+    // Lifted, → changes its level instead, and the day stays; Escape puts it back.
+    await hold(daily, 'Do the taxes')
+    await daily.page.keyboard.press('Space')
+    await expect(lifted(daily)).toHaveCount(1)
+    await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveCount(0)
+    await daily.page.keyboard.press('ArrowRight')
+    await daily.page.waitForTimeout(350)
+    await expect(daily.heading('Today')).toBeVisible()
+    await expect(daily.heading('Tomorrow')).toBeHidden()
+    await daily.page.keyboard.press('Escape')
+    await expect(lifted(daily)).toHaveCount(0)
+    await unchanged(daily, on([milk, ci, folded(trip), taxes]))
+
+    // ↑ and Space move it, and the focus stays on its text.
+    await carry(daily, 'Do the taxes', ['ArrowUp'])
+    await saved(daily, on([milk, ci, taxes, folded(trip)]))
+    await expect
+      .poll(() => daily.page.evaluate(() => document.activeElement?.getAttribute('aria-label')))
+      .toBe('Edit Do the taxes')
+    // Enter drops it too, and opens no editor.
+    await hold(daily, 'Do the taxes')
+    await daily.page.keyboard.press('Space')
+    await expect(lifted(daily)).toHaveCount(1)
+    await daily.page.keyboard.press('ArrowDown')
+    await daily.page.waitForTimeout(350)
+    await daily.page.keyboard.press('Enter')
+    await saved(daily, on([milk, ci, folded(trip), taxes]))
+    await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveCount(0)
+    await expect
+      .poll(() => daily.page.evaluate(() => document.activeElement?.getAttribute('aria-label')))
+      .toBe('Edit Do the taxes')
+  })
+
+  test('the text says how it is moved and stays a plain button, and no row has a grip', async ({ daily }) => {
+    await expect(daily.page.locator('[aria-label^="Reorder "]')).toHaveCount(0)
+    await expect(daily.page.locator('[data-todo-handle]:not([aria-label^="Edit "])')).toHaveCount(0)
+    const plain = async () => {
+      for (const text of ['Buy milk', 'Set up CI', 'Fix the lint errors', 'Plan the trip']) {
+        await expect(handle(daily, text), text).toHaveAccessibleDescription(
+          'Press Enter to edit, Space to pick up. Up and Down arrows move it. Right arrow makes it a step of ' +
+            'the todo above, Left arrow a todo again. Space drops it, Escape cancels.'
+        )
+        for (const attribute of ['aria-roledescription', 'aria-pressed', 'aria-grabbed', 'aria-disabled'])
+          await expect(handle(daily, text), `${text}: ${attribute}`).not.toHaveAttribute(attribute)
+      }
+    }
+    await plain()
+    // While a step is being written too.
+    await daily.page.getByRole('button', { name: 'Edit Buy milk', exact: true }).hover()
+    await daily.button('Buy milk', 'Add a step to Buy milk').click()
+    await expect(daily.page.getByRole('textbox', { name: 'New step' })).toBeFocused()
+    await plain()
   })
 })

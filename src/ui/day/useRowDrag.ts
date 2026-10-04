@@ -25,8 +25,8 @@ export interface RowDrag {
    */
   readonly line:
     { readonly top: number; readonly left: number; readonly width: number; readonly depth: Depth } | undefined
-  /** The todo or step whose grip takes the focus after a keyboard drop: see `useRegrip`. */
-  readonly regrip: string | null
+  /** The todo or step whose text takes the focus after a keyboard drop: see `useRefocus`. */
+  readonly refocus: string | null
   /** What the drag says, for the card's live region. */
   readonly said: string
   readonly handlers: Pick<DragDropEventHandlers, 'onDragStart' | 'onDragMove' | 'onDragEnd'>
@@ -43,7 +43,7 @@ const SCROLL_PX_PER_FRAME = 10
 
 /**
  * Where a drop line's dot is centred, from the left of a todo's row: the row's padding (4px), the
- * grip (20px), the gap (4px) and half the box (14px), TodoItem.module.css. A step's box is a step's
+ * slot at its start (20px), the gap (4px) and half the box (14px), TodoItem.module.css. A step's box is a step's
  * indent (32px) further in.
  */
 const BOX_CENTRE_PX = { todo: 42, step: 74 } as const
@@ -79,7 +79,7 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
   // Where the list is in its container, and how far it is scrolled, while a row is held.
   // The rows' left and right edges in it, for the line.
   const [view, setView] = useState({ top: 0, height: 0, scroll: 0, left: 0, right: 0 })
-  const [regrip, setRegrip] = useState<string | null>(null)
+  const [refocus, setRefocus] = useState<string | null>(null)
   const [said, setSaid] = useState('')
   // What the handlers share between renders: the library's events can come faster than the card renders.
   const held = useRef<Dragged | null>(null)
@@ -245,7 +245,7 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
         })
       }
       setDragging(true)
-      setRegrip(null)
+      setRefocus(null)
       const text = found.todo.text
       setSaid(dragWords.pickedUp(ordered, settled, { ...dragged, index: found.index }, text))
       if (operation.activatorEvent instanceof KeyboardEvent) {
@@ -305,8 +305,8 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
       setSaid(dragWords.dropped(ordered, settled, dragged, place, text))
       // Let go where it is, it stays as it is, and nothing is saved.
       if (atOwnPlace(ordered, dragged, place)) return
-      // The row may be put in another list, where it is a new row whose grip has to take the focus.
-      if (operation.activatorEvent instanceof KeyboardEvent) setRegrip(dragged.id)
+      // The row may be put in another list, where it is a new row whose text has to take the focus.
+      if (operation.activatorEvent instanceof KeyboardEvent) setRefocus(dragged.id)
       onPlace(dragged.id, place.parentId, place.beforeId)
       // A row let go into a todo whose steps unfold can land below what the list shows: once it is in
       // its new place, the list is scrolled just enough to show it. The keyboard's line showed it already.
@@ -322,5 +322,5 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
       ? undefined
       : { top: view.top + y, left, width: view.right - LINE_INSET_PX - left, depth: drop.line.depth }
 
-  return { drop, line, regrip, said, handlers }
+  return { drop, line, refocus, said, handlers }
 }

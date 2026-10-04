@@ -109,8 +109,8 @@ export class Daily {
   }
 
   /**
-   * The toggle that folds and unfolds a todo's steps. It lies over the count, so a click on the count
-   * lands on it. The one place that knows its name.
+   * The toggle that folds and unfolds a todo's steps: a chevron in the slot at the row's start, before
+   * the box. The one place that knows its name.
    */
   chevron(text: string): Locator {
     return this.row(text).getByRole('button', { name: `Steps of ${text}`, exact: true })
@@ -131,13 +131,22 @@ export class Daily {
 
   /**
    * The names of the buttons that act on the line that holds `text`, in the order they stand: not its
-   * grip, its text or its steps' fold, which are not actions.
+   * text or its steps' fold, which are not actions.
    */
   async actions(text: string): Promise<string[]> {
     const names = await this.line(text)
       .getByRole('button')
       .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label') ?? ''))
-    return names.filter((name) => !/^(Reorder|Edit|Steps of) /.test(name))
+    return names.filter((name) => !/^(Edit|Steps of) /.test(name))
+  }
+
+  /**
+   * The space under an unfolded todo's last step, all of it one button "Add a step to <text>", which
+   * adds the next one. It is under the steps, not on the todo's line, so it is never the line's Add.
+   * Found by its label, shown or not.
+   */
+  more(text: string): Locator {
+    return this.row(text).locator(':scope > :not(div)').locator(`button[aria-label="Add a step to ${text}"]`)
   }
 
   /**

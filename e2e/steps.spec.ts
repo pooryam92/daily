@@ -1,7 +1,7 @@
 import { day, expect, test, todo, today } from './daily'
 import type { Daily } from './daily'
 
-test('steps are added from the row’s menu, one Enter after another, and the editor has no way to add one', async ({
+test('steps are added from the row’s Add a step, one Enter after another, and the editor has no way to add one', async ({
   daily
 }) => {
   await daily.add('Set up CI')
@@ -211,7 +211,7 @@ test.describe('with three steps', () => {
   test('a step is reordered from the keyboard, within its todo, and Escape puts it back', async ({
     daily
   }) => {
-    await daily.page.getByRole('button', { name: 'Reorder Cache the dependencies', exact: true }).focus()
+    await daily.page.getByRole('button', { name: 'Edit Cache the dependencies', exact: true }).focus()
     await daily.page.keyboard.press('Space')
     await daily.page.waitForTimeout(150)
     await daily.page.keyboard.press('ArrowUp')
@@ -232,7 +232,7 @@ test.describe('with three steps', () => {
     await expect(daily.heading('Today')).toBeVisible()
 
     // Up past the first step stays among the steps.
-    await daily.page.getByRole('button', { name: 'Reorder Add the workflow file', exact: true }).focus()
+    await daily.page.getByRole('button', { name: 'Edit Add the workflow file', exact: true }).focus()
     await daily.page.keyboard.press('Space')
     await daily.page.waitForTimeout(150)
     await daily.page.keyboard.press('ArrowUp')
@@ -247,7 +247,7 @@ test.describe('with three steps', () => {
         ['Buy milk']
       ])
 
-    await daily.page.getByRole('button', { name: 'Reorder Fix the lint errors', exact: true }).focus()
+    await daily.page.getByRole('button', { name: 'Edit Fix the lint errors', exact: true }).focus()
     await daily.page.keyboard.press('Space')
     await daily.page.waitForTimeout(150)
     await daily.page.keyboard.press('ArrowUp')
@@ -301,8 +301,10 @@ test.describe('with three steps', () => {
 
   test('a step being written is added when left, and nothing is when it is blank', async ({ daily }) => {
     const draft = daily.page.getByRole('textbox', { name: 'New step' })
+    // Its steps show, so the add under them opens the draft.
     const openDraft = async () => {
-      await daily.act('Set up CI', 'Add a step to Set up CI')
+      await daily.line('Set up CI').hover()
+      await daily.more('Set up CI').click()
       await expect(draft).toBeFocused()
     }
     const before = await daily.file('todos.json')

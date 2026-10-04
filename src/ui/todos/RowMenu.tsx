@@ -95,12 +95,18 @@ function focusSoon(target: HTMLElement | null, left?: HTMLElement | null): void 
 
 /**
  * Puts the keyboard, in the next frame, once the open menu no longer keeps the page out of reach, on
- * the control that Tab (or Shift+Tab, `back`) would reach from the row's text.
+ * the control that Tab would reach from the row's text, or with Shift+Tab (`back`), on the row's box:
+ * one control back from the text, as on every row, whether or not a todo's steps fold before it.
  */
 function tabOn(row: HTMLElement | null, back: boolean): void {
   requestAnimationFrame(() => {
     const text = row?.querySelector<HTMLElement>('[data-todo-text]')
     if (text == null) return
+    const box = row?.querySelector<HTMLElement>('input[type="checkbox"]')
+    if (back && box != null) {
+      box.focus()
+      return
+    }
     const reachable = [
       ...document.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]')
     ].filter(

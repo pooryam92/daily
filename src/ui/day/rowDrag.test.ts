@@ -411,10 +411,10 @@ describe('dragWords', () => {
 
   const row = (id: string, parentId?: string): Dragged => ({ id, parentId, hasSteps: false })
 
-  it('tells the grip how to drag, and how to change levels', () => {
+  it('tells the text how to edit, how to drag, and how to change levels', () => {
     expect(dragWords.instructions).toBe(
-      'Press Space to pick up. Up and Down arrows move it. Right arrow makes it a step of the todo above, ' +
-        'Left arrow a todo again. Space drops it, Escape cancels.'
+      'Press Enter to edit, Space to pick up. Up and Down arrows move it. Right arrow makes it a step of the ' +
+        'todo above, Left arrow a todo again. Space drops it, Escape cancels.'
     )
   })
 
