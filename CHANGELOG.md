@@ -19,11 +19,6 @@ What changed for someone using Daily, newest first. The format is
   a todo again (→ and ← during a keyboard drag). Going back to an older version of Daily loses the
   steps and their folds: it opens the todos without them, and saves them that way.
 
-### Removed
-
-- Dropping a todo. A todo is open or done; one that will not be done is deleted or moved. Todos
-  dropped in an older version show as done.
-
 ### Changed
 
 - Dragging a todo no longer pushes the other rows aside. A small copy follows the pointer and a
@@ -41,7 +36,12 @@ What changed for someone using Daily, newest first. The format is
   before; from the keyboard, Space on its focused text picks it up, and Enter still edits it.
 - The card is wider, up to 840px, so a todo's text has more room. The arrow buttons sit on the day
   before and the day after, the days they go to.
-- The falling note for a drop is gone with it; a tick and the chord remain.
+
+### Removed
+
+- Dropping a todo. A todo is open or done; one that will not be done is deleted or moved. Todos
+  dropped in an older version show as done.
+  The falling note for a drop is gone with it; a tick and the chord remain.
 
 ### Fixed
 

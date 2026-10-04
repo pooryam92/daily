@@ -2,7 +2,7 @@
 
 A todo list for today, and nothing else. One card per day, a line to type into, and a checkbox.
 
-![Daily: adding todos, checking them off until the day is cleared, and moving between days](docs/media/demo.gif)
+![Daily: adding todos, giving one steps and folding them, checking them off until the day is cleared, and moving between days](docs/media/demo.gif)
 
 Most todo apps grow into project managers: priorities, tags, due dates, projects, and an overdue list
 that is longer every week. Daily goes the other way. There is nothing to set up and nothing to

@@ -169,6 +169,22 @@ async function story(page) {
   await page.keyboard.press('Enter')
   await pause(300)
 
+  // Steps: two under a todo, one checked, then folded away to a count.
+  await click(page.getByRole('button', { name: 'Add a step to Write the release notes' }))
+  await pause(300)
+  await page.keyboard.type('List the changes', { delay: 45 })
+  await page.keyboard.press('Enter')
+  await pause(200)
+  await page.keyboard.type('Thank the testers', { delay: 45 })
+  await page.keyboard.press('Enter')
+  await pause(150)
+  await page.keyboard.press('Escape')
+  await pause(400)
+  await click(page.locator('li[data-step]').filter({ hasText: 'List the changes' }).getByLabel('Done'))
+  await pause(500)
+  await click(page.getByRole('button', { name: 'Steps of Write the release notes' }))
+  await pause(900)
+
   await click(row('Water the plants').getByLabel('Done'))
   await pause(450)
   await click(row('Renew the library card').getByLabel('Done'))
