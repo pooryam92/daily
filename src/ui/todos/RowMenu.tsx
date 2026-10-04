@@ -1,9 +1,19 @@
 import { CSPProvider } from '@base-ui/react/csp-provider'
 import { Menu } from '@base-ui/react/menu'
 import { Tooltip } from '@base-ui/react/tooltip'
-import { CalendarClock, ChevronDown, ChevronRight, ListPlus, Trash2 } from 'lucide-react'
+import {
+  ArrowLeftToLine,
+  ArrowRight,
+  ArrowRightToLine,
+  ChevronDown,
+  ChevronRight,
+  ListPlus,
+  Trash2
+} from 'lucide-react'
+import type { LucideProps } from 'lucide-react'
 import { createContext, useEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
+import type { MoveTarget } from '../day/copy'
 import styles from './RowMenu.module.css'
 
 /**
@@ -40,10 +50,19 @@ export function RowMenus({ front, children }: { readonly front: boolean; readonl
   )
 }
 
+type MoveTo = Pick<MoveTarget, 'name' | 'direction'>
+
+/** A move's icon, on the row's button and in its menu: on to tomorrow, or up to the line that is today. */
+export function MoveIcon({ to, ...props }: Omit<LucideProps, 'to'> & { readonly to: MoveTo }) {
+  const Icon =
+    to.name === 'tomorrow' ? ArrowRight : to.direction === 'next' ? ArrowRightToLine : ArrowLeftToLine
+  return <Icon {...props} />
+}
+
 /** What a row's menu offers. A step, and a done todo, only go away. */
 interface RowMenuActions {
   readonly onStep?: () => void
-  readonly move?: { readonly name: string; readonly onMove: () => void }
+  readonly move?: MoveTo & { readonly onMove: () => void }
   readonly fold?: { readonly folded: boolean; readonly onToggle: () => void }
   readonly onDelete: () => void
 }
@@ -256,7 +275,7 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
                   leaveRow(row, picking.current, move.onMove)
                 }}
               >
-                <CalendarClock className={styles.icon} size={14} aria-hidden="true" />
+                <MoveIcon to={move} className={styles.icon} size={14} aria-hidden="true" />
                 Move to {move.name}
               </Menu.Item>
             )}

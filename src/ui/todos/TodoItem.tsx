@@ -9,7 +9,7 @@ import type {
 } from '@dnd-kit/dom'
 import { DragOverlay, useDragDropManager, useDraggable } from '@dnd-kit/react'
 import { useComputed } from '@dnd-kit/react/hooks'
-import { CalendarClock, ChevronDown, ListPlus, Trash2 } from 'lucide-react'
+import { ChevronDown, ListPlus, Plus, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'motion/react'
 import { use, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent, ReactNode, Ref, RefObject } from 'react'
@@ -20,7 +20,7 @@ import { dragWords } from '../day/rowDrag'
 import { COPY_CANCEL, ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
 import { guardClicks, guarded } from './clickGuard'
 import { DoneCheckbox } from './DoneCheckbox'
-import { leaveRow, RowMenu, RowMenusFront } from './RowMenu'
+import { leaveRow, MoveIcon, RowMenu, RowMenusFront } from './RowMenu'
 import type { RowMenuOpen } from './RowMenu'
 import { RowTip } from './RowTip'
 import { StepDraft } from './StepDraft'
@@ -571,7 +571,7 @@ function StepSpace({ text, order, buttonRef, onStep, ref }: StepSpaceProps) {
           if (!guarded(event)) onStep()
         }}
       >
-        <ListPlus className={styles.moreIcon} size={14} aria-hidden="true" />
+        <Plus className={styles.moreIcon} size={14} strokeWidth={1.5} aria-hidden="true" />
         <span className={styles.moreWords} aria-hidden="true">
           Add a step
         </span>
@@ -850,7 +850,7 @@ function TodoRow({
                   })
                 }}
               >
-                <CalendarClock size={16} aria-hidden="true" />
+                <MoveIcon to={rowMove.target} size={16} aria-hidden="true" />
               </button>
             </RowTip>
           )}
@@ -887,6 +887,7 @@ function TodoRow({
             ? undefined
             : {
                 name: rowMove.target.name,
+                direction: rowMove.target.direction,
                 onMove: () => {
                   rowMove.onMove(todo.id)
                 }
