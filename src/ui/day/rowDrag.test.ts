@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { Todo } from '@/domain/todo'
-import { HYSTERESIS_PX, ZONE_EDGE, dragWords, dropAt, dropNear, rowText } from './rowDrag'
+import { daysReducer, displayOrder } from '@/domain/todo-rules'
+import {
+  HYSTERESIS_PX,
+  ZONE_EDGE,
+  dragWords,
+  dropAt,
+  dropNear,
+  keyDrop,
+  keyMove,
+  keyStart,
+  rowText,
+  storedBefore
+} from './rowDrag'
 import type { Dragged, Drop, HeldRow, ShownRow } from './rowDrag'
 
 // A day as it is shown: the open todos, then the settled ones.
@@ -390,6 +402,62 @@ describe('dropNear', () => {
   })
 })
 
+describe('storedBefore', () => {
+  const day = '2026-10-04'
+  const done: Todo = { id: 'F', text: 'F', status: 'done' }
+  const a: Todo = { id: 'A', text: 'A', status: 'open' }
+  const b: Todo = { id: 'B', text: 'B', status: 'open' }
+  const doneIds: ReadonlySet<string> = new Set(['F'])
+  const rowsOf = (todos: readonly Todo[]): ShownRow[] =>
+    displayOrder(todos, doneIds)
+      .flatMap((todo) => [
+        { id: todo.id, parentId: undefined },
+        ...(todo.steps ?? []).map((step) => ({ id: step.id, parentId: todo.id }))
+      ])
+      .map((row, index) => ({ ...row, top: index * H, bottom: (index + 1) * H }))
+  const shownAfter = (todos: readonly Todo[], id: string, drop: Drop | null): string[] => {
+    if (drop === null) throw new Error('no drop')
+    const before = storedBefore(todos, doneIds, id, drop.parentId, drop.beforeId)
+    const days = daysReducer(
+      { [day]: todos },
+      { type: 'placed', day, id, parentId: drop.parentId, beforeId: before }
+    )
+    return displayOrder(days[day] ?? [], doneIds).flatMap((todo) => [
+      todo.id,
+      ...(todo.steps ?? []).map((step) => step.id)
+    ])
+  }
+
+  it('puts an open todo let go at the end of the open part after the last open todo stored', () => {
+    const todos = [done, a, b]
+    const drop = dropAt(rowsOf(todos), doneIds, todoRow('A'), H * 1.9)
+    expect(drop.beforeId).toBe('F')
+    expect(shownAfter(todos, 'A', drop)).toEqual(['B', 'A', 'F'])
+  })
+
+  it('does the same for the keyboard’s last gap of the open part', () => {
+    const todos = [done, a, b]
+    const rows = rowsOf(todos)
+    const dragged = todoRow('A')
+    const { place } = keyMove(rows, doneIds, dragged, keyStart(rows, doneIds, dragged), 'down')
+    expect(shownAfter(todos, 'A', keyDrop(rows, doneIds, dragged, place))).toEqual(['B', 'A', 'F'])
+  })
+
+  it('puts a step let go below every row last of the open todos', () => {
+    const todos = [done, { ...a, steps: [{ id: 's', text: 's', status: 'open' }] } satisfies Todo, b]
+    const drop = dropAt(rowsOf(todos), doneIds, stepRow('s', 'A'), H * 3.5)
+    expect(shownAfter(todos, 's', drop)).toEqual(['A', 'B', 's', 'F'])
+  })
+
+  it('leaves every other drop as it is', () => {
+    const todos = [done, a, b]
+    expect(storedBefore(todos, doneIds, 'A', undefined, 'B')).toBe('B')
+    expect(storedBefore(todos, doneIds, 'A', undefined, undefined)).toBeUndefined()
+    expect(storedBefore(todos, doneIds, 'A', 'B', 'F')).toBe('F')
+    expect(storedBefore([a, done, b, rent], new Set(['F', 'rent']), 'rent', undefined, 'F')).toBe('F')
+  })
+})
+
 // From uiux's words table (drag-drop-ui-spec §7), not from the strings as built.
 describe('dragWords', () => {
   const at = (dragged: Dragged, drop: Drop) => dragWords.at(ordered, settled, dragged, drop)
@@ -460,6 +528,8 @@ describe('dragWords', () => {
     expect(at(row('workflow', 'ci'), stepLine('ci', 'workflow'))).toBe('Where it was.')
     expect(at(row('workflow', 'ci'), stepLine('ci', 'lint'))).toBe('Where it was.')
     expect(at(row('lint', 'ci'), stepLine('ci', undefined))).toBe('Where it was.')
+    expect(at(row('lint', 'ci'), into('ci'))).toBe('Where it was.')
+    expect(at(row('workflow', 'ci'), into('ci'))).toBe('Into Set up CI.')
   })
 
   it('says why a row is refused', () => {

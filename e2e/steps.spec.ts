@@ -161,7 +161,7 @@ test.describe('with three steps', () => {
       expect(await daily.actions(step), step).toEqual([`Delete ${step}`])
     }
 
-    await daily.act('Set up CI', 'Move Set up CI to tomorrow')
+    await daily.act('Set up CI', 'Move to tomorrow: Set up CI')
 
     await expect(daily.row('Set up CI')).toBeHidden()
     await expect.poll(() => daily.todos()).toStrictEqual({ [today]: [milk], [day(1)]: [ci] })
@@ -271,7 +271,7 @@ test.describe('with three steps', () => {
 
   test('Enter on a step being edited saves it, and opens no step after it', async ({ daily }) => {
     await daily.page.getByRole('button', { name: 'Edit Fix the lint errors', exact: true }).click()
-    const editor = daily.page.getByRole('textbox', { name: 'Edit todo' })
+    const editor = daily.page.getByRole('textbox', { name: 'Edit step' })
     await expect(editor).toHaveValue('Fix the lint errors')
     // A step cannot have steps: it has no Add a step.
     await expect(daily.page.getByRole('button', { name: 'Add a step to Fix the lint errors' })).toHaveCount(0)

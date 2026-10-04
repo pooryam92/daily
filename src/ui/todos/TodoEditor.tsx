@@ -7,6 +7,7 @@ export type EditorClose = 'enter' | 'escape' | 'blur'
 
 interface TodoEditorProps {
   readonly text: string
+  readonly label: string
   /** Called with the new text, and only if there is something new to save. */
   readonly onCommit: (text: string) => void
   readonly onClose: (how: EditorClose) => void
@@ -18,12 +19,12 @@ interface TodoEditorProps {
  * todo keeps its text: deleting is a button on the row, with its own undo. Steps are added by the +
  * on the row, not here.
  */
-export function TodoEditor({ text, onCommit, onClose }: TodoEditorProps) {
+export function TodoEditor({ text, label, onCommit, onClose }: TodoEditorProps) {
   const field = useLineField(text, (next, how) => {
     if (how !== 'escape' && next !== '' && next !== text) onCommit(next)
     onClose(how)
   })
-  return <textarea {...field} aria-label="Edit todo" />
+  return <textarea {...field} aria-label={label} />
 }
 
 /**

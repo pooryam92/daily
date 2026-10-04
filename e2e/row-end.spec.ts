@@ -38,22 +38,23 @@ const openTodos = ['Buy milk', 'Set up CI', 'Plan the offsite', 'Write the relea
  * last. Set up CI's steps show, so its Add a step is the one under them.
  */
 const offered = (text: string): string[] => {
-  if (text === 'Set up CI') return [`Move ${text} to tomorrow`, `Delete ${text}`]
+  if (text === 'Set up CI') return [`Move to tomorrow: ${text}`, `Delete ${text}`]
   return openTodos.includes(text)
-    ? [`Add a step to ${text}`, `Move ${text} to tomorrow`, `Delete ${text}`]
+    ? [`Add a step to ${text}`, `Move to tomorrow: ${text}`, `Delete ${text}`]
     : [`Delete ${text}`]
 }
 const withSteps = ['Set up CI', 'Plan the offsite', 'Clean the house']
+const foldName = (text: string): string => `${text === 'Plan the offsite' ? 'Show' : 'Hide'} steps of ${text}`
 /** Everything on a row in the order Tab visits it, from its start: the fold, the box, the text, its end. */
 const along = (text: string): string[] => [
-  ...(withSteps.includes(text) ? [`Steps of ${text}`] : []),
+  ...(withSteps.includes(text) ? [foldName(text)] : []),
   'Done',
   `Edit ${text}`,
   ...offered(text)
 ]
 /** The words of each button's tip, by the start of its name, along Plan the offsite (folded). */
 const TIPS = [
-  ['Steps of', 'Show steps'],
+  ['Show steps of', 'Show steps'],
   ['Add a step', 'Add a step'],
   ['Move', 'Move to tomorrow'],
   ['Delete', 'Delete']
@@ -90,6 +91,11 @@ const words = (locator: Locator) =>
         .join(' ')
     )
   })
+
+async function press(daily: Daily, text: string, name: string): Promise<void> {
+  await daily.button(text, name).focus()
+  await daily.page.keyboard.press('Enter')
+}
 
 /** The aria-label of whatever has the focus, so a fading copy found by role cannot answer for it. */
 const focused = (daily: Daily) =>
@@ -265,7 +271,7 @@ test.describe('a row’s end', () => {
     await expect.poll(() => words(daily.line('Set up CI'))).toBe('Set up CI 1/3')
     expect(await daily.actions('Set up CI')).toEqual([
       'Add a step to Set up CI',
-      'Move Set up CI to tomorrow',
+      'Move to tomorrow: Set up CI',
       'Delete Set up CI'
     ])
     await daily.chevron('Plan the offsite').click()
@@ -273,7 +279,7 @@ test.describe('a row’s end', () => {
     await daily.input.focus()
     await expect.poll(() => words(daily.line('Plan the offsite'))).toBe('Plan the offsite')
     expect(await daily.actions('Plan the offsite')).toEqual([
-      'Move Plan the offsite to tomorrow',
+      'Move to tomorrow: Plan the offsite',
       'Delete Plan the offsite'
     ])
   })
@@ -303,7 +309,7 @@ test.describe('a row’s end', () => {
     // Folded now, so Add a step shows too.
     await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Done')
-    for (const name of ['Add a step to Set up CI', 'Move Set up CI to tomorrow', 'Delete Set up CI'])
+    for (const name of ['Add a step to Set up CI', 'Move to tomorrow: Set up CI', 'Delete Set up CI'])
       await showing(daily.button('Set up CI', name), name)
     await hidden(daily.button('Buy milk', 'Delete Buy milk'))
     await daily.editButton('Plan the offsite').focus()
@@ -475,7 +481,7 @@ test.describe('a row’s end', () => {
     expect(await path('Cache the dependencies', 3)).toEqual([
       'Delete Cache the dependencies',
       'Add a step to Set up CI',
-      'Steps of Plan the offsite'
+      'Show steps of Plan the offsite'
     ])
     // Folded: no steps and no add under them, so on to the next todo, which has no fold to stop at.
     expect(await path('Plan the offsite', 4)).toEqual([...offered('Plan the offsite'), 'Done'])
@@ -495,7 +501,7 @@ test.describe('a row’s end', () => {
     await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Tab')
     await daily.page.keyboard.press('Tab')
-    await expect.poll(() => focused(daily)).toBe('Move Buy milk to tomorrow')
+    await expect.poll(() => focused(daily)).toBe('Move to tomorrow: Buy milk')
     await daily.page.keyboard.press('Enter')
     await expect
       .poll(() => daily.todos())
@@ -510,36 +516,60 @@ test.describe('a row’s end', () => {
     await expect.poll(() => focused(daily)).toBe('Edit Clean the house')
   })
 
-  test('after Move or Delete the focus goes to the next todo, else the previous, else Add a todo', async ({
+  test('after Move or Delete by keyboard the focus goes to the next todo, else the previous, else Add a todo', async ({
     daily
   }) => {
-    await daily.act('Buy milk', 'Delete Buy milk')
+    await press(daily, 'Buy milk', 'Delete Buy milk')
     await expect.poll(() => focused(daily)).toBe('Edit Set up CI')
     await daily.page.getByRole('button', { name: 'Undo' }).dispatchEvent('click')
     await expect(daily.row('Buy milk')).toBeVisible()
     await expect.poll(() => focused(daily)).toBe('Edit Set up CI')
 
-    await daily.act('Set up CI', 'Move Set up CI to tomorrow')
+    await press(daily, 'Set up CI', 'Move to tomorrow: Set up CI')
     await expect.poll(() => focused(daily)).toBe('Edit Plan the offsite')
-    await daily.act('Clean the house', 'Delete Clean the house')
+    await press(daily, 'Clean the house', 'Delete Clean the house')
     await expect.poll(() => focused(daily)).toBe('Edit Write the release notes')
-    await daily.act('Write the release notes', 'Delete Write the release notes')
+    await press(daily, 'Write the release notes', 'Delete Write the release notes')
     await expect.poll(() => focused(daily)).toBe('Edit Plan the offsite')
-    await daily.act('Plan the offsite', 'Delete Plan the offsite')
+    await press(daily, 'Plan the offsite', 'Delete Plan the offsite')
     await expect.poll(() => focused(daily)).toBe('Edit Buy milk')
-    await daily.act('Buy milk', 'Delete Buy milk')
+    await press(daily, 'Buy milk', 'Delete Buy milk')
     await expect.poll(() => focused(daily)).toBe('Add a todo')
     await expect(daily.input).toBeFocused()
+  })
+
+  test('after Move or Delete by the pointer, or its menu, the focus is left alone: Backspace deletes nothing', async ({
+    daily
+  }) => {
+    const away = async (what: string) => {
+      await daily.page.mouse.move(0, 0)
+      await daily.page.waitForTimeout(300)
+      expect(await focused(daily), what).not.toMatch(/^Edit /)
+      await daily.page.keyboard.press('Backspace')
+    }
+    await daily.input.click()
+    await daily.act('Buy milk', 'Delete Buy milk')
+    await away('after the bin')
+    await daily.act('Set up CI', 'Move to tomorrow: Set up CI')
+    await away('after Move')
+    await daily.openMenu('Plan the offsite')
+    await daily.menuItem('Delete Plan the offsite').click()
+    await away('after the menu’s Delete')
+    await daily.openMenu('Write the release notes')
+    await daily.menuItem('Move to tomorrow: Write the release notes').click()
+    await away('after the menu’s Move')
+    await daily.page.waitForTimeout(600)
+    expect(await daily.todos()).toStrictEqual({ [today]: [house], [day(1)]: [ci, notes] })
   })
 
   test('after a step’s Delete the focus goes to the next step, else the previous, else its todo', async ({
     daily
   }) => {
-    await daily.act('Fix the lint errors', 'Delete Fix the lint errors')
+    await press(daily, 'Fix the lint errors', 'Delete Fix the lint errors')
     await expect.poll(() => focused(daily)).toBe('Edit Cache the dependencies')
-    await daily.act('Cache the dependencies', 'Delete Cache the dependencies')
+    await press(daily, 'Cache the dependencies', 'Delete Cache the dependencies')
     await expect.poll(() => focused(daily)).toBe('Edit Add the workflow file')
-    await daily.act('Add the workflow file', 'Delete Add the workflow file')
+    await press(daily, 'Add the workflow file', 'Delete Add the workflow file')
     await expect.poll(() => focused(daily)).toBe('Edit Set up CI')
   })
 
@@ -623,7 +653,7 @@ test.describe('after a pointer Move or Delete', () => {
 
   for (const [verb, name, gone] of [
     ['the bin', (text: string) => `Delete ${text}`, 'deleted'],
-    ['Move', (text: string) => `Move ${text} to tomorrow`, 'moved']
+    ['Move', (text: string) => `Move to tomorrow: ${text}`, 'moved']
   ] as const) {
     for (const gap of [120, 400]) {
       test(`a double click on ${verb}, ${String(gap)}ms apart, takes one row, not the one that slides under it`, async ({
@@ -669,6 +699,34 @@ test.describe('after a pointer Move or Delete', () => {
     await expect(card(daily)).not.toHaveAttribute('data-guard')
   })
 
+  for (const [verb, name] of [
+    ['the bin', (text: string) => `Delete ${text}`],
+    ['Move', (text: string) => `Move to tomorrow: ${text}`]
+  ] as const) {
+    test(`two quick taps on ${verb} take one row, and a moment later the buttons answer taps again`, async ({
+      daily
+    }) => {
+      const cdp = await daily.page.context().newCDPSession(daily.page)
+      await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 })
+      const tap = async (at: { x: number; y: number }) => {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] })
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+      }
+      await showing(daily.button('Two', name('Two')))
+      const box = await boxOf(daily.button('Two', name('Two')))
+      const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+      await tap(at)
+      await daily.page.waitForTimeout(120)
+      // A touch leaves the card as it lifts.
+      await tap(at)
+      expect((await left(daily)).today, 'one row taken').toEqual(['One', 'Three', 'Four', 'Five'])
+      await expect(card(daily)).not.toHaveAttribute('data-guard')
+      await showing(daily.button('Three', name('Three')))
+      await tap(at)
+      expect((await left(daily)).today, 'the next tap works').toEqual(['One', 'Four', 'Five'])
+    })
+  }
+
   test.describe('with steps', () => {
     test.use({
       seed: { [today]: [todo('Set up CI', 'open', [todo('Fix the lint errors'), todo('Cache it')])] }
@@ -697,7 +755,7 @@ test.describe('after a pointer Move or Delete', () => {
     await daily.editButton('One').focus()
     await daily.page.keyboard.press('Tab')
     await daily.page.keyboard.press('Tab')
-    await expect.poll(() => focused(daily)).toBe('Move One to tomorrow')
+    await expect.poll(() => focused(daily)).toBe('Move to tomorrow: One')
     await daily.page.keyboard.press('Enter')
     await expect.poll(() => focused(daily)).toBe('Edit Two')
     await expect(card(daily)).not.toHaveAttribute('data-guard')
@@ -792,7 +850,7 @@ test.describe('a button’s tip', () => {
     await daily.editButton('Dentist, 9:30').focus()
     await daily.page.keyboard.press('Tab')
     await daily.page.keyboard.press('Tab')
-    await expect.poll(() => focused(daily)).toBe('Move Dentist, 9:30 to today')
+    await expect.poll(() => focused(daily)).toBe('Move to today: Dentist, 9:30')
     await expect(daily.tip).toHaveText('Move to today')
   })
 
@@ -819,7 +877,7 @@ test.describe('a button’s tip', () => {
       if (withSteps.includes(text)) {
         await daily.box(text).focus()
         await daily.page.keyboard.press('Shift+Tab')
-        await inside(`Steps of ${text}`)
+        await inside(foldName(text))
       }
       await daily.editButton(text).focus()
       for (const name of offered(text)) {
@@ -969,7 +1027,7 @@ test.describe('a row’s menu, by right-click or key', () => {
       const folds = names.filter((name) => /^(Hide|Show) steps/.test(name))
       // Add a step on every open todo, its steps shown or not.
       const offers = openTodos.includes(text)
-        ? [`Move ${text} to tomorrow`, `Add a step to ${text}`, `Delete ${text}`]
+        ? [`Move to tomorrow: ${text}`, `Add a step to ${text}`, `Delete ${text}`]
         : [`Delete ${text}`]
       expect(names.filter((name) => !folds.includes(name)).sort(), text).toEqual(offers.sort())
       const counted = ['Set up CI', 'Plan the offsite', 'Clean the house'].includes(text)
@@ -1153,7 +1211,7 @@ test.describe('a row’s menu, by right-click or key', () => {
     await daily.editButton('Buy milk').focus()
     await daily.page.keyboard.press('Shift+F10')
     await expect(daily.menu).toBeVisible()
-    await walkTo(daily, 'Move Buy milk to tomorrow')
+    await walkTo(daily, 'Move to tomorrow: Buy milk')
     await daily.page.keyboard.press('Enter')
     await expect
       .poll(() => daily.todos())
@@ -1284,7 +1342,7 @@ test.describe('a past day’s row', () => {
     await expect.poll(() => words(daily.line('Return the library book'))).toBe('Return the library book')
     expect(await daily.actions('Return the library book')).toEqual([
       'Add a step to Return the library book',
-      'Move Return the library book to today',
+      'Move to today: Return the library book',
       'Delete Return the library book'
     ])
     // Its bin where today's is, 4px from the row's end, once the card has settled at the front.
@@ -1298,7 +1356,7 @@ test.describe('a past day’s row', () => {
     for (const name of await daily.actions('Return the library book')) {
       await hidden(daily.button('Return the library book', name), name)
     }
-    await daily.act('Return the library book', 'Move Return the library book to today')
+    await daily.act('Return the library book', 'Move to today: Return the library book')
     await expect
       .poll(async () => {
         const days = await daily.todos()

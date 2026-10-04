@@ -119,11 +119,11 @@ function tabOn(row: HTMLElement | null, back: boolean): void {
   })
 }
 
-/** Does what takes a row away (moving it, deleting it) and hands the keyboard on (`nextFocus`). */
-export function leaveRow(row: HTMLElement | null, action: () => void): void {
-  const next = row === null ? null : nextFocus(row)
+/** Does what takes a row away and, from the keyboard, hands the keyboard on (`nextFocus`). */
+export function leaveRow(row: HTMLElement | null, fromKeys: boolean, action: () => void): void {
+  const next = row === null || !fromKeys ? null : nextFocus(row)
   action()
-  focusSoon(next, row)
+  if (fromKeys) focusSoon(next, row)
 }
 
 /**
@@ -132,6 +132,8 @@ export function leaveRow(row: HTMLElement | null, action: () => void): void {
  */
 export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete }: RowMenuProps) {
   const popup = useRef<HTMLDivElement>(null)
+  // Whether an item is picked by a key: Base UI's item click does not say.
+  const picking = useRef(false)
   // Where the keyboard was when Shift+F10 opened the menu, to go back to.
   const before = useRef<HTMLElement | null>(null)
 
@@ -165,6 +167,7 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
 
   const fromKeys = open?.from === 'keys'
   useEffect(() => {
+    picking.current = fromKeys
     if (!fromKeys) return
     before.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const frame = requestAnimationFrame(() => {
@@ -216,6 +219,12 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
           <Menu.Popup
             ref={popup}
             className={styles.popup}
+            onKeyDownCapture={() => {
+              picking.current = true
+            }}
+            onPointerDownCapture={() => {
+              picking.current = false
+            }}
             onKeyDown={(event) => {
               // Left and right mean nothing in this menu, and must not turn the deck to another day under it.
               if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') event.preventDefault()
@@ -242,9 +251,9 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
             {move !== undefined && (
               <Menu.Item
                 className={styles.item}
-                aria-label={`Move ${text} to ${move.name}`}
+                aria-label={`Move to ${move.name}: ${text}`}
                 onClick={() => {
-                  leaveRow(row, move.onMove)
+                  leaveRow(row, picking.current, move.onMove)
                 }}
               >
                 <CalendarClock className={styles.icon} size={14} aria-hidden="true" />
@@ -275,7 +284,7 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
               className={[styles.item, styles.delete].join(' ')}
               aria-label={`Delete ${text}`}
               onClick={() => {
-                leaveRow(row, onDelete)
+                leaveRow(row, picking.current, onDelete)
               }}
             >
               <Trash2 className={styles.icon} size={14} aria-hidden="true" />

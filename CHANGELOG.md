@@ -29,9 +29,12 @@ What changed for someone using Daily, newest first. The format is
 - A row at rest shows only its box and its text. Pointing at it, or focusing it, shows its buttons
   at the end, one click each: add a step and move to tomorrow (or to today), then delete, always
   last and set apart, in the same place on every row. Each is named in a small tip. Nothing moves
-  when they appear. On touch they are always there, and right-click on a
-  row opens the same actions as a menu. The `tomorrow` and `delete` words are no longer on the row,
-  and the editor no longer has a `delete`: Delete on a focused todo deletes it.
+  when they appear. On touch they are always there. Right-click on a row, or Shift+F10 or the
+  context menu key on a focused one, opens the same actions as a menu. The `tomorrow` and `delete`
+  words are no longer on the row, and the editor no longer has a `delete`: Delete on a focused todo
+  deletes it.
+- After Move or Delete from the keyboard, the focus goes on to the next row.
+- A new row, or one just dropped, scrolls clear of the list's faded edge.
 - The grip for reordering is gone. A todo is dragged by its text or any empty part of its row, as
   before; from the keyboard, Space on its focused text picks it up, and Enter still edits it.
 - The card is wider, up to 840px, so a todo's text has more room. The arrow buttons sit on the day

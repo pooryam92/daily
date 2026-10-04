@@ -243,6 +243,7 @@ export function useRowDrag({ ordered, settled, list, setDragging, onPlace }: Row
       const dragged = { id, parentId: found.parentId, hasSteps: found.todo.steps !== undefined }
       held.current = dragged
       rows.current = measure()
+      dropped.current = null
       if (list !== null) {
         const box = list.getBoundingClientRect()
         const todo = list.querySelector('[data-todo] > [data-row]')?.getBoundingClientRect()

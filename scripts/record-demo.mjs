@@ -182,7 +182,7 @@ async function story(page) {
   await pause(400)
   await click(page.locator('li[data-step]').filter({ hasText: 'List the changes' }).getByLabel('Done'))
   await pause(500)
-  await click(page.getByRole('button', { name: 'Steps of Write the release notes' }))
+  await click(page.getByRole('button', { name: /^(Show|Hide) steps of Write the release notes$/ }))
   await pause(900)
 
   await click(row('Water the plants').getByLabel('Done'))
@@ -214,7 +214,7 @@ async function story(page) {
   await click(page.getByLabel('Previous day'))
   await pause(900)
   // The last scene: yesterday's leftover gets a day, and the toast closes the GIF.
-  await click(page.getByRole('button', { name: 'Move Return the library book to today' }))
+  await click(page.getByRole('button', { name: 'Move to today: Return the library book' }))
   await pause(1100)
   await click(page.getByRole('button', { name: 'Back to today' }))
   await pause(2000)

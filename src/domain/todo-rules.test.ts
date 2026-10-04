@@ -243,6 +243,13 @@ describe('daysReducer with steps', () => {
     expect(next[DAY]).toStrictEqual([{ ...milk, steps: [lint] }])
   })
 
+  it('restores a step to its parent on the day the parent has moved to since', () => {
+    const removed = daysReducer(withSteps, { type: 'removed', day: DAY, id: 'lint' })
+    const moved = daysReducer(removed, { type: 'moved', from: DAY, to: '2026-09-20', id: 'ci' })
+    const restored = daysReducer(moved, { type: 'restored', day: DAY, todo: lint, index: 1, parentId: 'ci' })
+    expect(restored).toStrictEqual({ [DAY]: [milk], '2026-09-20': [ci] })
+  })
+
   it('ignores a restore of a step whose parent is gone, or that is already there', () => {
     const restore = { type: 'restored', day: DAY, todo: plants, index: 0, parentId: 'gone' } as const
     expect(daysReducer(withSteps, restore)).toBe(withSteps)

@@ -133,7 +133,7 @@ test.describe('adding a step from the todo’s row', () => {
     expect(row.y).toBeGreaterThanOrEqual(last.y + last.height - 1)
     expect(Math.abs(row.height - 28)).toBeLessThanOrEqual(1)
 
-    expect(await daily.actions('Set up CI')).toEqual(['Move Set up CI to tomorrow', 'Delete Set up CI'])
+    expect(await daily.actions('Set up CI')).toEqual(['Move to tomorrow: Set up CI', 'Delete Set up CI'])
     await expect(daily.more('Set up CI')).toHaveCount(1)
     await expect(daily.more('Paint the fence')).toHaveCount(1)
 
@@ -142,12 +142,12 @@ test.describe('adding a step from the todo’s row', () => {
     await expect(daily.more('Set up CI')).toBeHidden()
     expect(await daily.actions('Set up CI')).toEqual([
       'Add a step to Set up CI',
-      'Move Set up CI to tomorrow',
+      'Move to tomorrow: Set up CI',
       'Delete Set up CI'
     ])
     await daily.chevron('Set up CI').click()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(1)
-    expect(await daily.actions('Set up CI')).toEqual(['Move Set up CI to tomorrow', 'Delete Set up CI'])
+    expect(await daily.actions('Set up CI')).toEqual(['Move to tomorrow: Set up CI', 'Delete Set up CI'])
 
     await daily.box('Set up CI').check()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(0)
@@ -157,7 +157,7 @@ test.describe('adding a step from the todo’s row', () => {
     await expect(daily.chevron('Set up CI')).toHaveAttribute('aria-expanded', 'false')
     expect(await daily.actions('Set up CI')).toEqual([
       'Add a step to Set up CI',
-      'Move Set up CI to tomorrow',
+      'Move to tomorrow: Set up CI',
       'Delete Set up CI'
     ])
 
@@ -335,7 +335,7 @@ test.describe('round 1', () => {
     daily
   }) => {
     const drafts = daily.page.locator('li[data-draft]')
-    const names = ['Move Set up CI to tomorrow', 'Delete Set up CI']
+    const names = ['Move to tomorrow: Set up CI', 'Delete Set up CI']
     await daily.point('Set up CI')
     const places = []
     for (const name of names) {
@@ -380,7 +380,9 @@ test.describe('round 1', () => {
       await daily.page.mouse.click(at.x + at.width / 2, at.y + at.height / 2)
       await daily.page.waitForTimeout(600)
       await expect(daily.menu).toHaveCount(0)
-      await expect(daily.page.getByRole('textbox', { name: 'Edit todo' }), names[index]).toHaveCount(0)
+      await expect(daily.page.getByRole('textbox', { name: /^Edit (todo|step)$/ }), names[index]).toHaveCount(
+        0
+      )
       expect(await daily.todos(), names[index]).toStrictEqual({
         [today]: [milk, ci, offsite, fence, notes, house]
       })
@@ -430,7 +432,7 @@ test.describe('round 1', () => {
         .poll(() => daily.page.evaluate(() => document.activeElement?.getAttribute('aria-label')), {
           message: key
         })
-        .toBe(key === 'Tab' ? 'Steps of Plan the offsite' : 'Delete Fix the lint errors')
+        .toBe(key === 'Tab' ? 'Show steps of Plan the offsite' : 'Delete Fix the lint errors')
       // Left even for a control of the same todo; once it has gone, the row's buttons are back.
       await expect(drafts).toHaveCount(0)
       await expect(daily.row('Set up CI')).not.toHaveAttribute('data-drafting')

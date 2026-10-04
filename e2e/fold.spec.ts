@@ -35,7 +35,7 @@ test.describe('folding steps', () => {
       return daily.page.locator(`[id="${String(id)}"]`)
     }
     await expect(daily.chevron('Buy milk')).toHaveCount(0)
-    await expect(chevron).toHaveAccessibleName('Steps of Set up CI')
+    await expect(chevron).toHaveAccessibleName('Hide steps of Set up CI')
     await expect(chevron).toHaveAccessibleDescription('0 of 3 steps done')
     // The count is read out with the toggle only; the text is described by how it is moved.
     const text = daily.page.getByRole('button', { name: 'Edit Set up CI', exact: true })
@@ -93,20 +93,20 @@ test.describe('folding steps', () => {
       if (path.at(-1) === 'Add a todo') break
     }
 
-    expect(path).toContain('Steps of Set up CI')
-    expect(path).toContain('Steps of Plan the offsite')
+    expect(path).toContain('Hide steps of Set up CI')
+    expect(path).toContain('Show steps of Plan the offsite')
     expect(path.filter((label) => /Pick a date|Book the venue/.test(label))).toEqual([])
     const at = (label: string) => path.indexOf(label)
-    expect(at('Steps of Plan the offsite')).toBeGreaterThanOrEqual(0)
+    expect(at('Show steps of Plan the offsite')).toBeGreaterThanOrEqual(0)
     expect(
       [
         'Done',
         'Edit Plan the offsite',
         'Add a step to Plan the offsite',
-        'Move Plan the offsite to tomorrow',
+        'Move to tomorrow: Plan the offsite',
         'Delete Plan the offsite'
-      ].map((label) => path.indexOf(label, at('Steps of Plan the offsite')))
-    ).toEqual([1, 2, 3, 4, 5].map((after) => at('Steps of Plan the offsite') + after))
+      ].map((label) => path.indexOf(label, at('Show steps of Plan the offsite')))
+    ).toEqual([1, 2, 3, 4, 5].map((after) => at('Show steps of Plan the offsite') + after))
   })
 
   test('a click on the chevron folds the steps, and a click on the text still edits it', async ({
@@ -127,7 +127,7 @@ test.describe('folding steps', () => {
 
     await expect(daily.page.getByRole('textbox', { name: 'Edit todo' })).toHaveValue('Set up CI')
     // While the text is edited the toggle is away, with the words.
-    await expect(daily.page.getByRole('button', { name: 'Steps of Set up CI', exact: true })).toHaveCount(0)
+    await expect(daily.page.getByRole('button', { name: /steps of Set up CI$/ })).toHaveCount(0)
   })
 
   test('checking a todo folds it; unfolded, its steps are worked on, and unchecking one reopens it', async ({
@@ -153,7 +153,7 @@ test.describe('folding steps', () => {
       'Cache the dependencies'
     ])
     await daily.page.getByRole('button', { name: 'Edit Cache the dependencies', exact: true }).click()
-    const editor = daily.page.getByRole('textbox', { name: 'Edit todo' })
+    const editor = daily.page.getByRole('textbox', { name: 'Edit step' })
     await editor.fill('Cache npm')
     await editor.press('Enter')
     await daily.act('Add the workflow file', 'Delete Add the workflow file')
@@ -191,6 +191,38 @@ test.describe('folding steps', () => {
       'Send the invite'
     ])
     await expect.poll(() => saved(daily, 'Plan the offsite')).not.toHaveProperty('folded')
+  })
+
+  test('Add a step on a folded todo, left with nothing added, folds it again', async ({ daily }) => {
+    const draft = daily.page.getByRole('textbox', { name: 'New step' })
+    for (const [how, leave] of [
+      ['Escape', () => draft.press('Escape')],
+      ['a click elsewhere', () => daily.input.click()]
+    ] as const) {
+      await daily.act('Plan the offsite', 'Add a step to Plan the offsite')
+      await expect(draft, how).toBeFocused()
+      await expect(daily.chevron('Plan the offsite'), how).toHaveAttribute('aria-expanded', 'true')
+      await leave()
+      await expect(draft, how).toHaveCount(0)
+      await expect(daily.chevron('Plan the offsite'), how).toHaveAttribute('aria-expanded', 'false')
+      await expect(shown(daily, 'Plan the offsite'), how).toHaveCount(0)
+    }
+    await expect.poll(() => saved(daily, 'Plan the offsite')).toStrictEqual(offsite)
+    await daily.point('Set up CI')
+    await daily.more('Set up CI').click()
+    await expect(draft).toBeFocused()
+    await draft.press('Escape')
+    await expect(draft).toHaveCount(0)
+    await expect(daily.chevron('Set up CI')).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  test('steps folding away take no click while they fade', async ({ daily }) => {
+    const box = await boxOf(daily.box('Cache the dependencies'))
+    await daily.chevron('Set up CI').click()
+    await daily.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(daily.chevron('Set up CI')).toHaveAttribute('aria-expanded', 'false')
+    await daily.page.waitForTimeout(600)
+    expect((await saved(daily, 'Set up CI'))?.steps).toStrictEqual([workflow, lint, cache])
   })
 
   test('the fold is kept across a restart', async ({ daily }) => {
@@ -348,7 +380,7 @@ test.describe('the fold', () => {
     const colours = (text: string) =>
       daily.line(text).evaluate((row) => {
         const element = row.querySelector('[data-todo-text] > [data-figures]')
-        const chevron = row.querySelector('[aria-label^="Steps of "] svg')
+        const chevron = row.querySelector('[aria-label*=" steps of "] svg')
         if (element === null || chevron === null) throw new Error('The row shows no count')
         const token = (name: string) => {
           const probe = document.createElement('span')
@@ -386,7 +418,9 @@ test.describe('the fold', () => {
     await counted('Clean the house', 2, 2)
     // No pie anywhere: not on a todo, a step or a plain todo.
     await expect(daily.page.locator('[class*="_pie_"]')).toHaveCount(0)
-    await expect(daily.step('Buy paint').getByRole('button', { name: /^Steps of / })).toHaveCount(0)
+    await expect(daily.step('Buy paint').getByRole('button', { name: /^(Show|Hide) steps of / })).toHaveCount(
+      0
+    )
 
     await foldAway(LONG)
     const part = await colours(LONG)

@@ -983,6 +983,20 @@ test.describe('dropping a row onto a row', () => {
       })
     })
 
+    test.describe('with a done todo stored before the open ones', () => {
+      test.use({ seed: on([rent, milk, taxes]) })
+
+      for (const [how, go] of [
+        ['by pointer', (daily: Daily) => drop(daily, 'Buy milk', 'Do the taxes', BELOW)],
+        ['by keyboard', (daily: Daily) => carry(daily, 'Buy milk', ['ArrowDown'])]
+      ] as const) {
+        test(`a todo let go last of the open ones, ${how}, lands there`, async ({ daily }) => {
+          await go(daily)
+          await saved(daily, on([rent, taxes, milk]), ['Do the taxes', 'Buy milk', 'Pay the rent'])
+        })
+      }
+    })
+
     test.describe('out of a todo’s only step', () => {
       test.use({ seed: on([under(trip, [flights]), milk]) })
 
@@ -1369,7 +1383,7 @@ test.describe('what lifts a row', () => {
       ['a step’s box', daily.box('Fix the lint errors')],
       ['the fold', daily.chevron('Set up CI')],
       ['the folded fold', daily.chevron('Plan the trip')],
-      ['Move', daily.button('Do the taxes', 'Move Do the taxes to tomorrow')],
+      ['Move', daily.button('Do the taxes', 'Move to tomorrow: Do the taxes')],
       ['Add a step', daily.button('Do the taxes', 'Add a step to Do the taxes')],
       ['the bin', daily.button('Do the taxes', 'Delete Do the taxes')],
       ['a step’s bin', daily.button('Fix the lint errors', 'Delete Fix the lint errors')],

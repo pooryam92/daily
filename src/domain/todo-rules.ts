@@ -236,10 +236,17 @@ function place(
   return insertStep(rest, parentId, index, todo)
 }
 
+function restoreDay(days: DaysMap, { day, parentId }: Extract<TodoAction, { type: 'restored' }>): DayKey {
+  if (parentId === undefined || days[day]?.some((todo) => todo.id === parentId) === true) return day
+  const keys = Object.keys(days) as DayKey[]
+  return keys.find((key) => days[key]?.some((todo) => todo.id === parentId) === true) ?? day
+}
+
 export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
   if (action.type === 'moved') return moveTodo(days, action)
-  const todos = nextTodos(days[action.day] ?? [], action)
-  return todos === undefined ? days : withDay(days, action.day, todos)
+  const day = action.type === 'restored' ? restoreDay(days, action) : action.day
+  const todos = nextTodos(days[day] ?? [], action)
+  return todos === undefined ? days : withDay(days, day, todos)
 }
 
 /**

@@ -54,7 +54,7 @@ function geometry(daily: Daily, text: string): Promise<Geometry> {
     const row = label?.parentElement
     const strike = button.querySelector(':scope > span')
     const check = row?.querySelector(':scope > label')
-    const toggle = row?.querySelector(`button[aria-label="Steps of ${text}"]`) ?? null
+    const toggle = row?.querySelector(`button[aria-label$=" steps of ${text}"]`) ?? null
     const chevron = toggle?.querySelector('svg') ?? null
     const actions = [...(row?.querySelectorAll('button[aria-label]') ?? [])].filter((el) =>
       /^(Move|Delete|Add a step) /.test(el.getAttribute('aria-label') ?? '')

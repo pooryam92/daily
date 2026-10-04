@@ -12,7 +12,7 @@ import { useComputed } from '@dnd-kit/react/hooks'
 import { CalendarClock, ChevronDown, ListPlus, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'motion/react'
 import { use, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, MouseEvent, Ref, RefObject } from 'react'
+import type { KeyboardEvent, MouseEvent, ReactNode, Ref, RefObject } from 'react'
 import type { Todo } from '@/domain/todo'
 import { locate, stepProgress } from '@/domain/todo-rules'
 import type { MoveDirection, MoveTarget } from '../day/copy'
@@ -239,6 +239,7 @@ export function TodoItem({
   // to where it came from when the editor closes.
   const more = useRef<HTMLButtonElement>(null)
   const fromMore = useRef(false)
+  const refold = useRef(false)
   // Under reduced motion a moved row only fades, like a deleted one.
   const still = useReducedMotion() === true
 
@@ -261,7 +262,10 @@ export function TodoItem({
   const addStep = (fromIcon = false): void => {
     fromMore.current = fromIcon
     // The step is written among the steps, so they have to show.
-    if (folded) onToggleFold(todo.id)
+    if (folded) {
+      refold.current = true
+      onToggleFold(todo.id)
+    }
     if (!drafting) setOpened((count) => count + 1)
     onAddingStep(true)
   }
@@ -275,6 +279,7 @@ export function TodoItem({
       data-editing={editing || undefined}
       data-dragging={isDragging || undefined}
       data-leaving={!present || undefined}
+      inert={!present}
       data-drop-target={dropTarget || undefined}
       layout="position"
       layoutDependency={order}
@@ -316,14 +321,7 @@ export function TodoItem({
           fade. */}
       <AnimatePresence mode="popLayout" initial={false}>
         {(steps.length > 0 || drafting) && (
-          <motion.ul
-            key="steps"
-            id={stepsId}
-            className={styles.steps}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: ROW_ENTER }}
-            exit={{ opacity: 0, transition: ROW_EXIT }}
-          >
+          <StepList key="steps" id={stepsId}>
             <AnimatePresence mode="popLayout" initial={false}>
               {steps.map((step) => (
                 <StepItem
@@ -358,11 +356,14 @@ export function TodoItem({
                   first={(todo.steps?.length ?? 0) === 0}
                   order={order}
                   onAdd={(next) => {
+                    refold.current = false
                     onAddStep(next, todo.id)
                     setDraft((count) => count + 1)
                   }}
                   onClose={(how) => {
                     onAddingStep(false)
+                    if (refold.current && !folded) onToggleFold(todo.id)
+                    refold.current = false
                     // As in the editor, Escape and Enter leave the keyboard where it was: on the button
                     // under the steps, back in its place, or on the todo.
                     if (how === 'enter' || how === 'escape')
@@ -371,10 +372,35 @@ export function TodoItem({
                 />
               )}
             </AnimatePresence>
-          </motion.ul>
+          </StepList>
         )}
       </AnimatePresence>
     </motion.li>
+  )
+}
+
+function StepList({
+  id,
+  children,
+  ref
+}: {
+  readonly id: string
+  readonly children: ReactNode
+  readonly ref?: Ref<HTMLUListElement>
+}) {
+  const present = useIsPresent()
+  return (
+    <motion.ul
+      ref={ref}
+      id={id}
+      className={styles.steps}
+      inert={!present}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1, transition: ROW_ENTER }}
+      exit={{ opacity: 0, transition: ROW_EXIT }}
+    >
+      {children}
+    </motion.ul>
   )
 }
 
@@ -422,6 +448,7 @@ function StepItem({
       data-editing={editing || undefined}
       data-dragging={isDragging || undefined}
       data-leaving={!present || undefined}
+      inert={!present}
       layout="position"
       layoutDependency={order}
       initial={isNew(step.id) && animateEnter ? { opacity: 0, y: -8 } : false}
@@ -662,7 +689,7 @@ function TodoRow({
     if (event.currentTarget.closest('[data-sorting]') !== null) return
     event.preventDefault()
     // The keyboard goes on to the next row, as after the delete button.
-    leaveRow(row, () => {
+    leaveRow(row, true, () => {
       onRemove(todo.id)
     })
   }
@@ -705,7 +732,7 @@ function TodoRow({
             type="button"
             className={[styles.slot, styles.fold].join(' ')}
             data-folded={foldable.folded || undefined}
-            aria-label={`Steps of ${todo.text}`}
+            aria-label={`${foldable.folded ? 'Show' : 'Hide'} steps of ${todo.text}`}
             aria-expanded={!foldable.folded}
             aria-controls={foldable.folded ? undefined : foldable.stepsId}
             aria-describedby={countId}
@@ -730,6 +757,7 @@ function TodoRow({
         {editing && (
           <TodoEditor
             text={todo.text}
+            label={step ? 'Edit step' : 'Edit todo'}
             onCommit={(next) => {
               onEdit(todo.id, next)
             }}
@@ -803,11 +831,11 @@ function TodoRow({
               <button
                 type="button"
                 className={styles.action}
-                aria-label={`Move ${todo.text} to ${rowMove.target.name}`}
+                aria-label={`Move to ${rowMove.target.name}: ${todo.text}`}
                 onClick={(event) => {
                   if (guarded(event)) return
                   guardClicks(event)
-                  leaveRow(row, () => {
+                  leaveRow(row, event.detail === 0, () => {
                     rowMove.onMove(todo.id)
                   })
                 }}
@@ -828,7 +856,7 @@ function TodoRow({
             onClick={(event) => {
               if (guarded(event)) return
               guardClicks(event)
-              leaveRow(row, () => {
+              leaveRow(row, event.detail === 0, () => {
                 onRemove(todo.id)
               })
             }}

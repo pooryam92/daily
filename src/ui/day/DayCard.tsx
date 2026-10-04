@@ -14,6 +14,7 @@ import { dayProgress } from '@/domain/todo-rules'
 import { AddTodoForm } from '../todos/AddTodoForm'
 import styles from './DayCard.module.css'
 import { ProgressRing } from './ProgressRing'
+import { storedBefore } from './rowDrag'
 import { useRowDrag } from './useRowDrag'
 import { DraggedCopy, TODO_SENSORS, TodoItem } from '../todos/TodoItem'
 import { RowMenus } from '../todos/RowMenu'
@@ -118,7 +119,16 @@ export function DayCard({
   const order = ordered.map((todo) => layoutKey(todo, drafting)).join()
   const [list, setList] = useState<HTMLUListElement | null>(null)
 
-  const { drop, line, refocus, said, handlers } = useRowDrag({ ordered, settled, list, setDragging, onPlace })
+  const place = (id: string, parentId?: string, beforeId?: string): void => {
+    onPlace(id, parentId, storedBefore(todos, settled, id, parentId, beforeId))
+  }
+  const { drop, line, refocus, said, handlers } = useRowDrag({
+    ordered,
+    settled,
+    list,
+    setDragging,
+    onPlace: place
+  })
   // The todo a row let go here would be a step of: into it, as its last step, or at a step's line,
   // whose todo may be scrolled out of view. A todo's line tints nothing.
   const tinted = drop?.line?.depth === 'todo' ? undefined : drop?.parentId

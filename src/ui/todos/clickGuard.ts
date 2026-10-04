@@ -3,6 +3,9 @@ import type { MouseEvent } from 'react'
 /** How far the pointer moves after a click that took a row away before the rows' buttons answer it again. */
 const GUARD_PX = 4
 
+/** How long a tap holds the guard: a touch leaves the card as it lifts. */
+const TAP_GUARD_MS = 500
+
 /** Ends the guard that is up, if one is. */
 let lift: (() => void) | null = null
 
@@ -15,21 +18,28 @@ export function guardClicks(event: MouseEvent<HTMLElement>): void {
   const card = event.currentTarget.closest<HTMLElement>('section')
   if (card === null || event.detail === 0) return
   lift?.()
-  const { clientX: x, clientY: y } = event
+  const { nativeEvent: click, clientX: x, clientY: y } = event
+  const tap = click instanceof PointerEvent && (click.pointerType === 'touch' || click.pointerType === 'pen')
+  let timer: number | undefined
   const move = (next: PointerEvent): void => {
     if (Math.hypot(next.clientX - x, next.clientY - y) >= GUARD_PX) end()
   }
   const end = (): void => {
     delete card.dataset.guard
+    clearTimeout(timer)
     document.removeEventListener('pointermove', move, { capture: true })
     document.removeEventListener('keydown', end, { capture: true })
     card.removeEventListener('pointerleave', end)
     lift = null
   }
   card.dataset.guard = ''
-  document.addEventListener('pointermove', move, { capture: true })
   document.addEventListener('keydown', end, { capture: true })
-  card.addEventListener('pointerleave', end)
+  if (tap) {
+    timer = window.setTimeout(end, TAP_GUARD_MS)
+  } else {
+    document.addEventListener('pointermove', move, { capture: true })
+    card.addEventListener('pointerleave', end)
+  }
   lift = end
 }
 

@@ -139,7 +139,8 @@ export class Daily {
    * the box. The one place that knows its name.
    */
   chevron(text: string): Locator {
-    return this.row(text).getByRole('button', { name: `Steps of ${text}`, exact: true })
+    const name = new RegExp(`^(Show|Hide) steps of ${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+    return this.row(text).getByRole('button', { name })
   }
 
   /** The line that holds `text`, a todo's or a step's, without the lines of its steps under it. */
@@ -154,8 +155,8 @@ export class Daily {
   }
 
   /**
-   * One of the buttons at the end of the line that holds `text`, by its full name: "Move <text> to
-   * tomorrow" (or "to today"), "Delete <text>" or "Add a step to <text>". They show on hover or focus.
+   * One of the buttons at the end of the line that holds `text`, by its full name: "Move to tomorrow:
+   * <text>" (or "to today"), "Delete <text>" or "Add a step to <text>". They show on hover or focus.
    */
   button(text: string, name: string): Locator {
     return this.line(text).getByRole('button', { name, exact: true })
@@ -169,7 +170,7 @@ export class Daily {
     const names = await this.line(text)
       .getByRole('button')
       .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label') ?? ''))
-    return names.filter((name) => !/^(Edit|Steps of) /.test(name))
+    return names.filter((name) => !/^(Edit|Show steps of|Hide steps of) /.test(name))
   }
 
   /**

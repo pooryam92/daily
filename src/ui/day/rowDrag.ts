@@ -105,8 +105,7 @@ export function dropAt(
     const row = rows[index]
     return row !== undefined && settled.has(todoOf(row))
   }
-  // The first todo shown from `index` on, other than the dragged one. At the end of the open part
-  // that is the first settled todo: the row goes before it in the stored order too.
+  // The first todo shown from `index` on, other than the dragged one.
   const todoFrom = (index: number): string | undefined =>
     rows.slice(index).find((row) => row.parentId === undefined && row.id !== dragged.id)?.id
   // The first step of `parentId` from `index` on, other than the dragged one.
@@ -204,6 +203,21 @@ export function dropAt(
   if (shows && !own && !dragged.hasSteps) return stepGap(over + 1, row.id)
   if (shows) return todoGap(stepsEnd(rows, over), own ? undefined : 'steps')
   return todoGap(over + 1, zone === 'middle' && !own ? 'steps' : undefined)
+}
+
+/** The drop's `beforeId` in the stored order, where a done todo may come before open ones. */
+export function storedBefore(
+  todos: readonly Todo[],
+  settled: ReadonlySet<string>,
+  id: string,
+  parentId: string | undefined,
+  beforeId: string | undefined
+): string | undefined {
+  if (parentId !== undefined || beforeId === undefined || !settled.has(beforeId) || settled.has(id)) {
+    return beforeId
+  }
+  const rest = todos.filter((todo) => todo.id !== id)
+  return rest[rest.findLastIndex((todo) => !settled.has(todo.id)) + 1]?.id
 }
 
 /** How far past the edge of a zone the pointer goes before the drop changes: a pointer at rest on an edge would flicker. */
@@ -481,10 +495,12 @@ function whereWords(
  * same list. Let go there, nothing changes.
  */
 export function atOwnPlace(ordered: readonly Todo[], dragged: Dragged, drop: Drop): boolean {
-  if (drop.line === undefined || drop.parentId !== dragged.parentId) return false
+  if (drop.parentId !== dragged.parentId) return false
   const siblings = dragged.parentId === undefined ? ordered : stepsOf(ordered, dragged.parentId)
   const index = siblings.findIndex((row) => row.id === dragged.id)
-  return index !== -1 && (drop.beforeId === dragged.id || drop.beforeId === siblings[index + 1]?.id)
+  if (index === -1) return false
+  if (drop.line === undefined) return dragged.parentId !== undefined && index === siblings.length - 1
+  return drop.beforeId === dragged.id || drop.beforeId === siblings[index + 1]?.id
 }
 
 /** What a drag says, in the row's own words: never its id. */
