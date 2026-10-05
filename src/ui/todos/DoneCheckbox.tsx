@@ -1,12 +1,13 @@
 import { motion, useReducedMotion } from 'motion/react'
 import type { Transition } from 'motion/react'
+import type { ChangeEvent } from 'react'
 import { CHECK } from '../lib/motion'
 import styles from './DoneCheckbox.module.css'
 
 interface DoneCheckboxProps {
   readonly checked: boolean
   /** Left out for a box that cannot be checked yet, which is then disabled. */
-  readonly onChange?: () => void
+  readonly onChange?: (event: ChangeEvent<HTMLInputElement>) => void
   /** A step's box is drawn smaller than a todo's, in a hit area of the same size. */
   readonly size?: 'md' | 'sm'
 }

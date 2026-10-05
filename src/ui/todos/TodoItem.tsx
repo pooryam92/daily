@@ -20,7 +20,7 @@ import { daysSince, sinceLine } from '../day/copy'
 import type { MoveDirection, MoveTarget } from '../day/copy'
 import { dragWords } from '../day/rowDrag'
 import { COPY_CANCEL, ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
-import { guardClicks, guarded } from './clickGuard'
+import { guardClicks, guarded, guardFrom } from './clickGuard'
 import { DoneCheckbox } from './DoneCheckbox'
 import { leaveRow, MoveIcon, RowMenu, RowMenusFront } from './RowMenu'
 import type { RowMenuOpen } from './RowMenu'
@@ -787,14 +787,6 @@ function TodoRow({
         if (drafting && event.target === event.currentTarget) event.preventDefault()
       }}
       onKeyDown={onRowKeyDown}
-      onClick={(event) => {
-        if (!reopenLeaves || !(event.target instanceof HTMLInputElement)) return
-        const todoRow = row
-          ?.closest('li[data-todo]:not([data-step])')
-          ?.querySelector<HTMLElement>(':scope > [data-row]')
-        if (event.detail === 0) leaveRow(todoRow ?? null, true, ignore)
-        else guardClicks(event)
-      }}
       onContextMenu={(event) => {
         if (editing || drafting) return
         event.preventDefault()
@@ -826,8 +818,21 @@ function TodoRow({
       <DoneCheckbox
         checked={todo.status === 'done'}
         size={step ? 'sm' : 'md'}
-        onChange={() => {
-          onToggleDone(todo.id)
+        onChange={(event) => {
+          if (guarded(event)) return
+          const click = event.nativeEvent
+          if (!reopenLeaves || !(click instanceof MouseEvent)) {
+            onToggleDone(todo.id)
+            return
+          }
+          // Reopened, it goes on to today, and the keyboard goes on from its todo's row.
+          const todoRow = row
+            ?.closest('li[data-todo]:not([data-step])')
+            ?.querySelector<HTMLElement>(':scope > [data-row]')
+          guardFrom(event.currentTarget, click)
+          leaveRow(todoRow ?? null, click.detail === 0, () => {
+            onToggleDone(todo.id)
+          })
         }}
       />
       <div className={styles.label}>
