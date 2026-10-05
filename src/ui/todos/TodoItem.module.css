@@ -248,6 +248,16 @@
   background: var(--hover-strong);
 }
 
+/* Carried: the pin keeps the ribbon's ripest colour, under the pointer too. */
+.pin[aria-pressed='true'],
+.pin[aria-pressed='true']:hover {
+  color: var(--sticky-aged);
+}
+
+.pin[aria-pressed='true'] svg {
+  fill: color-mix(in srgb, currentColor 25%, transparent);
+}
+
 /* While a todo's steps show, the way to another is under them; its room on the row is kept. */
 .row[data-steps]:not([data-folded]) .add {
   visibility: hidden;
@@ -411,6 +421,31 @@
 
 .row[data-editing] > .fold {
   visibility: hidden;
+}
+
+/* A sticky todo's age: a ribbon in the list's margin, beside the box, ripening with --age (0 to 1). */
+.age {
+  position: absolute;
+  inset-inline-start: -12px;
+  top: var(--space-1);
+  width: 12px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+
+.age::before {
+  content: '';
+  width: 3px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: color-mix(in oklch, var(--sticky-fresh), var(--sticky-aged) calc(var(--age) * 100%));
+}
+
+@media (forced-colors: active) {
+  .age::before {
+    background: CanvasText;
+  }
 }
 
 /* The folded steps' figures, after the text, in figures of one width so they do not shift. */

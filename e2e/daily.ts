@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { _electron as electron, expect, test as base } from '@playwright/test'
 import type { ElectronApplication, Locator, Page } from '@playwright/test'
-import { addDays, toDayKey } from '../src/domain/dates'
+import { addDays, fromDayKey, toDayKey, yearOf } from '../src/domain/dates'
 import type { Settings } from '../src/domain/settings'
 import { STORE_VERSION } from '../src/domain/store'
 import type { StoreData } from '../src/domain/store'
@@ -28,6 +28,26 @@ export const todo = (text: string, status: TodoStatus = 'open', steps?: readonly
   status,
   ...(steps === undefined ? {} : { steps })
 })
+
+export const stuck = (text: string, since: DayKey, steps?: readonly Todo[]): Todo => ({
+  ...todo(text, 'open', steps),
+  sticky: { since }
+})
+
+/** A sticky todo's since line, as its tip and its pin's description say it, `days` after `since` (below 0 on a future card). */
+export const sinceText = (since: DayKey, days: number): string => {
+  if (days === 0) return 'Since today'
+  const date = fromDayKey(since).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: yearOf(since, today)
+  })
+  if (days < 0) return `From ${date}`
+  return `Since ${date} · ${days === 1 ? '1 day' : `${String(days)} days`}`
+}
+
+const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 export const boxOf = async (locator: Locator) => {
   const box = await locator.boundingBox()
@@ -139,7 +159,7 @@ export class Daily {
    * the box. The one place that knows its name.
    */
   chevron(text: string): Locator {
-    const name = new RegExp(`^(Show|Hide) steps of ${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+    const name = new RegExp(`^(Show|Hide) steps of ${escaped(text)}$`)
     return this.row(text).getByRole('button', { name })
   }
 
@@ -212,6 +232,38 @@ export class Daily {
   async act(text: string, item: string): Promise<void> {
     await this.line(text).hover()
     await this.button(text, item).click()
+  }
+
+  /** The pin that sticks or unsticks the line that holds `text`, pressed while it is sticky. */
+  stick(text: string): Locator {
+    return this.button(text, `Carry until done: ${text}`)
+  }
+
+  /** The words of the sticky rows at the front card's foot, in the order they show. */
+  get carried(): Locator {
+    return this.page.locator(
+      'section[data-offset="0"] ul[data-sticky-list] > li[data-todo] > div [data-todo-text] > span:first-child'
+    )
+  }
+
+  /** The words of the front card's own rows, the ones not carried, in the order they show. */
+  get own(): Locator {
+    return this.page.locator(
+      'section[data-offset="0"] ul:not([data-sticky-list]) > li[data-todo]:not([data-step]) > div [data-todo-text] > span:first-child'
+    )
+  }
+
+  /** A sticky row's age, a ribbon at its start; the pointer gets its since line there too. */
+  age(text: string): Locator {
+    return this.line(text).locator('[data-age-mark]')
+  }
+
+  /** Sets the app's clock to 9:00 on `day(offset)` and lets it notice, as a window focus does. */
+  async morningOf(offset: number): Promise<void> {
+    const morning = fromDayKey(day(offset))
+    morning.setHours(9)
+    await this.page.clock.setSystemTime(morning)
+    await this.page.evaluate(() => window.dispatchEvent(new Event('focus')))
   }
 
   heading(name: string): Locator {

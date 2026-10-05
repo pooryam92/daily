@@ -57,7 +57,7 @@ function geometry(daily: Daily, text: string): Promise<Geometry> {
     const toggle = row?.querySelector(`button[aria-label$=" steps of ${text}"]`) ?? null
     const chevron = toggle?.querySelector('svg') ?? null
     const actions = [...(row?.querySelectorAll('button[aria-label]') ?? [])].filter((el) =>
-      /^(Move|Delete|Add a step) /.test(el.getAttribute('aria-label') ?? '')
+      /^(Carry until done:|Add a step|Move|Delete) /.test(el.getAttribute('aria-label') ?? '')
     )
     if (!label || !row || !strike || !check) throw new Error(`The row of ${text} is not as expected`)
     const ending = [toggle, ...actions].filter((el) => el !== null)
@@ -102,20 +102,20 @@ async function smallest(daily: Daily): Promise<void> {
     .toEqual([640, 420])
 }
 
-/** Past the words only the 28px buttons may be: Add a step and Move side by side, then, 16px on, the bin. */
+/** Past the words only the 28px buttons may be: the pin, Add a step and Move side by side, then, 16px on, the bin. */
 test('in the smallest window, a wrapped row keeps its text wide, its box up, and its buttons at its end and its fold at its start', async ({
   daily
 }) => {
   await smallest(daily)
 
-  // The room kept at the end: Add a step, Move, the gap and the bin on every open todo; the bin alone on
-  // any other row. The words' width follows: 244 on an open todo, 316 on a done one, 284 on a step.
+  // The room kept at the end: the pin, Add a step, Move, the gap and the bin on every open todo; the bin
+  // alone on any other row.
   for (const [text, counted, buttons, room, width] of [
-    [LONG, true, 3, 108, 244],
+    [LONG, true, 4, 136, 216],
     [LONG_STEP, false, 1, 36, 284],
-    ['Write the release notes', true, 3, 108, 244],
+    ['Write the release notes', true, 4, 136, 216],
     ['Draft', false, 1, 36, 284],
-    ['Buy milk', false, 3, 108, 244],
+    ['Buy milk', false, 4, 136, 216],
     ['Return the library book', false, 1, 36, 316],
     ['Clean the house', true, 1, 36, 316]
   ] as const) {
@@ -143,8 +143,7 @@ test('in the smallest window, a wrapped row keeps its text wide, its box up, and
     expect(Math.abs(at.box.top - (first.top - 4)), where).toBeLessThanOrEqual(1)
 
     expect(at.actions, where).toHaveLength(buttons)
-    // From the end: the bin 4px in on every row; Move 48px in and Add a step 76px in on an open todo.
-    const fromEnd = buttons === 3 ? [76, 48, 4] : [4]
+    const fromEnd = buttons === 4 ? [104, 76, 48, 4] : [4]
     for (const [index, part] of at.actions.entries()) {
       expect(Math.abs(part.width - 28), where).toBeLessThanOrEqual(1)
       expect(Math.abs(part.top - (at.row.top + 4)), where).toBeLessThanOrEqual(1)
@@ -178,7 +177,7 @@ test('in the smallest window, a wrapped row keeps its text wide, its box up, and
   expect((await geometry(daily, LONG_STEP)).lines.length).toBeGreaterThanOrEqual(3)
 })
 
-test('in a wide window the words have 644px on an open todo, 716 on a done one and 684 on a step', async ({
+test('in a wide window the words have 616px on an open todo, 716 on a done one and 684 on a step', async ({
   daily
 }) => {
   await daily.app.evaluate(({ BrowserWindow }) => {
@@ -186,9 +185,9 @@ test('in a wide window the words have 644px on an open todo, 716 on a done one a
   })
   await expect.poll(() => daily.page.evaluate(() => window.innerWidth)).toBe(1268)
   for (const [text, width] of [
-    [LONG, 644],
-    ['Write the release notes', 644],
-    ['Buy milk', 644],
+    [LONG, 616],
+    ['Write the release notes', 616],
+    ['Buy milk', 616],
     ['Return the library book', 716],
     ['Clean the house', 716],
     ['Draft', 684],

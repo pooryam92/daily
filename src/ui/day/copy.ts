@@ -6,7 +6,9 @@ import {
   formatDay,
   formatDistance,
   formatLongWeekday,
-  relativeLabel
+  fromDayKey,
+  relativeLabel,
+  yearOf
 } from '@/domain/dates'
 
 /*
@@ -53,3 +55,21 @@ export function moveTarget(day: DayKey, today: DayKey): MoveTarget {
   if (day === today) return { day: addDays(today, 1), name: 'tomorrow', direction: 'next' }
   return { day: today, name: 'today', direction: compareDays(day, today) < 0 ? 'next' : 'previous' }
 }
+
+export const daysSince = (since: DayKey, today: DayKey): number => Math.max(compareDays(today, since), 0)
+
+/** "Since Mon, Sep 28 · 5 days"; on a future card, "From Sat, Oct 10". */
+export function sinceLine(since: DayKey, today: DayKey, locale?: string): string {
+  const days = compareDays(today, since)
+  if (days === 0) return 'Since today'
+  const date = fromDayKey(since).toLocaleDateString(locale, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: yearOf(since, today)
+  })
+  if (days < 0) return `From ${date}`
+  return `Since ${date} · ${days === 1 ? '1 day' : `${String(days)} days`}`
+}
+
+export const CARRIED_LABEL = 'Carried'

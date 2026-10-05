@@ -15,10 +15,15 @@ let lift: (() => void) | null = null
  * until the pointer moves, leaves the card, or a key is pressed. Keyboard clicks set nothing.
  */
 export function guardClicks(event: MouseEvent<HTMLElement>): void {
-  const card = event.currentTarget.closest<HTMLElement>('section')
-  if (card === null || event.detail === 0) return
+  guardFrom(event.currentTarget, event.nativeEvent)
+}
+
+/** `guardClicks` for a click React hands on as another event, as a checkbox's change. */
+export function guardFrom(target: HTMLElement, click: globalThis.MouseEvent): void {
+  const card = target.closest<HTMLElement>('section')
+  if (card === null || click.detail === 0) return
   lift?.()
-  const { nativeEvent: click, clientX: x, clientY: y } = event
+  const { clientX: x, clientY: y } = click
   const tap = click instanceof PointerEvent && (click.pointerType === 'touch' || click.pointerType === 'pen')
   let timer: number | undefined
   const move = (next: PointerEvent): void => {
@@ -43,6 +48,6 @@ export function guardClicks(event: MouseEvent<HTMLElement>): void {
   lift = end
 }
 
-export function guarded(event: MouseEvent<HTMLElement>): boolean {
+export function guarded(event: { readonly currentTarget: Element }): boolean {
   return event.currentTarget.closest('[data-guard]') !== null
 }

@@ -1,7 +1,7 @@
 // The geometry of a held row is read in the page, which needs the DOM types.
 /// <reference lib="dom" />
 
-import { expect, test, todo, today } from './daily'
+import { day, expect, stuck, test, todo, today } from './daily'
 import type { Daily } from './daily'
 import type { DaysMap, Todo } from '../src/domain/todo'
 
@@ -1315,6 +1315,108 @@ test.describe('dragging a row', () => {
 
       await expect(daily.heading('Today')).toBeHidden()
     })
+  })
+})
+
+test.describe('the carried rows', () => {
+  const outline = todo('Outline')
+  const draft = todo('Draft')
+  const report = stuck('Write the report', day(-3), [outline, draft])
+  const passport = stuck('Renew the passport', day(-1))
+  const plumber = stuck('Call the plumber', today)
+  const seed = [milk, plants, report, passport, plumber]
+  test.use({ seed: on(seed) })
+  test.beforeEach(({ daily }) => roomy(daily))
+
+  const texts = async (daily: Daily, sticky: boolean) =>
+    ((await daily.todos())[today] ?? [])
+      .filter((entry) => (entry.sticky !== undefined) === sticky)
+      .map((entry) => entry.text)
+
+  test('reorder among themselves, by pointer and by keyboard', async ({ daily }) => {
+    await drop(daily, 'Call the plumber', 'Write the report', ABOVE, async (held) => {
+      await shows(daily, { line: 'todo', near: top(held.before, 'Write the report') })
+    })
+    await expect(daily.carried).toHaveText(['Call the plumber', 'Write the report', 'Renew the passport'])
+    await expect
+      .poll(() => texts(daily, true))
+      .toEqual(['Call the plumber', 'Write the report', 'Renew the passport'])
+
+    await carry(daily, 'Renew the passport', ['ArrowUp'])
+
+    await expect(daily.carried).toHaveText(['Call the plumber', 'Renew the passport', 'Write the report'])
+    await expect
+      .poll(() => texts(daily, true))
+      .toEqual(['Call the plumber', 'Renew the passport', 'Write the report'])
+    await expect(daily.own).toHaveText(['Buy milk', 'Water the plants'])
+  })
+
+  test('a sticky dropped on the day’s own rows stays carried, and takes none of them in', async ({
+    daily
+  }) => {
+    for (const at of [ABOVE, INTO, BELOW]) {
+      await drop(daily, 'Renew the passport', 'Buy milk', at, async () => {
+        await expect(daily.row('Buy milk')).not.toHaveAttribute('data-drop-target')
+      })
+      await expect(daily.own).toHaveText(['Buy milk', 'Water the plants'])
+      await expect(daily.carried).toContainText(['Renew the passport'])
+      await expect.poll(() => texts(daily, false)).toEqual(['Buy milk', 'Water the plants'])
+      await expect.poll(() => texts(daily, true)).toContain('Renew the passport')
+    }
+    expect(((await daily.todos())[today] ?? []).find((entry) => entry.id === milk.id)).toStrictEqual(milk)
+  })
+
+  test('an own row dropped on the carried stays the day’s own, and is no one’s step', async ({ daily }) => {
+    for (const at of [ABOVE, INTO, BELOW]) {
+      await drop(daily, 'Buy milk', 'Renew the passport', at, async () => {
+        await expect(daily.row('Renew the passport')).not.toHaveAttribute('data-drop-target')
+      })
+      await expect(daily.carried).toHaveText(['Write the report', 'Renew the passport', 'Call the plumber'])
+      await expect
+        .poll(() => texts(daily, true))
+        .toEqual(['Write the report', 'Renew the passport', 'Call the plumber'])
+      await expect.poll(() => texts(daily, false)).toContain('Buy milk')
+    }
+    await expect
+      .poll(() => daily.todos())
+      .toMatchObject({
+        [today]: expect.arrayContaining([milk, passport, plumber])
+      })
+  })
+
+  test('by keyboard, an own row walks no further than its own list, nor a sticky past its own', async ({
+    daily
+  }) => {
+    await carry(daily, 'Water the plants', ['ArrowDown', 'ArrowDown', 'ArrowDown'])
+    await carry(daily, 'Write the report', ['ArrowUp', 'ArrowUp'])
+
+    await expect(daily.own).toHaveText(['Buy milk', 'Water the plants'])
+    await expect(daily.carried).toHaveText(['Write the report', 'Renew the passport', 'Call the plumber'])
+    await unchanged(daily, on(seed))
+  })
+
+  test('a step taken out of a sticky is carried too, from the same day', async ({ daily }) => {
+    await drop(daily, 'Draft', 'Call the plumber', BELOW)
+
+    await expect(daily.carried).toHaveText([
+      'Write the report',
+      'Renew the passport',
+      'Call the plumber',
+      'Draft'
+    ])
+    await expect(daily.step('Outline')).toBeVisible()
+    await expect
+      .poll(() => daily.todos())
+      .toStrictEqual(
+        on([
+          milk,
+          plants,
+          under(report, [outline]),
+          passport,
+          plumber,
+          { ...draft, sticky: { since: day(-3) } }
+        ])
+      )
   })
 })
 

@@ -9,16 +9,18 @@ import type {
 } from '@dnd-kit/dom'
 import { DragOverlay, useDragDropManager, useDraggable } from '@dnd-kit/react'
 import { useComputed } from '@dnd-kit/react/hooks'
-import { ChevronDown, ListPlus, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ListPlus, Pin, Plus, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'motion/react'
 import { use, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, MouseEvent, ReactNode, Ref, RefObject } from 'react'
-import type { Todo } from '@/domain/todo'
+import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode, Ref, RefObject } from 'react'
+import type { DayKey, Todo } from '@/domain/todo'
+import { compareDays } from '@/domain/dates'
 import { locate, stepProgress } from '@/domain/todo-rules'
+import { daysSince, sinceLine } from '../day/copy'
 import type { MoveDirection, MoveTarget } from '../day/copy'
 import { dragWords } from '../day/rowDrag'
 import { COPY_CANCEL, ROW_ENTER, ROW_EXIT, ROW_LAYOUT, ROW_MOVE_X } from '../lib/motion'
-import { guardClicks, guarded } from './clickGuard'
+import { guardClicks, guarded, guardFrom } from './clickGuard'
 import { DoneCheckbox } from './DoneCheckbox'
 import { leaveRow, MoveIcon, RowMenu, RowMenusFront } from './RowMenu'
 import type { RowMenuOpen } from './RowMenu'
@@ -155,9 +157,13 @@ interface RowMotion {
 
 interface TodoItemProps extends RowActions, RowMotion {
   readonly todo: Todo
+  /** The card's day, and today, which a sticky todo travels to and counts its age to. */
+  readonly day: DayKey
+  readonly today: DayKey
   /** Where the move button sends the todo. */
   readonly moveTarget: MoveTarget
   readonly onMove: (id: string) => void
+  readonly onToggleSticky: (id: string, fromKeys: boolean) => void
   /** Adds a step at the end of the steps of the todo `parentId`. */
   readonly onAddStep: (text: string, parentId: string) => void
   /** Whether a step is being written under the todo. The card keeps it: it moves the rows below. */
@@ -207,11 +213,13 @@ function useItemRef(
 }
 
 /*
- * `› ☐ Buy milk 1/3 ········ [add a step] [move]   [delete]`, with its steps under it while it is open.
+ * `› ☐ Buy milk 1/3 ········ [carry] [add a step] [move]   [delete]`, with its steps under it while it is open.
  * Left to right the buttons grow more final, delete set apart: a spectrum to read, not a menu to compare.
  */
 export function TodoItem({
   todo,
+  day,
+  today,
   order,
   isNew,
   animateEnter,
@@ -220,6 +228,7 @@ export function TodoItem({
   onRemove,
   onEdit,
   onMove,
+  onToggleSticky,
   onAddStep,
   addingStep,
   onAddingStep,
@@ -257,6 +266,7 @@ export function TodoItem({
   const folded = todo.folded === true
   const steps = folded ? [] : (todo.steps ?? [])
   const drafting = todo.status === 'open' && addingStep
+  const reopenLeaves = todo.sticky !== undefined && todo.status === 'done' && compareDays(day, today) < 0
   const stepsId = useId()
   const actions = { onToggleDone, onRemove, onEdit }
   const addStep = (fromIcon = false): void => {
@@ -276,6 +286,7 @@ export function TodoItem({
       className={styles.todo}
       data-todo
       data-status={todo.status}
+      data-sticky={todo.sticky !== undefined || undefined}
       data-editing={editing || undefined}
       data-dragging={isDragging || undefined}
       data-leaving={!present || undefined}
@@ -305,6 +316,15 @@ export function TodoItem({
         refocus={refocus === todo.id}
         drafting={drafting}
         move={{ target: moveTarget, onMove }}
+        reopenLeaves={reopenLeaves}
+        stick={{
+          today,
+          // Stuck on a past day, it goes on to today.
+          leaves: todo.sticky === undefined && compareDays(day, today) < 0,
+          onToggle: (fromKeys) => {
+            onToggleSticky(todo.id, fromKeys)
+          }
+        }}
         onStep={() => {
           addStep()
         }}
@@ -334,6 +354,7 @@ export function TodoItem({
                   // above would take it away mid-word: the steps hold still, as the todo does.
                   disabled={drafting}
                   refocus={refocus === step.id}
+                  reopenLeaves={reopenLeaves}
                   order={order}
                   isNew={isNew}
                   animateEnter={animateEnter}
@@ -411,6 +432,7 @@ interface StepItemProps extends RowActions, RowMotion {
   readonly step: Todo
   readonly disabled: boolean
   readonly refocus: boolean
+  readonly reopenLeaves: boolean
   /** Set by `AnimatePresence`, which takes the step out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
@@ -423,6 +445,7 @@ function StepItem({
   step,
   disabled,
   refocus,
+  reopenLeaves,
   order,
   isNew,
   animateEnter,
@@ -466,6 +489,7 @@ function StepItem({
         textRef={text}
         handleRef={handleRef}
         refocus={refocus}
+        reopenLeaves={reopenLeaves}
         onToggleDone={onToggleDone}
         onRemove={onRemove}
         onEdit={onEdit}
@@ -596,6 +620,14 @@ interface TodoRowProps extends RowActions {
   readonly drafting?: boolean
   /** Where the move button sends the todo. Steps have none: they go wherever their todo goes. */
   readonly move?: { readonly target: MoveTarget; readonly onMove: (id: string) => void }
+  /** Sticks the todo, or unsticks it. Steps have none: they travel with their todo. */
+  readonly stick?: {
+    readonly today: DayKey
+    readonly leaves: boolean
+    readonly onToggle: (fromKeys: boolean) => void
+  }
+  /** Unticking it reopens a sticky on a past day, which then goes on to today. */
+  readonly reopenLeaves?: boolean
   /** Opens the step editor under the todo. Steps have none: a step cannot have steps. */
   readonly onStep?: () => void
   /**
@@ -610,6 +642,12 @@ interface TodoRowProps extends RowActions {
     readonly onPress: () => void
   }
 }
+
+const RIPE_DAYS = 28
+
+/** How far a sticky todo's ribbon has ripened, 0 to 1: quick at first, then slower, then not at all. */
+const ripeness = (days: number): number =>
+  Math.round((Math.min(days, RIPE_DAYS) / RIPE_DAYS) ** 0.6 * 100) / 100
 
 /** How long a row's text watches for the focus after a drop: its animations and the old row's exit. */
 export const REFOCUS_MS = 1000
@@ -656,6 +694,8 @@ function TodoRow({
   refocus = false,
   drafting = false,
   move,
+  stick,
+  reopenLeaves = false,
   onStep,
   fold,
   onToggleDone,
@@ -676,6 +716,24 @@ function TodoRow({
   // Only an open todo moves and takes steps (an open step under a done todo would undo "done flows down").
   const rowMove = open ? move : undefined
   const rowStep = open ? onStep : undefined
+  const rowStick = open ? stick : undefined
+  const sticky = todo.sticky !== undefined
+  const since =
+    todo.sticky === undefined || stick === undefined ? undefined : sinceLine(todo.sticky.since, stick.today)
+  const days =
+    todo.sticky === undefined || stick === undefined ? undefined : daysSince(todo.sticky.since, stick.today)
+  const sinceId = useId()
+  // Off to today, it hands the keyboard on; otherwise it keeps it in the other list (DayCard.tsx).
+  const toggleSticky = (fromKeys: boolean): void => {
+    if (rowStick === undefined) return
+    if (!rowStick.leaves) {
+      rowStick.onToggle(fromKeys)
+      return
+    }
+    leaveRow(row, fromKeys, () => {
+      rowStick.onToggle(fromKeys)
+    })
+  }
   const setText = useRefocus(refocus, text, handleRef)
   // The row itself: its menu opens at its end from the keyboard, and a row that goes away hands the
   // keyboard on from it.
@@ -718,6 +776,7 @@ function TodoRow({
       className={styles.row}
       data-row={todo.id}
       data-status={todo.status}
+      data-age={open ? days : undefined}
       data-steps={counted || undefined}
       data-folded={shut || undefined}
       data-editing={editing || undefined}
@@ -759,8 +818,21 @@ function TodoRow({
       <DoneCheckbox
         checked={todo.status === 'done'}
         size={step ? 'sm' : 'md'}
-        onChange={() => {
-          onToggleDone(todo.id)
+        onChange={(event) => {
+          if (guarded(event)) return
+          const click = event.nativeEvent
+          if (!reopenLeaves || !(click instanceof MouseEvent)) {
+            onToggleDone(todo.id)
+            return
+          }
+          // Reopened, it goes on to today, and the keyboard goes on from its todo's row.
+          const todoRow = row
+            ?.closest('li[data-todo]:not([data-step])')
+            ?.querySelector<HTMLElement>(':scope > [data-row]')
+          guardFrom(event.currentTarget, click)
+          leaveRow(todoRow ?? null, click.detail === 0, () => {
+            onToggleDone(todo.id)
+          })
         }}
       />
       <div className={styles.label}>
@@ -815,12 +887,39 @@ function TodoRow({
           {dragWords.instructions}
         </span>
       </div>
+      {open && since !== undefined && days !== undefined && (
+        <RowTip tip={since}>
+          <span
+            className={styles.age}
+            data-age-mark
+            aria-hidden="true"
+            style={{ '--age': ripeness(days) } as CSSProperties}
+          />
+        </RowTip>
+      )}
       {/* What else the row does, at its end, where the pointer or the keyboard brings it into view
           (TodoItem.module.css). Their room is always kept. */}
       {(rowMove !== undefined || rowStep !== undefined) && (
         <div className={styles.actions} inert={drafting}>
-          {/* First, so that Move and the bin keep their places on every todo: hidden, its room kept, while
-              the steps show, as the button under them adds one then. */}
+          {rowStick !== undefined && (
+            <RowTip tip={since ?? 'Carry until done'}>
+              <button
+                type="button"
+                className={[styles.action, styles.pin].join(' ')}
+                aria-label={`Carry until done: ${todo.text}`}
+                aria-pressed={sticky}
+                aria-describedby={since === undefined ? undefined : sinceId}
+                onClick={(event) => {
+                  if (guarded(event)) return
+                  guardClicks(event)
+                  toggleSticky(event.detail === 0)
+                }}
+              >
+                <Pin size={16} aria-hidden="true" />
+              </button>
+            </RowTip>
+          )}
+          {/* Hidden, its room kept, while the steps show: the button under them adds one then. */}
           {rowStep !== undefined && (
             <RowTip tip="Add a step">
               <button
@@ -876,12 +975,27 @@ function TodoRow({
         </RowTip>
       </div>
       {counted && <StepWords id={countId} done={done} total={total} />}
+      {rowStick !== undefined && since !== undefined && (
+        <span id={sinceId} className={styles.visuallyHidden}>
+          {since}
+        </span>
+      )}
       <RowMenu
         text={todo.text}
         row={row}
         open={menu}
         onOpen={setMenu}
         onStep={rowStep}
+        stick={
+          rowStick === undefined
+            ? undefined
+            : {
+                sticky,
+                onToggle: (fromKeys) => {
+                  toggleSticky(fromKeys)
+                }
+              }
+        }
         move={
           rowMove === undefined
             ? undefined

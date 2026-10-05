@@ -10,8 +10,9 @@ organise. Open it, write down what today is for, and tick things off.
 
 ## Simple on purpose
 
-- **Every day starts empty.** Nothing rolls over. What was not done yesterday stays on yesterday's
-  card, and today is a fresh page. There is no overdue list and no red badge.
+- **Every day starts empty.** Nothing rolls over unless you pin it. What was not done yesterday
+  stays on yesterday's card, and today is a fresh page with only what you chose to carry. There is
+  no overdue list and no red badge.
 - **A todo is a line of text.** No priority, no tag, no due date, no project. The day it is on is all
   it has, so there is nothing to decide but what to do.
 - **Done or not.** A todo is open or it is done, and the checkbox is the whole of it. There is no
@@ -32,6 +33,9 @@ app is built on.
 - **Edit, reorder, move, delete.** Click a todo's text to edit it and drag it to reorder it.
   The buttons at the end of its row move it to tomorrow or delete it, with six seconds to undo.
   All of it works from the keyboard.
+- **Carry a todo.** The pin at the end of a todo's row carries it to today every morning until it
+  is done. It waits at the bottom of the card under "Carried", a thin line beside it ripening slowly
+  as the days pass, and it never holds the day's ring open.
 - **Steps.** "Add a step" at the end of a todo's row writes steps under it, and the row under the
   last one adds more. An arrow before the checkbox folds them away when clicked, leaving a count
   like `1/3` after the text. Drag a todo onto another to make

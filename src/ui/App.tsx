@@ -13,7 +13,7 @@ import { useToday } from './day/useToday'
 export function App() {
   const today = useToday()
   const navigation = useDayNavigation(today)
-  const store = useTodoStore()
+  const store = useTodoStore(today)
   const settings = useSettings()
   const version = useAppVersion()
   useUpdateNotice()

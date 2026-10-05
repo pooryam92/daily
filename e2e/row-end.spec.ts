@@ -38,9 +38,10 @@ const openTodos = ['Buy milk', 'Set up CI', 'Plan the offsite', 'Write the relea
  * last. Set up CI's steps show, so its Add a step is the one under them.
  */
 const offered = (text: string): string[] => {
-  if (text === 'Set up CI') return [`Move to tomorrow: ${text}`, `Delete ${text}`]
+  if (text === 'Set up CI')
+    return [`Carry until done: ${text}`, `Move to tomorrow: ${text}`, `Delete ${text}`]
   return openTodos.includes(text)
-    ? [`Add a step to ${text}`, `Move to tomorrow: ${text}`, `Delete ${text}`]
+    ? [`Carry until done: ${text}`, `Add a step to ${text}`, `Move to tomorrow: ${text}`, `Delete ${text}`]
     : [`Delete ${text}`]
 }
 const withSteps = ['Set up CI', 'Plan the offsite', 'Clean the house']
@@ -55,6 +56,7 @@ const along = (text: string): string[] => [
 /** The words of each button's tip, by the start of its name, along Plan the offsite (folded). */
 const TIPS = [
   ['Show steps of', 'Show steps'],
+  ['Carry until done:', 'Carry until done'],
   ['Add a step', 'Add a step'],
   ['Move', 'Move to tomorrow'],
   ['Delete', 'Delete']
@@ -146,7 +148,7 @@ const measure = (daily: Daily) =>
 test.describe('a row’s end', () => {
   test.use({ seed: { [today]: seed } })
 
-  test('an open todo has Move, Add a step unless its steps show, and Delete; a done todo and a step only Delete; no grip, no ⋯, no title', async ({
+  test('an open todo has the pin, Add a step unless its steps show, Move and Delete; a done todo and a step only Delete; no grip, no ⋯, no title', async ({
     daily
   }) => {
     for (const text of texts) expect(await daily.actions(text), text).toEqual(offered(text))
@@ -168,7 +170,8 @@ test.describe('a row’s end', () => {
     await expect(daily.more('Set up CI')).not.toHaveAttribute('title')
 
     // By right edges from the row's end, on every open todo, Add a step shown or not.
-    const fromEnd = (name: string) => (name.startsWith('Add a step') ? 76 : name.startsWith('Move') ? 48 : 4)
+    const fromEnd = (name: string) =>
+      name.startsWith('Carry') ? 104 : name.startsWith('Add a step') ? 76 : name.startsWith('Move') ? 48 : 4
     for (const text of [
       'Buy milk',
       'Set up CI',
@@ -270,6 +273,7 @@ test.describe('a row’s end', () => {
     await daily.input.focus()
     await expect.poll(() => words(daily.line('Set up CI'))).toBe('Set up CI 1/3')
     expect(await daily.actions('Set up CI')).toEqual([
+      'Carry until done: Set up CI',
       'Add a step to Set up CI',
       'Move to tomorrow: Set up CI',
       'Delete Set up CI'
@@ -279,6 +283,7 @@ test.describe('a row’s end', () => {
     await daily.input.focus()
     await expect.poll(() => words(daily.line('Plan the offsite'))).toBe('Plan the offsite')
     expect(await daily.actions('Plan the offsite')).toEqual([
+      'Carry until done: Plan the offsite',
       'Move to tomorrow: Plan the offsite',
       'Delete Plan the offsite'
     ])
@@ -461,7 +466,7 @@ test.describe('a row’s end', () => {
     }
   })
 
-  test('by keyboard the row is the fold, the box, the text, Move, Add a step, then the bin; the add under the steps follows the last step; Enter and Space press them', async ({
+  test('by keyboard the row is the fold, the box, the text, the pin, Add a step, Move, then the bin; the add under the steps follows the last step; Enter and Space press them', async ({
     daily
   }) => {
     const path = async (from: string, count: number) => {
@@ -473,7 +478,7 @@ test.describe('a row’s end', () => {
       }
       return on
     }
-    expect(await path('Buy milk', 3 + along('Set up CI').length + 1)).toEqual([
+    expect(await path('Buy milk', offered('Buy milk').length + along('Set up CI').length + 1)).toEqual([
       ...offered('Buy milk'),
       ...along('Set up CI'),
       'Done'
@@ -484,13 +489,18 @@ test.describe('a row’s end', () => {
       'Show steps of Plan the offsite'
     ])
     // Folded: no steps and no add under them, so on to the next todo, which has no fold to stop at.
-    expect(await path('Plan the offsite', 4)).toEqual([...offered('Plan the offsite'), 'Done'])
+    expect(await path('Plan the offsite', offered('Plan the offsite').length + 1)).toEqual([
+      ...offered('Plan the offsite'),
+      'Done'
+    ])
     expect(await path('Fix the lint errors', 1)).toEqual(['Delete Fix the lint errors'])
     // A done todo has no add under its steps.
-    expect(await path('Write the release notes', 3 + along('Clean the house').length)).toEqual([
-      ...offered('Write the release notes'),
-      ...along('Clean the house')
-    ])
+    expect(
+      await path(
+        'Write the release notes',
+        offered('Write the release notes').length + along('Clean the house').length
+      )
+    ).toEqual([...offered('Write the release notes'), ...along('Clean the house')])
     expect(await path('Clean the house', 4)).toEqual([
       'Delete Clean the house',
       'Done',
@@ -499,8 +509,7 @@ test.describe('a row’s end', () => {
     ])
 
     await daily.editButton('Buy milk').focus()
-    await daily.page.keyboard.press('Tab')
-    await daily.page.keyboard.press('Tab')
+    for (let i = 0; i < 3; i++) await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Move to tomorrow: Buy milk')
     await daily.page.keyboard.press('Enter')
     await expect
@@ -509,7 +518,7 @@ test.describe('a row’s end', () => {
     await expect.poll(() => focused(daily)).toBe('Edit Set up CI')
 
     await daily.editButton('Write the release notes').focus()
-    for (let i = 0; i < 3; i++) await daily.page.keyboard.press('Tab')
+    for (let i = 0; i < 4; i++) await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Delete Write the release notes')
     await daily.page.keyboard.press('Space')
     await expect.poll(() => daily.todos()).toStrictEqual({ [today]: [ci, offsite, house], [day(1)]: [milk] })
@@ -753,13 +762,12 @@ test.describe('after a pointer Move or Delete', () => {
   test('the keyboard and the right-click menu are not held back', async ({ daily }) => {
     await rest(daily)
     await daily.editButton('One').focus()
-    await daily.page.keyboard.press('Tab')
-    await daily.page.keyboard.press('Tab')
+    for (let i = 0; i < 3; i++) await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Move to tomorrow: One')
     await daily.page.keyboard.press('Enter')
     await expect.poll(() => focused(daily)).toBe('Edit Two')
     await expect(card(daily)).not.toHaveAttribute('data-guard')
-    for (let i = 0; i < 3; i++) await daily.page.keyboard.press('Tab')
+    for (let i = 0; i < 4; i++) await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Delete Two')
     await daily.page.keyboard.press('Enter')
     await expect.poll(() => focused(daily)).toBe('Edit Three')
@@ -848,8 +856,7 @@ test.describe('a button’s tip', () => {
     await expect(daily.heading('Tomorrow')).toBeVisible()
     await daily.add('Dentist, 9:30')
     await daily.editButton('Dentist, 9:30').focus()
-    await daily.page.keyboard.press('Tab')
-    await daily.page.keyboard.press('Tab')
+    for (let i = 0; i < 3; i++) await daily.page.keyboard.press('Tab')
     await expect.poll(() => focused(daily)).toBe('Move to today: Dentist, 9:30')
     await expect(daily.tip).toHaveText('Move to today')
   })
@@ -1027,7 +1034,12 @@ test.describe('a row’s menu, by right-click or key', () => {
       const folds = names.filter((name) => /^(Hide|Show) steps/.test(name))
       // Add a step on every open todo, its steps shown or not.
       const offers = openTodos.includes(text)
-        ? [`Move to tomorrow: ${text}`, `Add a step to ${text}`, `Delete ${text}`]
+        ? [
+            `Carry until done: ${text}`,
+            `Move to tomorrow: ${text}`,
+            `Add a step to ${text}`,
+            `Delete ${text}`
+          ]
         : [`Delete ${text}`]
       expect(names.filter((name) => !folds.includes(name)).sort(), text).toEqual(offers.sort())
       const counted = ['Set up CI', 'Plan the offsite', 'Clean the house'].includes(text)
@@ -1255,7 +1267,7 @@ test.describe('a row’s menu near the card’s bottom', () => {
         at = { x: row.x + row.width, y: row.y }
       }
       await expect(daily.menu, how).toBeVisible()
-      expect(await items(daily), how).toHaveLength(3)
+      expect(await items(daily), how).toHaveLength(4)
       const menu = await boxOf(daily.menu)
       const card = await boxOf(daily.page.locator('section[data-offset="0"]'))
       const where = `${how}: at ${JSON.stringify(at)}, menu ${JSON.stringify(menu)}, card ${JSON.stringify(card)}`
@@ -1342,6 +1354,7 @@ test.describe('a past day’s row', () => {
     // Once the card has come to the front and its words have faded in.
     await expect.poll(() => words(daily.line('Return the library book'))).toBe('Return the library book')
     expect(await daily.actions('Return the library book')).toEqual([
+      'Carry until done: Return the library book',
       'Add a step to Return the library book',
       'Move to today: Return the library book',
       'Delete Return the library book'

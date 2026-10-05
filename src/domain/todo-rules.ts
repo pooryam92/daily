@@ -1,3 +1,4 @@
+import { compareDays } from './dates'
 import type { DayKey, DaysMap, Todo } from './todo'
 
 export type TodoAction =
@@ -29,6 +30,8 @@ export type TodoAction =
    * with the old index. Steps never move on their own.
    */
   | { type: 'moved'; from: DayKey; to: DayKey; id: string; index?: number }
+  /** Sticks the todo `id` from `day` on, or unsticks it; either way it goes to the end of the day's list. */
+  | { type: 'stickToggled'; day: DayKey; id: string }
 
 export function createTodo(text: string): Todo {
   return { id: crypto.randomUUID(), text, status: 'open' }
@@ -75,6 +78,14 @@ function unfolded(todo: Todo): Todo {
   const { folded: _removed, ...rest } = todo
   return rest
 }
+
+function unstuck(todo: Todo): Todo {
+  const { sticky: _removed, ...rest } = todo
+  return rest
+}
+
+/** Open and sticky: carried to today, and outside the day's ring. */
+export const isCarried = (todo: Todo): boolean => todo.sticky !== undefined && todo.status === 'open'
 
 /** A list rewrite; `undefined` when it changes nothing, so the reducer can return `days` as it was. */
 type ListUpdate = (list: readonly Todo[], index: number, todo: Todo) => readonly Todo[] | undefined
@@ -148,6 +159,11 @@ function moveTodo(days: DaysMap, { from, to, id, index }: Extract<TodoAction, { 
   // A second click on the same undo must not duplicate the todo.
   if (todo === undefined || from === to || target.some((entry) => entry.id === id)) return days
   const at = index === undefined ? target.length : Math.min(index, target.length)
+  // A sticky's age never starts after a day it has been on.
+  const moved =
+    todo.sticky !== undefined && compareDays(to, todo.sticky.since) < 0
+      ? { ...todo, sticky: { since: to } }
+      : todo
   return withDay(
     withDay(
       days,
@@ -155,7 +171,7 @@ function moveTodo(days: DaysMap, { from, to, id, index }: Extract<TodoAction, { 
       source.filter((entry) => entry.id !== id)
     ),
     to,
-    target.toSpliced(at, 0, todo)
+    target.toSpliced(at, 0, moved)
   )
 }
 
@@ -207,6 +223,15 @@ function nextTodos(
 
     case 'placed':
       return place(todos, action)
+
+    case 'stickToggled': {
+      // Only the top level is searched: a step travels with its todo.
+      const index = todos.findIndex((todo) => todo.id === action.id)
+      const todo = todos[index]
+      if (todo === undefined) return undefined
+      const toggled = todo.sticky === undefined ? { ...todo, sticky: { since: action.day } } : unstuck(todo)
+      return [...todos.toSpliced(index, 1), toggled]
+    }
   }
 }
 
@@ -232,14 +257,43 @@ function place(
   const index = beforeId === undefined ? list.length : list.findIndex((entry) => entry.id === beforeId)
   if (index === -1 || (parentId === found.parentId && index === found.index)) return undefined
   // A done step comes out a done todo, and its todo keeps its status: done does not flow up.
-  if (parentId === undefined) return rest.toSpliced(index, 0, todo)
-  return insertStep(rest, parentId, index, todo)
+  if (parentId === undefined) return rest.toSpliced(index, 0, outOf(todos, found.parentId, todo))
+  return insertStep(rest, parentId, index, unstuck(todo))
+}
+
+/** A step taken out of a sticky todo stays in the sticky list, so it becomes sticky too. */
+function outOf(todos: readonly Todo[], parentId: string | undefined, step: Todo): Todo {
+  const sticky = todos.find((todo) => todo.id === parentId)?.sticky
+  return sticky === undefined ? step : { ...step, sticky }
 }
 
 function restoreDay(days: DaysMap, { day, parentId }: Extract<TodoAction, { type: 'restored' }>): DayKey {
   if (parentId === undefined || days[day]?.some((todo) => todo.id === parentId) === true) return day
   const keys = Object.keys(days) as DayKey[]
   return keys.find((key) => days[key]?.some((todo) => todo.id === parentId) === true) ?? day
+}
+
+/**
+ * Carries every open sticky todo on a day before `today` to the end of today's list, oldest day first.
+ * Returns `days` itself when there is nothing to carry.
+ */
+export function travel(days: DaysMap, today: DayKey): DaysMap {
+  const past = (Object.keys(days) as DayKey[])
+    .filter((key) => compareDays(key, today) < 0 && days[key]?.some(isCarried) === true)
+    .sort(compareDays)
+  if (past.length === 0) return days
+  let next = days
+  const carried: Todo[] = []
+  for (const key of past) {
+    const todos = days[key] ?? []
+    carried.push(...todos.filter(isCarried))
+    next = withDay(
+      next,
+      key,
+      todos.filter((todo) => !isCarried(todo))
+    )
+  }
+  return withDay(next, today, [...(next[today] ?? []), ...carried])
 }
 
 export function daysReducer(days: DaysMap, action: TodoAction): DaysMap {
@@ -270,8 +324,9 @@ export interface DayProgress {
   readonly cleared: boolean
 }
 
-/** Counts the top-level todos only: steps do not fill the ring. */
-export function dayProgress(todos: readonly Todo[]): DayProgress {
+/** Counts the top-level todos only: steps do not fill the ring, nor do open sticky todos. */
+export function dayProgress(all: readonly Todo[]): DayProgress {
+  const todos = all.filter((todo) => !isCarried(todo))
   const resolved = todos.filter((todo) => todo.status === 'done').length
   return { resolved, total: todos.length, cleared: todos.length > 0 && resolved === todos.length }
 }

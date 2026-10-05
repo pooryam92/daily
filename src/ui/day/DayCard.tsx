@@ -1,22 +1,19 @@
-import { Accessibility, AutoScroller, StyleInjector } from '@dnd-kit/dom'
-import { DragDropProvider } from '@dnd-kit/react'
 import { AnimatePresence, motion, useTransform } from 'motion/react'
 import type { MotionValue } from 'motion/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { DayKey, Todo } from '@/domain/todo'
-import { useSettledTodos } from '../todos/useSettledTodos'
-import { CLEARED_LABEL, dayDetail, dayTitle, emptyDayLine, moveTarget } from './copy'
+import { CARRIED_LABEL, CLEARED_LABEL, dayDetail, dayTitle, emptyDayLine, moveTarget } from './copy'
 import type { MoveDirection } from './copy'
 import { dayIndex, formatWeekday, fromDayKey } from '@/domain/dates'
 import { deckTransform, deckZIndex } from '../deck/deck'
 import { CLEARED, EMPTY_ENTER, QUICK_ADD_MS, ROW_ENTER, ROW_EXIT } from '../lib/motion'
-import { dayProgress } from '@/domain/todo-rules'
+import { dayProgress, displayOrder, resolvedIds } from '@/domain/todo-rules'
 import { AddTodoForm } from '../todos/AddTodoForm'
 import styles from './DayCard.module.css'
 import { ProgressRing } from './ProgressRing'
-import { storedBefore } from './rowDrag'
-import { useRowDrag } from './useRowDrag'
-import { DraggedCopy, TODO_SENSORS, TodoItem } from '../todos/TodoItem'
+import { TodoList } from './TodoList'
+import type { ListRows } from './TodoList'
+import { REFOCUS_MS } from '../todos/TodoItem'
 import { RowMenus } from '../todos/RowMenu'
 
 /**
@@ -39,32 +36,14 @@ interface DayCardProps {
   readonly onEdit: (id: string, text: string) => void
   /** Move a todo to the day the card's move button names. */
   readonly onMove: (id: string) => void
+  readonly onToggleSticky: (id: string) => void
   /**
    * Put the todo or step `id` just before `beforeId` among the steps of `parentId`, or without it,
    * among the todos; without `beforeId`, at the end.
    */
   readonly onPlace: (id: string, parentId?: string, beforeId?: string) => void
-  /** Fold a todo's steps away, or show them again. */
   readonly onToggleFold: (id: string) => void
-  /** Bring this card to the front. */
   readonly onSelect: () => void
-}
-
-/*
- * The drag library adds its styles as a <style> element, which the built page's CSP only lets
- * through with the nonce of that build (vite.config.mts).
- */
-const DRAG_PLUGINS = [StyleInjector.configure({ nonce: __STYLE_NONCE__ })]
-
-/**
- * A todo's part in the key that says when rows are measured: its id, its steps' ids while they show,
- * and a mark while a step is written under it (only an open todo takes one), since both make it taller.
- */
-const layoutKey = (todo: Todo, drafting: string | null): string => {
-  const steps =
-    todo.steps === undefined || todo.folded === true ? '' : `(${todo.steps.map((step) => step.id).join(' ')})`
-  const draft = todo.status === 'open' && todo.id === drafting ? '+' : ''
-  return `${todo.id}${steps}${draft}`
 }
 
 /** A todo's bar in the glance is short, medium or long, like its text. */
@@ -82,6 +61,7 @@ export function DayCard({
   onRemove,
   onEdit,
   onMove,
+  onToggleSticky,
   onPlace,
   onToggleFold,
   onSelect
@@ -110,28 +90,26 @@ export function DayCard({
   if (offset !== 0 && side !== (offset < 0 ? 'before' : 'after')) setSide(offset < 0 ? 'before' : 'after')
 
   const progress = useMemo(() => dayProgress(todos), [todos])
-  // While a row is being dragged, nothing else may move the list.
+  // A past card carries nothing: a sticky still there is done, a done todo like the others.
+  const past = dayIndex(day) < dayIndex(today)
+  const [own, carried] = useMemo(
+    () =>
+      past
+        ? [todos, []]
+        : [
+            todos.filter((todo) => todo.sticky === undefined),
+            todos.filter((todo) => todo.sticky !== undefined)
+          ],
+    [todos, past]
+  )
+  const carriedId = useId()
+  // The glance is only seen on a card behind, where nothing is waiting to settle.
+  const glance = useMemo(
+    () => [...displayOrder(own, resolvedIds(own)), ...displayOrder(carried, resolvedIds(carried))],
+    [own, carried]
+  )
+  // While a row is being dragged, nothing else may move the lists.
   const [dragging, setDragging] = useState(false)
-  const { ordered, settled } = useSettledTodos(todos, dragging)
-  // The todo a step is being written under, if any. It is kept here, not in the todo, because opening
-  // and closing the step editor moves the rows below, which then have to be measured.
-  const [drafting, setDrafting] = useState<string | null>(null)
-  const order = ordered.map((todo) => layoutKey(todo, drafting)).join()
-  const [list, setList] = useState<HTMLUListElement | null>(null)
-
-  const place = (id: string, parentId?: string, beforeId?: string): void => {
-    onPlace(id, parentId, storedBefore(todos, settled, id, parentId, beforeId))
-  }
-  const { drop, line, refocus, said, handlers } = useRowDrag({
-    ordered,
-    settled,
-    list,
-    setDragging,
-    onPlace: place
-  })
-  // The todo a row let go here would be a step of: into it, as its last step, or at a step's line,
-  // whose todo may be scrolled out of view. A todo's line tints nothing.
-  const tinted = drop?.line?.depth === 'todo' ? undefined : drop?.parentId
 
   // Todos and steps that were there when the card mounted are not new: they neither animate in nor scroll.
   const [initialIds] = useState(
@@ -158,6 +136,49 @@ export function DayCard({
   useEffect(() => {
     for (const id of leaving.keys()) if (todos.some((todo) => todo.id === id)) leaving.delete(id)
   }, [leaving, todos])
+
+  // A todo stuck or unstuck changes lists; from the keyboard its text takes the focus in the new one.
+  const [refocus, setRefocus] = useState<string | null>(null)
+  useEffect(() => {
+    if (refocus === null) return
+    const timer = setTimeout(() => {
+      setRefocus(null)
+    }, REFOCUS_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [refocus])
+  const toggleSticky = (id: string, fromKeys: boolean): void => {
+    const todo = todos.find((entry) => entry.id === id)
+    if (todo !== undefined && todo.sticky === undefined && past) leaving.set(id, 'next')
+    else if (fromKeys) setRefocus(id)
+    onToggleSticky(id)
+  }
+
+  // Reopened on a past card, a sticky travels to today, so it slides off that way too. A step reopens its todo.
+  const toggleDone = (id: string): void => {
+    const todo = todos.find((entry) => entry.id === id || entry.steps?.some((step) => step.id === id))
+    if (past && todo?.sticky !== undefined && todo.status === 'done') leaving.set(todo.id, 'next')
+    onToggleDone(id)
+  }
+
+  const rows: ListRows = {
+    day,
+    today,
+    isNew,
+    animateEnter,
+    moveTarget: target,
+    leaving,
+    refocus,
+    onAdd: add,
+    onToggleDone: toggleDone,
+    onRemove,
+    onEdit,
+    onMove: move,
+    onToggleSticky: toggleSticky,
+    onPlace,
+    onToggleFold
+  }
 
   return (
     // A card in the background is one big click target. That is a shortcut for mouse users only:
@@ -188,7 +209,7 @@ export function DayCard({
           )}
         </div>
         <ul className={styles.glance}>
-          {ordered.map((todo) => (
+          {glance.map((todo) => (
             <li
               key={todo.id}
               className={styles.glanceBar}
@@ -240,7 +261,7 @@ export function DayCard({
 
         <div className={styles.body}>
           <AnimatePresence initial={false}>
-            {todos.length === 0 && (
+            {own.length === 0 && (
               <motion.p
                 className={styles.empty}
                 initial={{ opacity: 0 }}
@@ -252,66 +273,21 @@ export function DayCard({
             )}
           </AnimatePresence>
 
-          {/* A dragged row stays put while a copy follows the pointer, and nothing else moves
-              (useRowDrag.ts): a line, or a tint on a todo, shows where it would land. */}
           <RowMenus front={inFront}>
-            <DragDropProvider
-              // The card scrolls its list itself, only from the faded edges (useRowDrag.ts). Nor does
-              // the library speak: it would name a row by its id and make its text a "draggable" toggle.
-              // The text tells how to drag (TodoItem.tsx), and the card says what a drag does.
-              plugins={(defaults) => [
-                ...defaults.filter((plugin) => plugin !== AutoScroller && plugin !== Accessibility),
-                ...DRAG_PLUGINS
-              ]}
-              sensors={TODO_SENSORS}
-              {...handlers}
-            >
-              {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
-              <motion.ul ref={setList} className={styles.todos} layoutScroll>
-                {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
-                  while it fades instead of jumping up afterwards. */}
-                <AnimatePresence mode="popLayout" initial={false} custom={leaving}>
-                  {ordered.map((todo) => (
-                    <TodoItem
-                      key={todo.id}
-                      todo={todo}
-                      order={order}
-                      isNew={isNew}
-                      animateEnter={animateEnter}
-                      moveTarget={target}
-                      onToggleDone={onToggleDone}
-                      onRemove={onRemove}
-                      onEdit={onEdit}
-                      onMove={move}
-                      onAddStep={add}
-                      addingStep={drafting === todo.id}
-                      onToggleFold={onToggleFold}
-                      dropTarget={tinted === todo.id}
-                      refocus={refocus}
-                      onAddingStep={(open) => {
-                        // Only the todo whose step editor is open closes it: another may have opened since.
-                        setDrafting((current) => (open ? todo.id : current === todo.id ? null : current))
-                      }}
-                    />
-                  ))}
-                </AnimatePresence>
-              </motion.ul>
-              {line !== undefined && (
-                <div
-                  className={styles.dropLine}
-                  data-drop-line
-                  data-depth={line.depth}
-                  style={{ top: line.top, left: line.left, width: line.width }}
-                  aria-hidden="true"
-                />
-              )}
-              <DraggedCopy ordered={ordered} bounds={list} />
-            </DragDropProvider>
+            <TodoList todos={own} rows={rows} dragging={dragging} setDragging={setDragging} />
+            <div className={styles.carried}>
+              <p id={carriedId} className={styles.caption}>
+                {CARRIED_LABEL}
+              </p>
+              <TodoList
+                todos={carried}
+                rows={rows}
+                dragging={dragging}
+                setDragging={setDragging}
+                carried={carriedId}
+              />
+            </div>
           </RowMenus>
-          {/* What a drag says. A region of its own, apart from the header's, which says "Cleared". */}
-          <span role="status" className={styles.visuallyHidden}>
-            {said}
-          </span>
         </div>
 
         {inFront && <AddTodoForm onAdd={add} />}

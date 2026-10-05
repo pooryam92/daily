@@ -162,3 +162,52 @@ describe('parseStoreData with a fold', () => {
     expect(parseStoreData({ version: 1, days: { [DAY]: [{ ...parent, folded: true }] } }).version).toBe(1)
   })
 })
+
+describe('parseStoreData with a sticky', () => {
+  const DAY = '2026-09-19'
+  const plain = { id: 'a', text: 'Write the report', status: 'open' }
+  const sticky = { ...plain, sticky: { since: '2026-09-14' } }
+  const parsed = (todos: unknown[]) => parseStoreData({ version: 1, days: { [DAY]: todos } }).days[DAY]
+
+  it('reads a sticky todo, open or done, exactly as it was', () => {
+    const step = { id: 's', text: 'Outline', status: 'open' }
+    const file = {
+      version: 1,
+      days: {
+        [DAY]: [
+          sticky,
+          { ...sticky, id: 'b', status: 'done' },
+          { ...sticky, id: 'c', steps: [step], folded: true },
+          plain
+        ]
+      }
+    }
+    expect(JSON.stringify(parseStoreData(JSON.parse(JSON.stringify(file))))).toBe(JSON.stringify(file))
+  })
+
+  it('never reads a todo that is not sticky as having the key', () => {
+    for (const todo of parsed([plain, { ...plain, id: 'p', steps: [plain] }]) ?? []) {
+      expect(Object.keys(todo)).not.toContain('sticky')
+    }
+  })
+
+  it('drops the key on a step, and the file still loads', () => {
+    const todos = parsed([{ ...plain, steps: [{ ...sticky, id: 's' }] }])
+    expect(todos).toStrictEqual([{ ...plain, steps: [{ ...plain, id: 's' }] }])
+  })
+
+  it('strips unknown fields inside it', () => {
+    expect(parsed([{ ...plain, sticky: { since: '2026-09-14', colour: 'gold' } }])).toStrictEqual([sticky])
+  })
+
+  it.each([
+    ['true', true],
+    ['a string', '2026-09-14'],
+    ['null', null],
+    ['an empty object', {}],
+    ['a since that is not a day', { since: 'Monday' }],
+    ['a since that is a number', { since: 20260914 }]
+  ])('rejects a sticky that is %s', (_name, value) => {
+    expect(() => parsed([{ ...plain, sticky: value }])).toThrow(TypeError)
+  })
+})

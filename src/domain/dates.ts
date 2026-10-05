@@ -29,7 +29,7 @@ export function compareDays(a: DayKey, b: DayKey): number {
 }
 
 /** The year is only said where it is not today's: the deck can travel past New Year. */
-const yearOf = (key: DayKey, today: DayKey): 'numeric' | undefined =>
+export const yearOf = (key: DayKey, today: DayKey): 'numeric' | undefined =>
   key.slice(0, 4) === today.slice(0, 4) ? undefined : 'numeric'
 
 /** The whole date, weekday first: "Saturday, September 19". */

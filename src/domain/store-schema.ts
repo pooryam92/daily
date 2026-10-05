@@ -24,10 +24,19 @@ function parseTodo(value: unknown, parentId?: string): Todo {
   if (typeof text !== 'string') throw new TypeError(`Todo ${id} must have a text`)
   if (!isTodoStatus(status)) throw new TypeError(`Todo ${id} has an unknown status`)
   const steps = parseSteps(value.steps, id, parentId)
+  const sticky = parentId === undefined ? parseSticky(value.sticky, id) : undefined
+  const todo: Todo = sticky === undefined ? { id, text, status } : { id, text, status, sticky }
   // No key rather than an empty list, so a todo without steps is saved as it always was.
-  if (steps.length === 0) return { id, text, status }
+  if (steps.length === 0) return todo
   // A fold hides steps, so it is kept only where there are some (never on a step), and only as `true`.
-  return value.folded === true ? { id, text, status, steps, folded: true } : { id, text, status, steps }
+  return value.folded === true ? { ...todo, steps, folded: true } : { ...todo, steps }
+}
+
+function parseSticky(value: unknown, id: string): Todo['sticky'] {
+  if (value === undefined) return undefined
+  if (!isRecord(value) || typeof value.since !== 'string' || !isDayKey(value.since))
+    throw new TypeError(`Todo ${id} has an invalid sticky day`)
+  return { since: value.since }
 }
 
 function parseSteps(value: unknown, id: string, parentId: string | undefined): readonly Todo[] {
