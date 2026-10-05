@@ -10,6 +10,8 @@ export interface Todo {
   readonly steps?: readonly Todo[]
   /** Its steps are hidden, by choice. No key means they show; only a todo with steps has it. */
   readonly folded?: true
+  /** Carried to today until it is done; `since` is the day it was stuck on. Only a todo, never a step. */
+  readonly sticky?: { readonly since: DayKey }
 }
 
 /** A calendar day in local time, formatted as `YYYY-MM-DD`. */

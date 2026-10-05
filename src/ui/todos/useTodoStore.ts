@@ -3,7 +3,7 @@ import { STORE_VERSION } from '@/domain/store'
 import type { DayKey, DaysMap, Todo } from '@/domain/todo'
 import { useGateway } from '../gateway'
 import { toMessage } from '../lib/errors'
-import { createTodo, daysReducer } from '@/domain/todo-rules'
+import { createTodo, daysReducer, travel } from '@/domain/todo-rules'
 import type { TodoAction } from '@/domain/todo-rules'
 
 export interface TodoActions {
@@ -22,15 +22,23 @@ export interface TodoActions {
   readonly place: (day: DayKey, id: string, parentId?: string, beforeId?: string) => void
   /** Moves a todo to another day: to `index` there, or to the end when none is given. */
   readonly move: (from: DayKey, to: DayKey, id: string, index?: number) => void
+  /** Sticks a todo, or unsticks it, to the end of its day. */
+  readonly toggleSticky: (day: DayKey, id: string) => void
 }
 
 type State =
   | { readonly phase: 'loading' }
   | { readonly phase: 'failed'; readonly error: string }
-  | { readonly phase: 'ready'; readonly days: DaysMap; readonly saveError: string | null }
+  | {
+      readonly phase: 'ready'
+      readonly days: DaysMap
+      readonly today: DayKey
+      readonly saveError: string | null
+    }
 
 type Action =
-  | { type: 'loaded'; days: DaysMap }
+  | { type: 'loaded'; days: DaysMap; today: DayKey }
+  | { type: 'dayChanged'; today: DayKey }
   | { type: 'loadFailed'; error: string }
   | { type: 'saveSettled'; error: string | null }
   | TodoAction
@@ -40,7 +48,10 @@ export type TodoStore = State & { readonly actions: TodoActions }
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'loaded':
-      return { phase: 'ready', days: action.days, saveError: null }
+      return { phase: 'ready', days: travel(action.days, action.today), today: action.today, saveError: null }
+    case 'dayChanged':
+      if (state.phase !== 'ready' || state.today === action.today) return state
+      return { ...state, days: travel(state.days, action.today), today: action.today }
     case 'loadFailed':
       return { phase: 'failed', error: action.error }
     case 'saveSettled':
@@ -48,16 +59,25 @@ function reducer(state: State, action: Action): State {
       return { ...state, saveError: action.error }
     default:
       if (state.phase !== 'ready') return state
-      return { ...state, days: daysReducer(state.days, action) }
+      // A sticky todo stuck, restored or reopened on a past day goes on to today at once.
+      return { ...state, days: travel(daysReducer(state.days, action), state.today) }
   }
 }
 
-/** The todos of all days: loaded from disk on mount, saved back on every change. */
-export function useTodoStore(): TodoStore {
+/**
+ * The todos of all days: loaded from disk on mount, saved back on every change. Sticky todos travel to
+ * `today` on load, when the day changes and after every change.
+ */
+export function useTodoStore(today: DayKey): TodoStore {
   const gateway = useGateway()
   const [state, dispatch] = useReducer(reducer, { phase: 'loading' })
   // What is on disk, to tell real changes apart from the initial load.
   const persisted = useRef<DaysMap | null>(null)
+  const todayRef = useRef(today)
+  useEffect(() => {
+    todayRef.current = today
+    dispatch({ type: 'dayChanged', today })
+  }, [today])
 
   useEffect(() => {
     let cancelled = false
@@ -65,7 +85,7 @@ export function useTodoStore(): TodoStore {
       ({ days }) => {
         if (cancelled) return
         persisted.current = days
-        dispatch({ type: 'loaded', days })
+        dispatch({ type: 'loaded', days, today: todayRef.current })
       },
       (error: unknown) => {
         if (!cancelled) dispatch({ type: 'loadFailed', error: toMessage(error) })
@@ -115,6 +135,9 @@ export function useTodoStore(): TodoStore {
       },
       move: (from, to, id, index) => {
         dispatch({ type: 'moved', from, to, id, index })
+      },
+      toggleSticky: (day, id) => {
+        dispatch({ type: 'stickToggled', day, id })
       }
     }),
     []
