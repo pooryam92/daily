@@ -141,12 +141,14 @@ Keep it current: a change to what the user can do changes this file in the same 
   ribbon's ripest colour. Only an open todo has it; its steps travel with it, fold included.
   Unsticking leaves a normal open todo at the end of today's own todos.
 - **Where it sits.** Under the day's own todos, at the bottom of the card, under a quiet "Carried".
-  The section takes at most 40% of the list's height and scrolls on its own. Stickies are dragged
+  It takes the room the day's own todos leave; when both lists are full it keeps 40% of the height,
+  and each scrolls on its own. Stickies are dragged
   among themselves; nothing is dropped across the line between the two lists. Sticking or unsticking
   from the keyboard puts the focus on the todo's text in its new list.
 - **It travels.** An open sticky on a day before today moves to the end of today's carried todos,
   oldest day first, on start and when the date changes while the app is open. The days it passed
-  keep no trace of it. Stuck on a past card, it slides off towards today at once; stuck on a future
+  keep no trace of it. Stuck, or a done sticky reopened, on a past card, it slides off towards today
+  at once; stuck on a future
   card, it waits there and travels once that day is today. "Move to tomorrow" works the same way.
 - **Age.** A thin ribbon in the margin beside its box ripens from pale straw to cognac (in the dark,
   khaki to honey) over four weeks, then stays. There is no number on the row. Pointing at the ribbon

@@ -294,7 +294,7 @@
 .todos {
   /* The anchor a deleted row is positioned against while it fades out (AnimatePresence popLayout). */
   position: relative;
-  flex: 1;
+  flex: 1 1 auto;
   margin: 0;
   /* Less on the right: the stable scrollbar gutter takes up the rest. */
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
@@ -341,13 +341,13 @@
 }
 
 /*
- * The sticky todos, under the day's own, which keep the room above, so this stays put as they come and
- * go. Not positioned: the drop line is placed against the body. Not there while there are none.
+ * The sticky todos, at the foot under the day's own, which grow into the room left. When the two collide
+ * this gives way first, down to 40% (or less if that holds them all), then the own list does.
+ * Not positioned: the drop line is placed against the body. Not there while there are none.
  */
 .carried {
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: 40%;
+  flex: 0 1000 max-content;
+  height: 40%;
   display: flex;
   flex-direction: column;
 }

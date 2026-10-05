@@ -155,6 +155,13 @@ export function DayCard({
     onToggleSticky(id)
   }
 
+  // Reopened on a past card, a sticky travels to today, so it slides off that way too. A step reopens its todo.
+  const toggleDone = (id: string): void => {
+    const todo = todos.find((entry) => entry.id === id || entry.steps?.some((step) => step.id === id))
+    if (past && todo?.sticky !== undefined && todo.status === 'done') leaving.set(todo.id, 'next')
+    onToggleDone(id)
+  }
+
   const rows: ListRows = {
     day,
     today,
@@ -164,7 +171,7 @@ export function DayCard({
     leaving,
     refocus,
     onAdd: add,
-    onToggleDone,
+    onToggleDone: toggleDone,
     onRemove,
     onEdit,
     onMove: move,
