@@ -28,6 +28,7 @@ test.describe('a sticky left on an old day', () => {
     await expect(daily.heading('Today')).toBeVisible()
     await expect(daily.carried).toHaveText(['Write the report'])
     await expect(daily.page.getByRole('list', { name: 'Carried' })).toBeVisible()
+    await expect(daily.line('Write the report')).toHaveAttribute('data-age', '4')
     await expect(daily.own).toHaveText(['Buy milk'])
     await expect
       .poll(() => daily.todos())
@@ -151,6 +152,7 @@ test.describe('sticking', () => {
 
     await expect(daily.carried).toHaveText(['Buy milk'])
     await expect.poll(() => onDisk(daily, today)).toMatchObject([{ sticky: { since: today } }])
+    await expect(daily.line('Buy milk')).toHaveAttribute('data-age', '0')
     await tabToPin(daily, 'Buy milk')
     await expect(daily.tip).toHaveText('Since today')
     await expect(daily.stick('Buy milk')).toHaveAttribute('aria-pressed', 'true')

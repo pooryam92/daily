@@ -109,7 +109,7 @@ test('in the smallest window, a wrapped row keeps its text wide, its box up, and
   await smallest(daily)
 
   // The room kept at the end: the pin, Add a step, Move, the gap and the bin on every open todo; the bin
-  // alone on any other row. The words' width follows: 216 on an open todo, 316 on a done one, 284 on a step.
+  // alone on any other row.
   for (const [text, counted, buttons, room, width] of [
     [LONG, true, 4, 136, 216],
     [LONG_STEP, false, 1, 36, 284],
@@ -143,7 +143,6 @@ test('in the smallest window, a wrapped row keeps its text wide, its box up, and
     expect(Math.abs(at.box.top - (first.top - 4)), where).toBeLessThanOrEqual(1)
 
     expect(at.actions, where).toHaveLength(buttons)
-    // From the end: the bin 4px in on every row; Move 48px, Add a step 76px and the pin 104px in on an open todo.
     const fromEnd = buttons === 4 ? [104, 76, 48, 4] : [4]
     for (const [index, part] of at.actions.entries()) {
       expect(Math.abs(part.width - 28), where).toBeLessThanOrEqual(1)

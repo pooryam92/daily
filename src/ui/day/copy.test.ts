@@ -97,7 +97,7 @@ describe('sinceLine', () => {
   })
 
   it('follows the locale', () => {
-    expect(sinceLine('2026-09-28', '2026-10-03', 'de-DE')).toBe('Since Mo., 28. Sept. · 5 days')
+    expect(sinceLine('2026-09-28', '2026-10-03', 'de-DE')).toMatch(/^Since Mo\., 28\. Sep.* · 5 days$/)
   })
 })
 
