@@ -7,7 +7,8 @@ import {
   displayOrder,
   locate,
   resolvedIds,
-  stepProgress
+  stepProgress,
+  travel
 } from './todo-rules'
 import type { TodoAction } from './todo-rules'
 
@@ -709,7 +710,6 @@ describe('any run of actions', () => {
     value !== null &&
     Object.values(value).some((entry) => entry === undefined || holdsUndefined(entry))
 
-  /** What must hold after every action; each broken rule is named. */
   function broken(state: DaysMap): string[] {
     const out: string[] = []
     const ids = new Set<string>()
@@ -727,7 +727,8 @@ describe('any run of actions', () => {
         if ('folded' in todo && (todo.folded !== true || steps === undefined))
           out.push(`${todo.id} has folded ${String(todo.folded)} with ${String(steps?.length ?? 0)} steps`)
         for (const step of steps ?? []) {
-          if ('steps' in step || 'folded' in step) out.push(`step ${step.id} has steps or a fold`)
+          if ('steps' in step || 'folded' in step || 'sticky' in step)
+            out.push(`step ${step.id} has steps, a fold or a sticky`)
         }
       }
     }
@@ -746,6 +747,7 @@ describe('any run of actions', () => {
     let intos = 0
     let places = 0
     let outs = 0
+    let travels = 0
 
     for (let i = 0; i < 400; i++) {
       const day = random() < 0.7 ? DAY : TOMORROW
@@ -755,7 +757,7 @@ describe('any run of actions', () => {
       const any = pick(every)
       const fresh = (): Todo => ({ id: `new${String(made++)}`, text: 'New', status: 'open' })
       let action: TodoAction | undefined
-      switch (Math.floor(random() * 13)) {
+      switch (Math.floor(random() * 14)) {
         case 0:
           action = { type: 'added', day, todo: fresh() }
           break
@@ -839,6 +841,9 @@ describe('any run of actions', () => {
             }
           break
         }
+        case 13:
+          if (top) action = { type: 'stickToggled', day, id: top.id }
+          break
       }
       if (action === undefined) continue
       const before = state
@@ -872,6 +877,18 @@ describe('any run of actions', () => {
         if (from?.parentId !== undefined && action.parentId === undefined) outs++
       }
       expect(problems, `seed ${String(seed)}, after:\n${done.slice(-6).join('\n')}`).toEqual([])
+      if (random() < 0.1) {
+        const travelled = travel(state, TOMORROW)
+        const count = (days: DaysMap) => Object.values(days).flatMap((todos) => todos).length
+        const left = (state[DAY] ?? []).filter((todo) => todo.sticky !== undefined && todo.status === 'open')
+        expect(broken(travelled), `seed ${String(seed)}, travel`).toEqual([])
+        expect(count(travelled)).toBe(count(state))
+        if (left.length === 0) expect(travelled).toBe(state)
+        else expect(travelled[TOMORROW]?.slice(-left.length)).toStrictEqual(left)
+        expect(travel(travelled, TOMORROW)).toBe(travelled)
+        if (left.length > 0) travels++
+        state = travelled
+      }
     }
     // The run did reach the cases the rules are about.
     expect(done.filter((a) => a.includes('"restored"')).length).toBeGreaterThan(5)
@@ -879,12 +896,20 @@ describe('any run of actions', () => {
     expect(intos).toBeGreaterThan(5)
     expect(outs).toBeGreaterThan(5)
     expect(places).toBeGreaterThan(5)
+    expect(travels).toBeGreaterThan(0)
   })
 
   it('keeps every rule when any row is placed at any place, and lands it there', () => {
-    const oats: Todo = { id: 'oats', text: 'Buy oats', status: 'open', steps: [{ ...plants, id: 'eggs' }] }
+    const since = { since: '2026-09-14' as const }
+    const oats: Todo = {
+      id: 'oats',
+      text: 'Buy oats',
+      status: 'open',
+      steps: [{ ...plants, id: 'eggs' }],
+      sticky: since
+    }
     const settled: Todo = { ...finished(taxes), steps: [finished(plants)], folded: true }
-    const state: DaysMap = { [DAY]: [milk, ci, settled, oats] }
+    const state: DaysMap = { [DAY]: [{ ...milk, sticky: since }, ci, settled, oats] }
     const todos = state[DAY] ?? []
     const flat = (days: DaysMap) =>
       (days[DAY] ?? []).flatMap((todo) => [todo, ...(todo.steps ?? [])]).map((t) => t.id)
@@ -918,7 +943,12 @@ describe('any run of actions', () => {
             what
           ).toEqual(flat(state).filter((id) => !moving.has(id)))
           const found = locate(next[DAY] ?? [], row.id)
-          expect(found?.todo, what).toStrictEqual(row)
+          const { sticky: _sticky, ...plain } = row
+          const from = locate(todos, row.id)?.parentId
+          const carried = from === undefined ? row.sticky : todos.find((todo) => todo.id === from)?.sticky
+          const landed =
+            parentId === undefined && carried !== undefined ? { ...plain, sticky: carried } : plain
+          expect(found?.todo, what).toStrictEqual(landed)
           expect(found?.parentId, what).toBe(parentId)
           const target =
             parentId === undefined ? (next[DAY] ?? []) : (locate(next[DAY] ?? [], parentId)?.todo.steps ?? [])
@@ -1027,5 +1057,152 @@ describe('dayProgress', () => {
 
   it('does not call a day without todos cleared', () => {
     expect(dayProgress([])).toEqual({ resolved: 0, total: 0, cleared: false })
+  })
+})
+
+describe('travel', () => {
+  const TODAY: DayKey = '2026-10-05'
+  const MON: DayKey = '2026-10-01'
+  const TUE: DayKey = '2026-10-02'
+  const TOMORROW: DayKey = '2026-10-06'
+  const open = (id: string, extra: Partial<Todo> = {}): Todo => ({ id, text: id, status: 'open', ...extra })
+  const stuck = (id: string, since: DayKey, extra: Partial<Todo> = {}): Todo =>
+    open(id, { sticky: { since }, ...extra })
+
+  it('moves an open sticky from a past day to the end of today, and drops the day it empties', () => {
+    const report = stuck('report', MON)
+    const days: DaysMap = { [MON]: [report], [TODAY]: [open('milk')] }
+    expect(travel(days, TODAY)).toStrictEqual({ [TODAY]: [open('milk'), report] })
+  })
+
+  it('keeps its steps, fold and start day', () => {
+    const report = stuck('report', MON, {
+      steps: [open('a'), { ...open('b'), status: 'done' }],
+      folded: true
+    })
+    expect(travel({ [TUE]: [open('left'), report] }, TODAY)).toStrictEqual({
+      [TUE]: [open('left')],
+      [TODAY]: [report]
+    })
+  })
+
+  it('moves to a today that has no entry yet', () => {
+    expect(travel({ [MON]: [stuck('a', MON)] }, TODAY)).toStrictEqual({ [TODAY]: [stuck('a', MON)] })
+  })
+
+  it.each([
+    ['a sticky on a future day', { [TOMORROW]: [stuck('dentist', TOMORROW)] }],
+    ['a sticky already on today', { [TODAY]: [stuck('report', MON)] }],
+    ['a done sticky', { [MON]: [{ ...stuck('report', MON), status: 'done' as const }] }],
+    ['todos that are not sticky', { [MON]: [open('milk')], [TUE]: [open('bread')] }],
+    ['no days', {}]
+  ])('leaves %s alone, and hands back the same days', (_name, days: DaysMap) => {
+    expect(travel(days, TODAY)).toBe(days)
+  })
+
+  it('takes past days oldest first and each in its order, after what today has', () => {
+    const days: DaysMap = {
+      [TUE]: [stuck('c', TUE)],
+      [MON]: [stuck('a', MON), open('milk'), stuck('b', MON)],
+      [TODAY]: [open('bread'), stuck('here', TODAY)]
+    }
+    expect(travel(days, TODAY)).toStrictEqual({
+      [MON]: [open('milk')],
+      [TODAY]: [open('bread'), stuck('here', TODAY), stuck('a', MON), stuck('b', MON), stuck('c', TUE)]
+    })
+  })
+
+  it('changes nothing the second time', () => {
+    const once = travel({ [MON]: [stuck('a', MON)], [TUE]: [stuck('b', TUE)] }, TODAY)
+    expect(travel(once, TODAY)).toBe(once)
+  })
+
+  it('takes many stickies along, none lost and none doubled', () => {
+    const many = Array.from({ length: 40 }, (_, i) => stuck(`s${String(i)}`, MON))
+    const next = travel({ [MON]: many.slice(0, 20), [TUE]: many.slice(20) }, TODAY)
+    expect(next).toStrictEqual({ [TODAY]: many })
+  })
+
+  it('does not mutate its input', () => {
+    const days: DaysMap = { [MON]: [stuck('a', MON, { steps: [open('s')] })], [TODAY]: [open('b')] }
+    const snapshot = structuredClone(days)
+    travel(days, TODAY)
+    expect(days).toStrictEqual(snapshot)
+  })
+})
+
+describe('daysReducer with stickies', () => {
+  const PAST: DayKey = '2026-09-17'
+  const stuck = (todo: Todo, since: DayKey = DAY): Todo => ({ ...todo, sticky: { since } })
+  const stick = (days: DaysMap, id: string, day: DayKey = DAY) =>
+    daysReducer(days, { type: 'stickToggled', day, id })
+
+  it('sticks a todo from the day it is on, and puts it at the end of that day', () => {
+    expect(stick(days, 'milk')[DAY]).toStrictEqual([taxes, stuck(milk)])
+  })
+
+  it('unsticks it back to a normal todo at the end of the day', () => {
+    const next = stick(stick({ [DAY]: [milk, taxes, plants] }, 'milk'), 'milk')
+    expect(next[DAY]).toStrictEqual([taxes, plants, milk])
+  })
+
+  it('keeps steps and fold when it sticks', () => {
+    const folded: Todo = { ...ci, folded: true }
+    expect(stick({ [DAY]: [folded, milk] }, 'ci')[DAY]).toStrictEqual([milk, stuck(folded)])
+  })
+
+  it('ignores a step, and a todo that is not there', () => {
+    expect(stick(withSteps, 'lint')).toBe(withSteps)
+    expect(stick(days, 'gone')).toBe(days)
+  })
+
+  it('keeps the flag through tick, untick, edit, fold and a move', () => {
+    const start: DaysMap = { [PAST]: [stuck(ci, PAST)] }
+    const done = daysReducer(start, { type: 'doneToggled', day: PAST, id: 'ci' })
+    expect(done[PAST]?.[0]).toMatchObject({ status: 'done', sticky: { since: PAST } })
+    const back = daysReducer(done, { type: 'doneToggled', day: PAST, id: 'ci' })
+    expect(back[PAST]?.[0]).toMatchObject({ status: 'open', sticky: { since: PAST } })
+    const edited = daysReducer(start, { type: 'edited', day: PAST, id: 'ci', text: 'Set up CI again' })
+    expect(edited[PAST]?.[0]?.sticky).toStrictEqual({ since: PAST })
+    const folded = daysReducer(start, { type: 'foldToggled', day: PAST, id: 'ci' })
+    expect(folded[PAST]?.[0]).toMatchObject({ folded: true, sticky: { since: PAST } })
+    const moved = daysReducer(start, { type: 'moved', from: PAST, to: DAY, id: 'ci' })
+    expect(moved[DAY]).toStrictEqual([stuck(ci, PAST)])
+  })
+
+  it('a sticky put under another todo is a plain step', () => {
+    const next = daysReducer(
+      { [DAY]: [stuck(milk), taxes] },
+      { type: 'placed', day: DAY, id: 'milk', parentId: 'taxes' }
+    )
+    expect(next[DAY]).toStrictEqual([{ ...taxes, steps: [milk] }])
+  })
+
+  it('a step taken out of a sticky todo is sticky from the same day; out of a normal one, normal', () => {
+    const fromSticky = daysReducer({ [DAY]: [stuck(ci, PAST)] }, { type: 'placed', day: DAY, id: 'lint' })
+    expect(fromSticky[DAY]?.[1]).toStrictEqual(stuck(lint, PAST))
+    const fromNormal = daysReducer(withSteps, { type: 'placed', day: DAY, id: 'lint' })
+    expect(fromNormal[DAY]?.[2]).toStrictEqual(lint)
+  })
+
+  it('restores a deleted sticky with its flag', () => {
+    const start: DaysMap = { [DAY]: [milk, stuck(taxes, PAST)] }
+    const removed = daysReducer(start, { type: 'removed', day: DAY, id: 'taxes' })
+    const restored = daysReducer(removed, { type: 'restored', day: DAY, todo: stuck(taxes, PAST), index: 1 })
+    expect(restored).toStrictEqual(start)
+  })
+})
+
+describe('dayProgress with stickies', () => {
+  const sticky: Todo = { ...taxes, sticky: { since: DAY } }
+
+  it('leaves an open sticky out of the ring', () => {
+    expect(dayProgress([finished(milk), sticky])).toEqual({ resolved: 1, total: 1, cleared: true })
+    expect(dayProgress([sticky])).toEqual({ resolved: 0, total: 0, cleared: false })
+  })
+
+  it('counts a done sticky like any done todo', () => {
+    expect(dayProgress([milk, finished(sticky)])).toEqual({ resolved: 1, total: 2, cleared: false })
+    expect(dayProgress([finished(sticky)])).toEqual({ resolved: 1, total: 1, cleared: true })
   })
 })
