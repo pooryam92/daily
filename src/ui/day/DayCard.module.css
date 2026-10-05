@@ -339,3 +339,14 @@
     --bottom-fade: 0px;
   }
 }
+
+/* The sticky todos, under the day's own, set apart by a rule. Not there while there are none. */
+.stickies {
+  flex: 0 1 auto;
+  max-height: 40%;
+  border-top: 1px solid var(--border);
+}
+
+.stickies:not(:has(li)) {
+  display: none;
+}

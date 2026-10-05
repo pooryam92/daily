@@ -109,6 +109,9 @@ export function DayStack({ today, days, actions, navigation, sound }: DayStackPr
             onMove={(id) => {
               moveWithUndo(day, moveTarget(day, today), id)
             }}
+            onToggleSticky={(id) => {
+              actions.toggleSticky(day, id)
+            }}
             onPlace={(id, parentId, beforeId) => {
               actions.place(day, id, parentId, beforeId)
             }}

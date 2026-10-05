@@ -413,6 +413,17 @@
   visibility: hidden;
 }
 
+/* A sticky todo's age: a mark that ripens with the days it has been carried (--age, 0 to 1). */
+.age {
+  flex: none;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  margin-inline: var(--space-2);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-muted) calc(var(--age) * 100%), var(--border));
+}
+
 /* The folded steps' figures, after the text, in figures of one width so they do not shift. */
 .figures {
   margin-inline-start: var(--space-2);

@@ -6,7 +6,10 @@ import {
   formatDay,
   formatDistance,
   formatLongWeekday,
-  relativeLabel
+  formatWeekday,
+  fromDayKey,
+  relativeLabel,
+  yearOf
 } from '@/domain/dates'
 
 /*
@@ -52,4 +55,17 @@ export interface MoveTarget {
 export function moveTarget(day: DayKey, today: DayKey): MoveTarget {
   if (day === today) return { day: addDays(today, 1), name: 'tomorrow', direction: 'next' }
   return { day: today, name: 'today', direction: compareDays(day, today) < 0 ? 'next' : 'previous' }
+}
+
+/** Whole days a sticky todo has been carried. */
+export const daysSince = (since: DayKey, today: DayKey): number => Math.max(compareDays(today, since), 0)
+
+/** A sticky todo's age in words, for its tip: "Since Mon 28 Sep · 5 days". */
+export function sinceLine(since: DayKey, today: DayKey, locale?: string): string {
+  const days = daysSince(since, today)
+  if (days === 0) return 'Since today'
+  const date = fromDayKey(since)
+  const month = date.toLocaleDateString(locale, { month: 'short', year: yearOf(since, today) })
+  const count = days === 1 ? '1 day' : `${String(days)} days`
+  return `Since ${formatWeekday(since, locale)} ${String(date.getDate())} ${month} · ${count}`
 }

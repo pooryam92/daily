@@ -8,6 +8,8 @@ import {
   ChevronDown,
   ChevronRight,
   ListPlus,
+  Pin,
+  PinOff,
   Trash2
 } from 'lucide-react'
 import type { LucideProps } from 'lucide-react'
@@ -62,6 +64,7 @@ export function MoveIcon({ to, ...props }: Omit<LucideProps, 'to'> & { readonly 
 /** What a row's menu offers. A step, and a done todo, only go away. */
 interface RowMenuActions {
   readonly onStep?: () => void
+  readonly stick?: { readonly sticky: boolean; readonly onToggle: (fromKeys: boolean) => void }
   readonly move?: MoveTo & { readonly onMove: () => void }
   readonly fold?: { readonly folded: boolean; readonly onToggle: () => void }
   readonly onDelete: () => void
@@ -149,7 +152,7 @@ export function leaveRow(row: HTMLElement | null, fromKeys: boolean, action: () 
  * The row's buttons, and folding its steps, as a menu opened by right-click or Shift+F10 (TodoItem.tsx).
  * It closes once the card loses attention: the window blurs, the list scrolls, or another day comes forward.
  */
-export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete }: RowMenuProps) {
+export function RowMenu({ text, row, open, onOpen, onStep, stick, move, fold, onDelete }: RowMenuProps) {
   const popup = useRef<HTMLDivElement>(null)
   // Whether an item is picked by a key: Base UI's item click does not say.
   const picking = useRef(false)
@@ -267,6 +270,22 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
                 Add a step
               </Menu.Item>
             )}
+            {stick !== undefined && (
+              <Menu.Item
+                className={styles.item}
+                aria-label={`${stick.sticky ? 'Unstick' : 'Stick'} ${text}`}
+                onClick={() => {
+                  stick.onToggle(picking.current)
+                }}
+              >
+                {stick.sticky ? (
+                  <PinOff className={styles.icon} size={14} aria-hidden="true" />
+                ) : (
+                  <Pin className={styles.icon} size={14} aria-hidden="true" />
+                )}
+                {stick.sticky ? 'Unstick' : 'Stick'}
+              </Menu.Item>
+            )}
             {move !== undefined && (
               <Menu.Item
                 className={styles.item}
@@ -296,7 +315,7 @@ export function RowMenu({ text, row, open, onOpen, onStep, move, fold, onDelete 
                 {fold.folded ? 'Show steps' : 'Hide steps'}
               </Menu.Item>
             )}
-            {(onStep !== undefined || move !== undefined || fold !== undefined) && (
+            {(onStep !== undefined || stick !== undefined || move !== undefined || fold !== undefined) && (
               <Menu.Separator className={styles.rule} />
             )}
             <Menu.Item
