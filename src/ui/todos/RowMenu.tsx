@@ -9,7 +9,6 @@ import {
   ChevronRight,
   ListPlus,
   Pin,
-  PinOff,
   Trash2
 } from 'lucide-react'
 import type { LucideProps } from 'lucide-react'
@@ -270,22 +269,6 @@ export function RowMenu({ text, row, open, onOpen, onStep, stick, move, fold, on
                 Add a step
               </Menu.Item>
             )}
-            {stick !== undefined && (
-              <Menu.Item
-                className={styles.item}
-                aria-label={`${stick.sticky ? 'Unstick' : 'Stick'} ${text}`}
-                onClick={() => {
-                  stick.onToggle(picking.current)
-                }}
-              >
-                {stick.sticky ? (
-                  <PinOff className={styles.icon} size={14} aria-hidden="true" />
-                ) : (
-                  <Pin className={styles.icon} size={14} aria-hidden="true" />
-                )}
-                {stick.sticky ? 'Unstick' : 'Stick'}
-              </Menu.Item>
-            )}
             {move !== undefined && (
               <Menu.Item
                 className={styles.item}
@@ -296,6 +279,18 @@ export function RowMenu({ text, row, open, onOpen, onStep, stick, move, fold, on
               >
                 <MoveIcon to={move} className={styles.icon} size={14} aria-hidden="true" />
                 Move to {move.name}
+              </Menu.Item>
+            )}
+            {stick !== undefined && (
+              <Menu.Item
+                className={styles.item}
+                aria-label={`${stick.sticky ? 'Stop carrying' : 'Carry until done'}: ${text}`}
+                onClick={() => {
+                  stick.onToggle(picking.current)
+                }}
+              >
+                <Pin className={styles.icon} size={14} aria-hidden="true" />
+                {stick.sticky ? 'Stop carrying' : 'Carry until done'}
               </Menu.Item>
             )}
             {fold !== undefined && (

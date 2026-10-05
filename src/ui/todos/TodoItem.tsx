@@ -9,7 +9,7 @@ import type {
 } from '@dnd-kit/dom'
 import { DragOverlay, useDragDropManager, useDraggable } from '@dnd-kit/react'
 import { useComputed } from '@dnd-kit/react/hooks'
-import { ChevronDown, ListPlus, Pin, PinOff, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ListPlus, Pin, Plus, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'motion/react'
 import { use, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode, Ref, RefObject } from 'react'
@@ -635,8 +635,11 @@ interface TodoRowProps extends RowActions {
   }
 }
 
-/** The days a sticky todo takes to look fully carried; it stops changing then. */
-const MATURE_DAYS = 21
+const RIPE_DAYS = 28
+
+/** How far a sticky todo's ribbon has ripened, 0 to 1: quick at first, then slower, then not at all. */
+const ripeness = (days: number): number =>
+  Math.round((Math.min(days, RIPE_DAYS) / RIPE_DAYS) ** 0.6 * 100) / 100
 
 /** How long a row's text watches for the focus after a drop: its animations and the old row's exit. */
 export const REFOCUS_MS = 1000
@@ -706,13 +709,11 @@ function TodoRow({
   const rowStep = open ? onStep : undefined
   const rowStick = open ? stick : undefined
   const sticky = todo.sticky !== undefined
-  const age =
-    todo.sticky === undefined || stick === undefined
-      ? undefined
-      : {
-          days: daysSince(todo.sticky.since, stick.today),
-          words: sinceLine(todo.sticky.since, stick.today)
-        }
+  const since =
+    todo.sticky === undefined || stick === undefined ? undefined : sinceLine(todo.sticky.since, stick.today)
+  const days =
+    todo.sticky === undefined || stick === undefined ? undefined : daysSince(todo.sticky.since, stick.today)
+  const sinceId = useId()
   // Off to today, it hands the keyboard on; otherwise it keeps it in the other list (DayCard.tsx).
   const toggleSticky = (fromKeys: boolean): void => {
     if (rowStick === undefined) return
@@ -766,7 +767,7 @@ function TodoRow({
       className={styles.row}
       data-row={todo.id}
       data-status={todo.status}
-      data-age={age?.days}
+      data-age={open ? days : undefined}
       data-steps={counted || undefined}
       data-folded={shut || undefined}
       data-editing={editing || undefined}
@@ -866,20 +867,36 @@ function TodoRow({
       </div>
       {/* What else the row does, at its end, where the pointer or the keyboard brings it into view
           (TodoItem.module.css). Their room is always kept. */}
-      {age !== undefined && (
-        <RowTip tip={age.words}>
+      {open && since !== undefined && days !== undefined && (
+        <RowTip tip={since}>
           <span
             className={styles.age}
             data-age-mark
-            role="img"
-            tabIndex={0}
-            aria-label={age.words}
-            style={{ '--age': Math.min(age.days / MATURE_DAYS, 1) } as CSSProperties}
+            aria-hidden="true"
+            style={{ '--age': ripeness(days) } as CSSProperties}
           />
         </RowTip>
       )}
       {(rowMove !== undefined || rowStep !== undefined) && (
         <div className={styles.actions} inert={drafting}>
+          {rowStick !== undefined && (
+            <RowTip tip={since ?? 'Carry until done'}>
+              <button
+                type="button"
+                className={[styles.action, styles.pin].join(' ')}
+                aria-label={`Carry until done: ${todo.text}`}
+                aria-pressed={sticky}
+                aria-describedby={since === undefined ? undefined : sinceId}
+                onClick={(event) => {
+                  if (guarded(event)) return
+                  guardClicks(event)
+                  toggleSticky(event.detail === 0)
+                }}
+              >
+                <Pin size={16} aria-hidden="true" />
+              </button>
+            </RowTip>
+          )}
           {/* First, so that Move and the bin keep their places on every todo: hidden, its room kept, while
               the steps show, as the button under them adds one then. */}
           {rowStep !== undefined && (
@@ -894,23 +911,6 @@ function TodoRow({
                 }}
               >
                 <ListPlus size={16} aria-hidden="true" />
-              </button>
-            </RowTip>
-          )}
-          {rowStick !== undefined && (
-            <RowTip tip={sticky ? 'Unstick' : 'Stick'}>
-              <button
-                type="button"
-                className={styles.action}
-                aria-label={`${sticky ? 'Unstick' : 'Stick'} ${todo.text}`}
-                aria-pressed={sticky}
-                onClick={(event) => {
-                  if (guarded(event)) return
-                  guardClicks(event)
-                  toggleSticky(event.detail === 0)
-                }}
-              >
-                {sticky ? <PinOff size={16} aria-hidden="true" /> : <Pin size={16} aria-hidden="true" />}
               </button>
             </RowTip>
           )}
@@ -954,6 +954,11 @@ function TodoRow({
         </RowTip>
       </div>
       {counted && <StepWords id={countId} done={done} total={total} />}
+      {since !== undefined && (
+        <span id={sinceId} className={styles.visuallyHidden}>
+          {since}
+        </span>
+      )}
       <RowMenu
         text={todo.text}
         row={row}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayDetail, dayTitle, emptyDayLine, moveTarget } from './copy'
+import { dayDetail, dayTitle, daysSince, emptyDayLine, moveTarget, sinceLine } from './copy'
 
 describe('dayTitle', () => {
   it('uses the name of the day where it has one', () => {
@@ -74,5 +74,42 @@ describe('moveTarget', () => {
 
   it("crosses the year for a todo of New Year's Eve", () => {
     expect(moveTarget('2026-12-31', '2026-12-31').day).toBe('2027-01-01')
+  })
+})
+
+describe('sinceLine', () => {
+  it('says only "today" on the day it was stuck', () => {
+    expect(sinceLine('2026-10-05', '2026-10-05', 'en-US')).toBe('Since today')
+  })
+
+  it('gives the start day and the days since', () => {
+    expect(sinceLine('2026-10-04', '2026-10-05', 'en-US')).toBe('Since Sun, Oct 4 · 1 day')
+    expect(sinceLine('2026-09-28', '2026-10-03', 'en-US')).toBe('Since Mon, Sep 28 · 5 days')
+    expect(sinceLine('2026-08-03', '2026-10-05', 'en-US')).toBe('Since Mon, Aug 3 · 63 days')
+  })
+
+  it('names the year of a start in another year', () => {
+    expect(sinceLine('2026-12-30', '2027-01-02', 'en-US')).toBe('Since Wed, Dec 30, 2026 · 3 days')
+  })
+
+  it('gives the start day without a count on a future card', () => {
+    expect(sinceLine('2026-10-10', '2026-10-05', 'en-US')).toBe('From Sat, Oct 10')
+  })
+
+  it('follows the locale', () => {
+    expect(sinceLine('2026-09-28', '2026-10-03', 'de-DE')).toBe('Since Mo., 28. Sept. · 5 days')
+  })
+})
+
+describe('daysSince', () => {
+  it('counts whole days, across months and years', () => {
+    expect(daysSince('2026-10-05', '2026-10-05')).toBe(0)
+    expect(daysSince('2026-09-28', '2026-10-03')).toBe(5)
+    expect(daysSince('2026-12-30', '2027-01-02')).toBe(3)
+    expect(daysSince('2026-10-20', '2026-10-27')).toBe(7)
+  })
+
+  it('is never below zero for a start still ahead', () => {
+    expect(daysSince('2026-10-10', '2026-10-05')).toBe(0)
   })
 })
