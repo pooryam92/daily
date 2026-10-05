@@ -1,4 +1,4 @@
-import { day, expect, sinceText, stuck, test, todo, today } from './daily'
+import { boxOf, day, expect, sinceText, stuck, test, todo, today } from './daily'
 import type { Daily } from './daily'
 import type { DayKey, Todo } from '../src/domain/todo'
 
@@ -190,6 +190,18 @@ test.describe('sticking', () => {
     await expect(daily.carried).toHaveCount(0)
   })
 
+  test('on a future day, then moved to today, ages from today', async ({ daily }) => {
+    await daily.page.getByRole('button', { name: 'Next day' }).click()
+    await stick(daily, 'Dentist, 9:30')
+    await daily.act('Dentist, 9:30', 'Move to today: Dentist, 9:30')
+    await daily.page.getByRole('button', { name: 'Back to today' }).click()
+
+    await expect(daily.carried).toHaveText(['Dentist, 9:30'])
+    await expect.poll(() => onDisk(daily, today)).toMatchObject([{}, { sticky: { since: today } }])
+    await tabToPin(daily, 'Dentist, 9:30')
+    await expect(daily.tip).toHaveText('Since today')
+  })
+
   test('is offered on an open todo only, never on a step or a done todo', async ({ daily }) => {
     await daily.page.getByRole('button', { name: 'Next day' }).click()
     expect(await daily.actions('Dentist, 9:30')).toEqual([
@@ -285,5 +297,69 @@ test.describe('many stickies', () => {
     await expect(daily.own).toHaveText(['Buy milk'])
     await expect(daily.input).toBeInViewport()
     await expect(daily.ring).toHaveAttribute('aria-valuetext', '0 of 1 resolved')
+  })
+})
+
+test.describe('a done sticky on a past card', () => {
+  const report: Todo = { ...stuck('Write the report', day(-3)), status: 'done' }
+  test.use({ seed: { [day(-1)]: [report, todo('Call the bank', 'done')] } })
+
+  const card = (daily: Daily) => daily.page.locator('section[data-offset="0"]')
+
+  test('unticked by the pointer, goes to today, and the row that slides under the pointer takes no click', async ({
+    daily
+  }) => {
+    await back(daily, 1)
+    let last = ''
+    await expect
+      .poll(async () => {
+        const now = JSON.stringify(await boxOf(daily.box('Write the report')))
+        const same = now === last
+        last = now
+        await daily.page.waitForTimeout(100)
+        return same
+      })
+      .toBe(true)
+    const box = await boxOf(daily.box('Write the report'))
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    await daily.page.mouse.move(at.x, at.y)
+    await daily.page.mouse.down()
+    await daily.page.mouse.up()
+
+    await expect(daily.row('Write the report')).toHaveCount(0)
+    await expect
+      .poll(() => onDisk(daily, today))
+      .toMatchObject([{ status: 'open', sticky: { since: day(-3) } }])
+    await expect(card(daily)).toHaveAttribute('data-guard')
+    await expect
+      .poll(() =>
+        daily.page.evaluate(
+          ({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-todo]')?.textContent,
+          at
+        )
+      )
+      .toContain('Call the bank')
+    await daily.page.mouse.down()
+    await daily.page.mouse.up()
+    await daily.page.waitForTimeout(700)
+    expect(await onDisk(daily, day(-1))).toMatchObject([{ text: 'Call the bank', status: 'done' }])
+
+    await daily.page.mouse.move(at.x + 4, at.y)
+    await expect(card(daily)).not.toHaveAttribute('data-guard')
+    await daily.page.mouse.down()
+    await daily.page.mouse.up()
+    await expect.poll(() => onDisk(daily, day(-1))).toMatchObject([{ text: 'Call the bank', status: 'open' }])
+  })
+
+  test('unticked from the keyboard, goes to today and hands the focus to the next row', async ({ daily }) => {
+    await back(daily, 1)
+    await daily.box('Write the report').focus()
+    await daily.page.keyboard.press('Space')
+
+    await expect(daily.row('Write the report')).toHaveCount(0)
+    await expect(daily.editButton('Call the bank')).toBeFocused()
+    await expect
+      .poll(() => onDisk(daily, today))
+      .toMatchObject([{ status: 'open', sticky: { since: day(-3) } }])
   })
 })

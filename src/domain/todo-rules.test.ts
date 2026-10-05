@@ -1170,6 +1170,20 @@ describe('daysReducer with stickies', () => {
     expect(moved[DAY]).toStrictEqual([stuck(ci, PAST)])
   })
 
+  it('a sticky moved to an earlier day ages from there; moved later, from its own day', () => {
+    const LATER: DayKey = '2026-09-20'
+    const back = daysReducer(
+      { [LATER]: [stuck(milk, LATER)] },
+      { type: 'moved', from: LATER, to: DAY, id: 'milk' }
+    )
+    expect(back[DAY]).toStrictEqual([stuck(milk, DAY)])
+    const on = daysReducer(
+      { [DAY]: [stuck(milk, PAST)] },
+      { type: 'moved', from: DAY, to: LATER, id: 'milk' }
+    )
+    expect(on[LATER]).toStrictEqual([stuck(milk, PAST)])
+  })
+
   it('a sticky put under another todo is a plain step', () => {
     const next = daysReducer(
       { [DAY]: [stuck(milk), taxes] },
