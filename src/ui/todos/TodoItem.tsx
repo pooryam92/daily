@@ -953,7 +953,7 @@ function TodoRow({
         </RowTip>
       </div>
       {counted && <StepWords id={countId} done={done} total={total} />}
-      {since !== undefined && (
+      {rowStick !== undefined && since !== undefined && (
         <span id={sinceId} className={styles.visuallyHidden}>
           {since}
         </span>
