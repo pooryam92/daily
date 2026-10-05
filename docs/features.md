@@ -82,8 +82,8 @@ Keep it current: a change to what the user can do changes this file in the same 
   keyboard. On touch they are always there. Right-click on the row, Shift+F10 or the menu key open
   the same actions as a menu, with "Hide steps" or "Show steps" on a todo with steps; a click
   outside it only closes it. After Move or Delete the keyboard goes to the next row, else the one
-  before, else the input. After a click on Move or Delete the buttons wait for the pointer to
-  move, so a double-click takes one row, not the one that slides up under it.
+  before, else the input. After a click that takes a row away the buttons and boxes wait for
+  the pointer to move, so a double-click takes one row, not the one that slides up under it.
 
 ## Steps
 
@@ -153,7 +153,8 @@ Keep it current: a change to what the user can do changes this file in the same 
 - **Age.** A thin ribbon in the margin beside its box ripens from pale straw to cognac (in the dark,
   khaki to honey) over four weeks, then stays. There is no number on the row. Pointing at the ribbon
   or the pin, or focusing the pin, shows "Since Mon, Sep 28 · 5 days", "Since today", or on a future
-  card "From Sat, Oct 10". The age counts from the day the todo was on when it was stuck.
+  card "From Sat, Oct 10". The age counts from the day the todo was on when it was stuck, or an earlier
+  day it was moved to.
 - **Done.** Ticking it makes it a normal done todo on that day: it stays in the section, struck
   through and without a ribbon, and counts in the day's ring. Unticked the same day, it is carried
   again. A done sticky never travels. A past card shows one list: a done sticky there is a done todo.
