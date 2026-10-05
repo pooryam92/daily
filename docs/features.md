@@ -8,8 +8,9 @@ Keep it current: a change to what the user can do changes this file in the same 
 
 ## Days
 
-- **One card per day.** The app opens on today. Every day starts empty; nothing rolls over, and
-  yesterday's open todos stay on yesterday's card.
+- **One card per day.** The app opens on today. Every day starts empty apart from the todos you
+  chose to carry (see Sticky todos); nothing else rolls over, and yesterday's other open todos stay
+  on yesterday's card.
 - **The title is what the day is called out loud:** "Today", "Yesterday", "Tomorrow", otherwise the
   weekday. The line under it has the date, and for a day titled by its weekday also how far from
   today it is. Only "Today" is in the accent colour.
@@ -74,7 +75,8 @@ Keep it current: a change to what the user can do changes this file in the same 
 - **The row's end.** Where there is a mouse a row at rest is its box and its text, with a faint ›
   before the box if its steps are folded. Pointing at the row, or giving it the keyboard focus, shows
   its buttons, one click each, in room the row keeps for them, so nothing moves: on an open todo a
-  list with a + (add a step, on a todo without steps or a folded one) and a calendar (move), then,
+  pin (carry until done), a list with a + (add a step, on a todo without steps or a folded one) and
+  a calendar (move), then,
   set apart at the very end, a bin (delete). The calendar and the bin are in the same place on
   every row; on a done todo and on a step the bin is the only button. Each names itself in a small tip after a moment's pointing, or at once from the
   keyboard. On touch they are always there. Right-click on the row, Shift+F10 or the menu key open
@@ -130,10 +132,38 @@ Keep it current: a change to what the user can do changes this file in the same 
   - A step keeps its status when it comes out. An open row put under a done todo reopens it.
 - **The ring and the sounds count todos only.** Checking a step ticks; it never clears the day.
 
+## Sticky todos
+
+- **What.** A todo you choose to carry. It moves to today every morning until it is done; every
+  other todo stays on its day.
+- **Stick and unstick.** The pin at the row's end, first among its buttons, or "Carry until done" /
+  "Stop carrying" in the row's menu. Its tip says "Carry until done". Pressed, the pin stays in the
+  ribbon's ripest colour. Only an open todo has it; its steps travel with it, fold included.
+  Unsticking leaves a normal open todo at the end of today's own todos.
+- **Where it sits.** Under the day's own todos, at the bottom of the card, under a quiet "Carried".
+  The section takes at most 40% of the list's height and scrolls on its own. Stickies are dragged
+  among themselves; nothing is dropped across the line between the two lists. Sticking or unsticking
+  from the keyboard puts the focus on the todo's text in its new list.
+- **It travels.** An open sticky on a day before today moves to the end of today's carried todos,
+  oldest day first, on start and when the date changes while the app is open. The days it passed
+  keep no trace of it. Stuck on a past card, it slides off towards today at once; stuck on a future
+  card, it waits there and travels once that day is today. "Move to tomorrow" works the same way.
+- **Age.** A thin ribbon in the margin beside its box ripens from pale straw to cognac (in the dark,
+  khaki to honey) over four weeks, then stays. There is no number on the row. Pointing at the ribbon
+  or the pin, or focusing the pin, shows "Since Mon, Sep 28 · 5 days", "Since today", or on a future
+  card "From Sat, Oct 10". The age counts from the day the todo was on when it was stuck.
+- **Done.** Ticking it makes it a normal done todo on that day: it stays in the section, struck
+  through and without a ribbon, and counts in the day's ring. Unticked the same day, it is carried
+  again. A done sticky never travels. A past card shows one list: a done sticky there is a done todo.
+- **Outside the ring.** An open sticky does not hold the ring open: today can read Cleared while
+  you still carry something.
+- **Delete** works as for any todo, with Undo for six seconds; Undo puts it back on today.
+- No limit on how many.
+
 ## Progress and the cleared day
 
 - **A ring in the card's header** shows how close the day is to having nothing open. There is no
-  count. A done todo advances it. A day without todos has no ring. The cards behind
+  count. A done todo advances it; an open sticky todo is not counted. A day without todos has no ring. The cards behind
   show a smaller ring on their tab.
 - **Cleared.** Resolving the last open todo closes the ring into a check and adds the word "Cleared".
   The flourish plays once, while it is watched; a day that is already cleared when its card appears

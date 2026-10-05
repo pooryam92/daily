@@ -152,6 +152,11 @@ The app loads no remote content, which makes the rules simple to hold.
   changes the parser, not the file. The cost: an older version drops the `steps` it does not know
   and saves without them, and its backup does not help when that version has run before on the
   machine, since a backup per version is made only once.
+- **A sticky todo has an optional `sticky: { since }` key** (a top-level todo only), following
+  `steps`: no key means not sticky, so older files load unchanged and the file stays `version: 1`.
+  Travel is a pure rule (`travel` in `todo-rules.ts`) run on load, on a date change and after every
+  action, so the file only ever holds open stickies on today or later. An older version drops the
+  key and saves without it.
 - **A deleted todo is really deleted** during its undo window, and saved as gone. Undo is a new
   action that puts it back. Closing the app mid-window cannot bring it back by accident.
 - **Settings are read synchronously at start,** on purpose: the theme has to be known before the

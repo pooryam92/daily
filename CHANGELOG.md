@@ -6,6 +6,14 @@ What changed for someone using Daily, newest first. The format is
 
 ## [Unreleased]
 
+### Added
+
+- Sticky todos. The pin at a todo's end carries it: until it is done it moves to today every
+  morning, steps and all, and waits at the bottom of the card under "Carried". A thin ribbon beside
+  it ripens over four weeks; point at it to see since when. An open sticky does not hold the day's
+  ring open, and a ticked one is a normal done todo on that day. Going back to an older version of
+  Daily loses which todos were sticky.
+
 ## [1.3.0] - 2026-10-04
 
 ### Added
