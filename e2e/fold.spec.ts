@@ -102,11 +102,12 @@ test.describe('folding steps', () => {
       [
         'Done',
         'Edit Plan the offsite',
+        'Carry until done: Plan the offsite',
         'Add a step to Plan the offsite',
         'Move to tomorrow: Plan the offsite',
         'Delete Plan the offsite'
       ].map((label) => path.indexOf(label, at('Show steps of Plan the offsite')))
-    ).toEqual([1, 2, 3, 4, 5].map((after) => at('Show steps of Plan the offsite') + after))
+    ).toEqual([1, 2, 3, 4, 5, 6].map((after) => at('Show steps of Plan the offsite') + after))
   })
 
   test('a click on the chevron folds the steps, and a click on the text still edits it', async ({

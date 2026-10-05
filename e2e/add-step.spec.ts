@@ -133,7 +133,11 @@ test.describe('adding a step from the todo’s row', () => {
     expect(row.y).toBeGreaterThanOrEqual(last.y + last.height - 1)
     expect(Math.abs(row.height - 28)).toBeLessThanOrEqual(1)
 
-    expect(await daily.actions('Set up CI')).toEqual(['Move to tomorrow: Set up CI', 'Delete Set up CI'])
+    expect(await daily.actions('Set up CI')).toEqual([
+      'Carry until done: Set up CI',
+      'Move to tomorrow: Set up CI',
+      'Delete Set up CI'
+    ])
     await expect(daily.more('Set up CI')).toHaveCount(1)
     await expect(daily.more('Paint the fence')).toHaveCount(1)
 
@@ -141,13 +145,18 @@ test.describe('adding a step from the todo’s row', () => {
     await expect(spacer(daily, 'Set up CI')).toHaveCount(0)
     await expect(daily.more('Set up CI')).toBeHidden()
     expect(await daily.actions('Set up CI')).toEqual([
+      'Carry until done: Set up CI',
       'Add a step to Set up CI',
       'Move to tomorrow: Set up CI',
       'Delete Set up CI'
     ])
     await daily.chevron('Set up CI').click()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(1)
-    expect(await daily.actions('Set up CI')).toEqual(['Move to tomorrow: Set up CI', 'Delete Set up CI'])
+    expect(await daily.actions('Set up CI')).toEqual([
+      'Carry until done: Set up CI',
+      'Move to tomorrow: Set up CI',
+      'Delete Set up CI'
+    ])
 
     await daily.box('Set up CI').check()
     await expect(spacer(daily, 'Set up CI')).toHaveCount(0)
@@ -156,6 +165,7 @@ test.describe('adding a step from the todo’s row', () => {
     await daily.box('Set up CI').uncheck()
     await expect(daily.chevron('Set up CI')).toHaveAttribute('aria-expanded', 'false')
     expect(await daily.actions('Set up CI')).toEqual([
+      'Carry until done: Set up CI',
       'Add a step to Set up CI',
       'Move to tomorrow: Set up CI',
       'Delete Set up CI'
