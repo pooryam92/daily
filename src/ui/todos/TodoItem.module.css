@@ -296,6 +296,11 @@
   background: none;
 }
 
+/* A row that slid up under the pointer is not ticked by the same pointer's next click. */
+[data-guard] .row > label {
+  pointer-events: none;
+}
+
 /*
  * The room under a todo's last step (`StepSpace`), shaped like a step's row. With a mouse: nothing at
  * rest, its icon while the todo is pointed at or focused, its words and a hover while it is pointed at

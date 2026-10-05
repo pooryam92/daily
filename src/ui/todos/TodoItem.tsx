@@ -266,6 +266,7 @@ export function TodoItem({
   const folded = todo.folded === true
   const steps = folded ? [] : (todo.steps ?? [])
   const drafting = todo.status === 'open' && addingStep
+  const reopenLeaves = todo.sticky !== undefined && todo.status === 'done' && compareDays(day, today) < 0
   const stepsId = useId()
   const actions = { onToggleDone, onRemove, onEdit }
   const addStep = (fromIcon = false): void => {
@@ -315,6 +316,7 @@ export function TodoItem({
         refocus={refocus === todo.id}
         drafting={drafting}
         move={{ target: moveTarget, onMove }}
+        reopenLeaves={reopenLeaves}
         stick={{
           today,
           // Stuck on a past day, it goes on to today.
@@ -352,6 +354,7 @@ export function TodoItem({
                   // above would take it away mid-word: the steps hold still, as the todo does.
                   disabled={drafting}
                   refocus={refocus === step.id}
+                  reopenLeaves={reopenLeaves}
                   order={order}
                   isNew={isNew}
                   animateEnter={animateEnter}
@@ -429,6 +432,7 @@ interface StepItemProps extends RowActions, RowMotion {
   readonly step: Todo
   readonly disabled: boolean
   readonly refocus: boolean
+  readonly reopenLeaves: boolean
   /** Set by `AnimatePresence`, which takes the step out of the flow while it fades out. */
   readonly ref?: Ref<HTMLLIElement>
 }
@@ -441,6 +445,7 @@ function StepItem({
   step,
   disabled,
   refocus,
+  reopenLeaves,
   order,
   isNew,
   animateEnter,
@@ -484,6 +489,7 @@ function StepItem({
         textRef={text}
         handleRef={handleRef}
         refocus={refocus}
+        reopenLeaves={reopenLeaves}
         onToggleDone={onToggleDone}
         onRemove={onRemove}
         onEdit={onEdit}
@@ -620,6 +626,8 @@ interface TodoRowProps extends RowActions {
     readonly leaves: boolean
     readonly onToggle: (fromKeys: boolean) => void
   }
+  /** Unticking it reopens a sticky on a past day, which then goes on to today. */
+  readonly reopenLeaves?: boolean
   /** Opens the step editor under the todo. Steps have none: a step cannot have steps. */
   readonly onStep?: () => void
   /**
@@ -687,6 +695,7 @@ function TodoRow({
   drafting = false,
   move,
   stick,
+  reopenLeaves = false,
   onStep,
   fold,
   onToggleDone,
@@ -778,6 +787,14 @@ function TodoRow({
         if (drafting && event.target === event.currentTarget) event.preventDefault()
       }}
       onKeyDown={onRowKeyDown}
+      onClick={(event) => {
+        if (!reopenLeaves || !(event.target instanceof HTMLInputElement)) return
+        const todoRow = row
+          ?.closest('li[data-todo]:not([data-step])')
+          ?.querySelector<HTMLElement>(':scope > [data-row]')
+        if (event.detail === 0) leaveRow(todoRow ?? null, true, ignore)
+        else guardClicks(event)
+      }}
       onContextMenu={(event) => {
         if (editing || drafting) return
         event.preventDefault()

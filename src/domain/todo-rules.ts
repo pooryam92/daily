@@ -159,6 +159,11 @@ function moveTodo(days: DaysMap, { from, to, id, index }: Extract<TodoAction, { 
   // A second click on the same undo must not duplicate the todo.
   if (todo === undefined || from === to || target.some((entry) => entry.id === id)) return days
   const at = index === undefined ? target.length : Math.min(index, target.length)
+  // A sticky's age never starts after a day it has been on.
+  const moved =
+    todo.sticky !== undefined && compareDays(to, todo.sticky.since) < 0
+      ? { ...todo, sticky: { since: to } }
+      : todo
   return withDay(
     withDay(
       days,
@@ -166,7 +171,7 @@ function moveTodo(days: DaysMap, { from, to, id, index }: Extract<TodoAction, { 
       source.filter((entry) => entry.id !== id)
     ),
     to,
-    target.toSpliced(at, 0, todo)
+    target.toSpliced(at, 0, moved)
   )
 }
 
