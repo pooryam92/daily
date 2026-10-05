@@ -10,6 +10,23 @@ It replaces two task lists, each with its checks and dead ends: `TASKS.md`, the 
 2026-09-19 (`git show 8def090:docs/TASKS.md`), and `release.md`, the checklist to the first release
 (`git show 8bd337f:docs/release.md`).
 
+## Sticky todos: carry a todo until it is done (2026-10-05)
+
+- **Opt-in per todo, with a pin on its row** (`todos/RowMenu.tsx`, `domain/todo-rules.ts`). After
+  days away, the work that matters was scattered on old cards; choosing each todo yourself is what
+  keeps this from being the overdue list the app rules out. One todo travels to today, and the days
+  it passed keep no trace; a done one stays on the day it was ticked.
+  - Not a cap of 3: Poorya chose no limit, to see how it plays out. Not repeating on every day it
+    passes: each past day would keep an open ring. Not replacing "move to tomorrow". Not a shelf to
+    drag onto: an empty shelf is hard to find.
+- **Outside the ring, under a quiet "Carried" at the card's foot** (`day/DayCard.tsx`). Today can
+  read Cleared while you still carry something. The section takes the room today's own todos leave,
+  and keeps 40% only when both are full. Past cards show one list.
+- **Age ripens, it never warns**: a 3px ribbon in the margin, straw to cognac (khaki to honey in
+  dark) over four weeks, then still. No number, no red; the pin's tip says "Since Mon, Sep 28 ·
+  5 days", counted from the day it was stuck, since a todo keeps no day it was written.
+  - Not a tint on the row: it read as selected. Not coloured text: it read as a link.
+
 ## An arrow for the fold, and a whole row to add a step (2026-10-04)
 
 - **The fold is a chevron alone; the pie is gone** (`todos/TodoItem.tsx`). Poorya: "the circle
