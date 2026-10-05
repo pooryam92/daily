@@ -213,7 +213,7 @@ function useItemRef(
 }
 
 /*
- * `› ☐ Buy milk 1/3 ········ [add a step] [move]   [delete]`, with its steps under it while it is open.
+ * `› ☐ Buy milk 1/3 ········ [carry] [add a step] [move]   [delete]`, with its steps under it while it is open.
  * Left to right the buttons grow more final, delete set apart: a spectrum to read, not a menu to compare.
  */
 export function TodoItem({
@@ -865,8 +865,6 @@ function TodoRow({
           {dragWords.instructions}
         </span>
       </div>
-      {/* What else the row does, at its end, where the pointer or the keyboard brings it into view
-          (TodoItem.module.css). Their room is always kept. */}
       {open && since !== undefined && days !== undefined && (
         <RowTip tip={since}>
           <span
@@ -877,6 +875,8 @@ function TodoRow({
           />
         </RowTip>
       )}
+      {/* What else the row does, at its end, where the pointer or the keyboard brings it into view
+          (TodoItem.module.css). Their room is always kept. */}
       {(rowMove !== undefined || rowStep !== undefined) && (
         <div className={styles.actions} inert={drafting}>
           {rowStick !== undefined && (
@@ -897,8 +897,7 @@ function TodoRow({
               </button>
             </RowTip>
           )}
-          {/* First, so that Move and the bin keep their places on every todo: hidden, its room kept, while
-              the steps show, as the button under them adds one then. */}
+          {/* Hidden, its room kept, while the steps show: the button under them adds one then. */}
           {rowStep !== undefined && (
             <RowTip tip="Add a step">
               <button

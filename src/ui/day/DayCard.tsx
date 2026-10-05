@@ -1,8 +1,8 @@
 import { AnimatePresence, motion, useTransform } from 'motion/react'
 import type { MotionValue } from 'motion/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { DayKey, Todo } from '@/domain/todo'
-import { CLEARED_LABEL, dayDetail, dayTitle, emptyDayLine, moveTarget } from './copy'
+import { CARRIED_LABEL, CLEARED_LABEL, dayDetail, dayTitle, emptyDayLine, moveTarget } from './copy'
 import type { MoveDirection } from './copy'
 import { dayIndex, formatWeekday, fromDayKey } from '@/domain/dates'
 import { deckTransform, deckZIndex } from '../deck/deck'
@@ -42,9 +42,7 @@ interface DayCardProps {
    * among the todos; without `beforeId`, at the end.
    */
   readonly onPlace: (id: string, parentId?: string, beforeId?: string) => void
-  /** Fold a todo's steps away, or show them again. */
   readonly onToggleFold: (id: string) => void
-  /** Bring this card to the front. */
   readonly onSelect: () => void
 }
 
@@ -92,13 +90,19 @@ export function DayCard({
   if (offset !== 0 && side !== (offset < 0 ? 'before' : 'after')) setSide(offset < 0 ? 'before' : 'after')
 
   const progress = useMemo(() => dayProgress(todos), [todos])
+  // A past card carries nothing: a sticky still there is done, a done todo like the others.
+  const past = dayIndex(day) < dayIndex(today)
   const [own, carried] = useMemo(
-    () => [
-      todos.filter((todo) => todo.sticky === undefined),
-      todos.filter((todo) => todo.sticky !== undefined)
-    ],
-    [todos]
+    () =>
+      past
+        ? [todos, []]
+        : [
+            todos.filter((todo) => todo.sticky === undefined),
+            todos.filter((todo) => todo.sticky !== undefined)
+          ],
+    [todos, past]
   )
+  const carriedId = useId()
   // The glance is only seen on a card behind, where nothing is waiting to settle.
   const glance = useMemo(
     () => [...displayOrder(own, resolvedIds(own)), ...displayOrder(carried, resolvedIds(carried))],
@@ -146,8 +150,7 @@ export function DayCard({
   }, [refocus])
   const toggleSticky = (id: string, fromKeys: boolean): void => {
     const todo = todos.find((entry) => entry.id === id)
-    if (todo !== undefined && todo.sticky === undefined && dayIndex(day) < dayIndex(today))
-      leaving.set(id, 'next')
+    if (todo !== undefined && todo.sticky === undefined && past) leaving.set(id, 'next')
     else if (fromKeys) setRefocus(id)
     onToggleSticky(id)
   }
@@ -265,7 +268,18 @@ export function DayCard({
 
           <RowMenus front={inFront}>
             <TodoList todos={own} rows={rows} dragging={dragging} setDragging={setDragging} />
-            <TodoList todos={carried} rows={rows} dragging={dragging} setDragging={setDragging} sticky />
+            <div className={styles.carried}>
+              <p id={carriedId} className={styles.caption}>
+                {CARRIED_LABEL}
+              </p>
+              <TodoList
+                todos={carried}
+                rows={rows}
+                dragging={dragging}
+                setDragging={setDragging}
+                carried={carriedId}
+              />
+            </div>
           </RowMenus>
         </div>
 

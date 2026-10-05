@@ -19,6 +19,9 @@
   --danger: light-dark(#b93a2c, #f07a6d);
   --danger-solid: #b93a2c;
   --on-danger: #ffffff;
+  /* A sticky todo's ribbon ripens from the first to the second over four weeks. */
+  --sticky-fresh: light-dark(#d5c6a7, #6e614d);
+  --sticky-aged: light-dark(#95572e, #e3ac64);
   --hover: rgb(128 128 128 / 0.1);
   --hover-strong: rgb(128 128 128 / 0.18);
   /*
@@ -107,6 +110,7 @@
     --border: var(--border-strong);
     --text-faint: var(--text-muted);
     --shadow-highlight: transparent;
+    --sticky-fresh: var(--border-strong);
   }
 }
 

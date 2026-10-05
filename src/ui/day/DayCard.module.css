@@ -340,13 +340,32 @@
   }
 }
 
-/* The sticky todos, under the day's own, set apart by a rule. Not there while there are none. */
-.stickies {
+/*
+ * The sticky todos, under the day's own, which keep the room above, so this stays put as they come and
+ * go. Not positioned: the drop line is placed against the body. Not there while there are none.
+ */
+.carried {
   flex: 0 1 auto;
+  min-height: 0;
   max-height: 40%;
-  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
 }
 
-.stickies:not(:has(li)) {
+.carried:not(:has(li)) {
   display: none;
+}
+
+/* Over the rows' text: the list's 12px padding, then a row's padding, slot, box and gaps (60px). */
+.caption {
+  margin: var(--space-3) 0 var(--space-1);
+  padding-inline-start: 72px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-ui);
+  color: var(--text-muted);
+}
+
+.stickies {
+  flex: 0 1 auto;
 }

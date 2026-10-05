@@ -54,14 +54,15 @@ interface TodoListProps {
   readonly rows: ListRows
   readonly dragging: boolean
   readonly setDragging: (dragging: boolean) => void
-  readonly sticky?: boolean
+  /** The id of the carried list's caption; the day's own list has none. */
+  readonly carried?: string
 }
 
 /**
  * One list of a card's todos, sorted by dragging within it. A dragged row stays put while a copy follows
  * the pointer, and nothing else moves (useRowDrag.ts): a line, or a tint on a todo, shows where it would land.
  */
-export function TodoList({ todos, rows, dragging, setDragging, sticky = false }: TodoListProps) {
+export function TodoList({ todos, rows, dragging, setDragging, carried }: TodoListProps) {
   const { ordered, settled } = useSettledTodos(todos, dragging)
   // The todo a step is being written under, if any. It is kept here, not in the todo, because opening
   // and closing the step editor moves the rows below, which then have to be measured.
@@ -99,8 +100,9 @@ export function TodoList({ todos, rows, dragging, setDragging, sticky = false }:
         {/* `layoutScroll` lets the rows' layout animations account for how far the list is scrolled. */}
         <motion.ul
           ref={setList}
-          className={[styles.todos, sticky ? styles.stickies : ''].join(' ')}
-          data-sticky-list={sticky || undefined}
+          className={[styles.todos, carried === undefined ? '' : styles.stickies].join(' ')}
+          data-sticky-list={carried !== undefined || undefined}
+          aria-labelledby={carried}
           layoutScroll
         >
           {/* `popLayout` takes a deleted row out of the flow at once, so the rows below close the gap
